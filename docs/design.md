@@ -175,7 +175,89 @@ output_type 与 mode 正交。详见 CLAUDE.md §7 + skills/mh-clarify.md Step 3
 
 ---
 
-## 10. 架构演进方向（未来）
+## 10. 经验记忆系统
+
+### 设计目标
+
+每次需求执行中的调教、纠正、最佳实践持久化沉淀，形成"越用越好"的正向循环：
+
+```
+执行 REQ-N → 采集经验 → output/lessons-learned.md → 执行 REQ-N+1 时加载
+                                    ↓
+                         框架开发者 review → 固化为框架规则
+```
+
+### 采集架构
+
+| 采集点 | 触发时机 | 采集者 | 内容 |
+|--------|---------|--------|------|
+| CP-1 | SR 审批被用户驳回 | PM 自动 | 驳回原因 + 修正方向 |
+| CP-2 | 用户主动纠正 Agent 行为 | PM 自动 | 纠正内容 + 原因 |
+| CP-3 | 修复循环 ≥2 轮 | PM 自动 | 系统性根因分析 |
+| CP-4 | ARC-6 结项前 | PM 主动询问用户 | 用户总结评价和改进建议 |
+
+### 存储架构
+
+```
+deliverables/{REQ-ID}/lessons.md    ← 本次执行过程中的暂存（实时追加）
+         │
+         ▼ ARC-6 merge
+output/lessons-learned.md           ← 全量累积文档（跨 REQ 持久化）
+```
+
+- `deliverables/{REQ-ID}/lessons.md`：过程暂存，随 REQ 生命周期存在
+- `output/lessons-learned.md`：全量累积，每次归档时 merge 进新经验
+
+### 消费方式
+
+| 消费者 | 时机 | 方式 |
+|--------|------|------|
+| PM | mh-clarify 前置检查 | 读取 output/lessons-learned.md，传达相关经验给各角色 |
+| 各 Agent | handoff 白名单 | PM 将相关经验条目附在 handoff 约束中 |
+| 框架开发者 | 定期 review | 反复出现的经验固化为框架规则 |
+
+### 经验固化路径
+
+```
+output/lessons-learned.md 中反复出现的模式
+         │
+         ▼ 框架开发者识别
+┌────────────────────────────────────────┐
+│ 设计类 → agents/*.md 质量标准/反模式    │
+│ 验证类 → scripts/verify.sh 检查项      │
+│ 流程类 → skills/*.md 步骤增强          │
+│ 模板类 → templates/ 新增/改进          │
+└────────────────────────────────────────┘
+         │
+         ▼ 固化后记录
+output/lessons-learned.md "经验固化记录" 表
+```
+
+### 文件格式
+
+经验条目格式（EXP-{N} 全局递增编号）：
+```markdown
+### EXP-{N}: {经验标题}
+- 来源: {REQ-ID}
+- 类别: {设计/实现/流程/测试/沟通}
+- 角色: {PM/BA/SA/DE/TE/UX}
+- 经验: {具体内容}
+- 原因: {为什么这样做更好}
+- 适用场景: {什么情况下应用此经验}
+```
+
+### 权威源
+
+| 文件 | 职责 |
+|------|------|
+| agents/pm.md "经验采集规则" | CP-1~CP-3 采集行为定义 |
+| skills/mh-archive.md ARC-6 | 归档流程 + CP-4 用户询问 |
+| templates/lessons-template.md | 文档格式模板 |
+| skills/mh-clarify.md 前置检查 | 启动时加载历史经验 |
+
+---
+
+## 11. 架构演进方向（未来）
 
 | 方向 | 触发条件 | 做法 | 状态 |
 |------|---------|------|------|
