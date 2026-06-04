@@ -23,6 +23,25 @@ PPT 类 HTML 页面开发。可通过 `/mh-ppt` 快捷触发（自动设置 outp
    ```
 3. 确认 `templates/frontend-design-skill.md` 存在（SubAgent 白名单兜底用）
 
+## frontend-design 与 PPT 约束的优先级
+
+frontend-design plugin 鼓励大胆创意，但 PPT 有硬性结构约束。优先级规则：
+
+**硬约束（不可违反）：**
+- 视口固定 1920×1080，16:9
+- 必须有 `.slide` 容器，禁止滚动
+- 必须引用 ppt-base.css
+- verify-ppt.sh 检查项必须全部通过
+
+**可覆盖（鼓励创意）：**
+- `--font-family`：鼓励覆盖为更有特色的字体（ppt-base.css 中的 Inter 仅为默认值）
+- `--color-*` 系列变量：可根据内容主题重新定义配色方案
+- 布局：在 `.slide` 容器内自由发挥（不对称、重叠、对角线流动均可）
+- 动效：鼓励添加 CSS 动画（页面加载、元素交错淡入）
+- 背景：鼓励使用渐变、纹理、几何图案替代纯色
+
+**原则：结构上遵守 ppt-base.css 骨架，视觉上按 frontend-design 标准发挥创意。**
+
 ## 主流程集成点
 
 当 output_type=ppt 时，主流程在以下位置加载本补充规则：
