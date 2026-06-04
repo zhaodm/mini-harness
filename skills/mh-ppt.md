@@ -23,24 +23,50 @@ PPT 类 HTML 页面开发。可通过 `/mh-ppt` 快捷触发（自动设置 outp
    ```
 3. 确认 `templates/frontend-design-skill.md` 存在（SubAgent 白名单兜底用）
 
-## frontend-design 与 PPT 约束的优先级
+## 设计方案选择
 
-frontend-design plugin 鼓励大胆创意，但 PPT 有硬性结构约束。优先级规则：
+在 clarify 阶段 Proposal 确认后、模式选择前，PM 向用户呈现设计方案选择：
 
-**硬约束（不可违反）：**
-- 视口固定 1920×1080，16:9
-- 必须有 `.slide` 容器，禁止滚动
-- 必须引用 ppt-base.css
-- verify-ppt.sh 检查项必须全部通过
+```
+[PPT 设计方案]
+请选择本次 PPT 的设计方案：
 
-**可覆盖（鼓励创意）：**
-- `--font-family`：鼓励覆盖为更有特色的字体（ppt-base.css 中的 Inter 仅为默认值）
-- `--color-*` 系列变量：可根据内容主题重新定义配色方案
-- 布局：在 `.slide` 容器内自由发挥（不对称、重叠、对角线流动均可）
-- 动效：鼓励添加 CSS 动画（页面加载、元素交错淡入）
-- 背景：鼓励使用渐变、纹理、几何图案替代纯色
+  A. 设计系统模式（ppt-base.css）
+     使用框架内置设计系统，统一的字体/配色/间距规范，产出风格一致。
+     适合：企业汇报、系列化演示、需要品牌一致性的场景。
 
-**原则：结构上遵守 ppt-base.css 骨架，视觉上按 frontend-design 标准发挥创意。**
+  B. 自由创意模式（frontend-design）
+     基于 Anthropic frontend-design skill，每次根据内容主题从零设计。
+     大胆独特的视觉风格，不受 ppt-base.css 视觉约束。
+     适合：创意提案、产品展示、需要视觉冲击力的场景。
+
+请选择（A/B）:
+```
+
+选择结果写入 `deliverables/{REQ-ID}/.state.md`: `ppt_design_mode: system | creative`
+
+### A. 设计系统模式（ppt_design_mode: system）
+
+- UX/DE 严格遵循 `templates/ppt-base.css` 设计体系
+- 字体、配色、间距、圆角等使用 CSS 变量，不可自行覆盖
+- 版式创意在设计系统约束内发挥（布局、信息层次、内容编排）
+- verify-ppt.sh 全部检查项适用
+
+### B. 自由创意模式（ppt_design_mode: creative）
+
+- 以 `templates/frontend-design-skill.md` 为设计指导
+- **仅保留硬性结构约束**：
+  - 视口 1920×1080，16:9
+  - 必须有 `.slide` 容器，禁止滚动
+  - verify-ppt.sh 的结构类检查项适用（文件存在性、.slide 容器、viewport meta）
+- **不受约束**：
+  - 无需引用 ppt-base.css（可选引用其布局工具类）
+  - 字体、配色、间距、背景、动效完全自由
+  - 鼓励：独特字体、大胆配色、创意布局、丰富动效、氛围背景
+- **从设计系统中吸收的互补建议**（非强制）：
+  - CSS 变量管理色彩/间距的工程实践
+  - 信息层次原则（标题 > 关键数据 > 辅助说明）
+  - 占位数据长度接近真实数据
 
 ## 主流程集成点
 
@@ -73,7 +99,9 @@ frontend-design plugin 鼓励大胆创意，但 PPT 有硬性结构约束。优�
 2. 创建目录结构：`deliverables/{REQ-ID}/ux/wireframes/`
 3. 写入 handoff: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-DESIGN1-R1.md`
    - to: UX
-   - 白名单: `deliverables/{REQ-ID}/proposal.md`, `deliverables/{REQ-ID}/sa/design.md`(如有), `templates/ppt-base.css`, `templates/ppt-templates/layouts/`, `templates/frontend-design-skill.md`
+   - 白名单（按 ppt_design_mode 区分）：
+     - **system 模式**: `deliverables/{REQ-ID}/proposal.md`, `deliverables/{REQ-ID}/sa/design.md`(如有), `templates/ppt-base.css`, `templates/ppt-templates/layouts/`
+     - **creative 模式**: `deliverables/{REQ-ID}/proposal.md`, `deliverables/{REQ-ID}/sa/design.md`(如有), `templates/frontend-design-skill.md`
    - 期望输出: `deliverables/{REQ-ID}/ux/slide-spec.md`, `deliverables/{REQ-ID}/ux/wireframes/`
 4. 派发任务给 UX
 5. 接收回报，校验 wireframe 文件存在且非空
@@ -102,7 +130,9 @@ frontend-design plugin 鼓励大胆创意，但 PPT 有硬性结构约束。优�
 1. `[PM] 派发 DE 实现任务`
 2. 写入 handoff: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-DEV1-R1.md`
    - to: DE
-   - 白名单: `deliverables/{REQ-ID}/ux/wireframes/`, `deliverables/{REQ-ID}/ux/slide-spec.md`, `templates/ppt-base.css`, `templates/frontend-design-skill.md`
+   - 白名单（按 ppt_design_mode 区分）：
+     - **system 模式**: `deliverables/{REQ-ID}/ux/wireframes/`, `deliverables/{REQ-ID}/ux/slide-spec.md`, `templates/ppt-base.css`
+     - **creative 模式**: `deliverables/{REQ-ID}/ux/wireframes/`, `deliverables/{REQ-ID}/ux/slide-spec.md`, `templates/frontend-design-skill.md`
    - 期望输出: `deliverables/{REQ-ID}/output/`
    - 约束: 基于 wireframe 精装实现，填充真实数据，接入图表库，保持 16:9 约束
 3. 派发任务给 DE
@@ -123,11 +153,15 @@ END FOR
 ## TE 校验规则
 
 TE 使用 `scripts/verify-ppt.sh` 执行硬校验：
+
+**通用检查（两种模式均适用）：**
 - 每页 HTML 必须包含 viewport meta（width=1920）
 - 每页必须有 .slide 容器
-- 每页必须引用 ppt-base.css
 - 页数与 slide-spec.md 一致
 - 无占位符残留（检测 "Lorem"、"placeholder"、"TODO"）
+
+**仅 system 模式：**
+- 每页必须引用 ppt-base.css
 
 ## 修复循环
 
