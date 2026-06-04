@@ -9,6 +9,7 @@
 ## 前置检查
 
 1. 检测 deliverables/.state.md 是否存在（全局状态指针）
+   - 如不存在：从 `templates/state-pointer-template.md` 拷贝到 `deliverables/.state.md`
 2. 如存在，读取其中 req_id，检查 `deliverables/{req_id}/.state.md` 的 phase
 3. 检测场景模式（按优先级从高到低判断）：
    - **RESUME**: 最近 REQ 的 phase 非空且 phase≠done → 有未完成的流程，提示用户继续或放弃

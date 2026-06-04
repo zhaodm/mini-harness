@@ -79,6 +79,8 @@ last_updated: ""               # ISO 8601 UTC 时间戳，每次更新必须同�
 | archive | ARC-1 | 需求归档 |
 | archive | ARC-2 | 设计归档 |
 | archive | ARC-3 | 产出物归档 |
+| archive | ARC-4 | 参考资料归档 |
+| archive | ARC-5 | 执行指标生成 |
 | archive | SR4-DONE | SR4 结项确认通过 |
 
 ---

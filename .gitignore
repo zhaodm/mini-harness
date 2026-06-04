@@ -2,10 +2,7 @@
 .claude/settings.local.json
 
 # deliverables/ 过程产物（按 REQ-ID 隔离）
-deliverables/REQ*/
-
-# 保留全局指针
-!deliverables/.state.md
+deliverables/
 
 # spec/ 已合并至 output/spec/，不再单独存在
 
