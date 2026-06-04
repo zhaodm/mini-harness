@@ -14,6 +14,15 @@ PPT 类 HTML 页面开发。可通过 `/mh-ppt` 快捷触发（自动设置 outp
 2. 如有活跃 REQ-ID 且 output_type=ppt: 从当前断点继续
 3. 设置后自动进入 /mh-run 流程
 
+## 前置环境检查
+
+1. 检测 `frontend-design` plugin 是否已启用（项目 `.claude/settings.json` 已配置）
+2. 如 plugin 不可用（如提示 skill 未找到）：告知用户执行以下命令安装
+   ```
+   claude plugins:install frontend-design@claude-plugins-official
+   ```
+3. 确认 `templates/frontend-design-skill.md` 存在（SubAgent 白名单兜底用）
+
 ## 主流程集成点
 
 当 output_type=ppt 时，主流程在以下位置加载本补充规则：
