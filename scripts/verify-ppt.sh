@@ -120,9 +120,29 @@ check_b() {
             file_errors=$((file_errors + 1))
         fi
 
-        # 检查 ppt-base.css 引用
-        if ! grep -q 'ppt-base.css' "$f"; then
-            echo "FAIL: $fname - 未引用 ppt-base.css"
+        # 检查 ppt-base.css 引用（仅 system 模式强制）
+        local design_mode=""
+        if [ -n "$req_id" ] && [ -f "$REQ_DIR/.state.md" ]; then
+            design_mode=$(grep "^ppt_design_mode:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "system")
+        fi
+        if [ "$design_mode" != "creative" ]; then
+            if ! grep -q 'ppt-base.css' "$f"; then
+                echo "FAIL: $fname - 未引用 ppt-base.css"
+                file_errors=$((file_errors + 1))
+            fi
+        fi
+
+        # 检查字号底线（< 18px 的 font-size 视为违规）
+        local small_fonts
+        small_fonts=$(grep -oP 'font-size:\s*\K\d+(?=px)' "$f" 2>/dev/null | awk '$1 < 18' || true)
+        if [ -n "$small_fonts" ]; then
+            echo "FAIL: $fname - 存在小于18px的字号: $(echo $small_fonts | tr '\n' ' ')"
+            file_errors=$((file_errors + 1))
+        fi
+
+        # 检查方向键导航
+        if ! grep -q 'ArrowRight\|ArrowLeft\|navigator' "$f"; then
+            echo "FAIL: $fname - 缺少方向键导航"
             file_errors=$((file_errors + 1))
         fi
 
