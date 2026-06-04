@@ -123,6 +123,7 @@ PM 恢复时检测 `deliverables/{REQ-ID}/.state.md` 中 `auto_advance: true`：
   - output/spec/design.md（standard/full模式）
   - output/reference/*
   - output/*（产出物）
+  - output/lessons-learned.md（经验沉淀）
 项目状态: DONE
 ══════════════════════════════════════
 ```

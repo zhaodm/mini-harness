@@ -172,6 +172,7 @@ output_type 与 mode（fast/standard/full）正交：mode 控制流程严谨度�
 | ARC-3  | 代码归档         | PM                 | `deliverables/{REQ-ID}/output/`        | `output/`          |
 | ARC-4  | 参考资料归档     | PM                 | `reference/`                           | `output/reference/`       |
 | ARC-5  | 执行指标生成     | PM                 | `.state.md`                            | `deliverables/{REQ-ID}/metrics.md` |
+| ARC-6  | 经验沉淀         | PM（人机交互）     | `deliverables/{REQ-ID}/lessons.md`     | `output/lessons-learned.md` |
 | SR4    | **项目结项确认** | PM（人机交互决策） |                                       |                            |
 
 ---
