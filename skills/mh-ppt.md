@@ -45,7 +45,7 @@ PPT 类 HTML 页面开发。可通过 `/mh-ppt` 快捷触发（自动设置 outp
 2. 创建目录结构：`deliverables/{REQ-ID}/ux/wireframes/`
 3. 写入 handoff: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-DESIGN1-R1.md`
    - to: UX
-   - 白名单: `deliverables/{REQ-ID}/proposal.md`, `deliverables/{REQ-ID}/sa/design.md`(如有), `templates/ppt-base.css`, `templates/ppt-templates/layouts/`
+   - 白名单: `deliverables/{REQ-ID}/proposal.md`, `deliverables/{REQ-ID}/sa/design.md`(如有), `templates/ppt-base.css`, `templates/ppt-templates/layouts/`, `templates/frontend-design-skill.md`
    - 期望输出: `deliverables/{REQ-ID}/ux/slide-spec.md`, `deliverables/{REQ-ID}/ux/wireframes/`
 4. 派发任务给 UX
 5. 接收回报，校验 wireframe 文件存在且非空
@@ -74,7 +74,7 @@ PPT 类 HTML 页面开发。可通过 `/mh-ppt` 快捷触发（自动设置 outp
 1. `[PM] 派发 DE 实现任务`
 2. 写入 handoff: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-DEV1-R1.md`
    - to: DE
-   - 白名单: `deliverables/{REQ-ID}/ux/wireframes/`, `deliverables/{REQ-ID}/ux/slide-spec.md`, `templates/ppt-base.css`
+   - 白名单: `deliverables/{REQ-ID}/ux/wireframes/`, `deliverables/{REQ-ID}/ux/slide-spec.md`, `templates/ppt-base.css`, `templates/frontend-design-skill.md`
    - 期望输出: `deliverables/{REQ-ID}/output/`
    - 约束: 基于 wireframe 精装实现，填充真实数据，接入图表库，保持 16:9 约束
 3. 派发任务给 DE
