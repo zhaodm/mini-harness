@@ -16,8 +16,8 @@
 
 ## 归档模式检测
 
-- **首次归档**: spec/ 目录为空 → 直接复制
-- **变更归档**: spec/ 目录已有文件 → merge 模式
+- **首次归档**: output/spec/ 目录为空或不存在 → 直接复制
+- **变更归档**: output/spec/ 目录已有文件 → merge 模式
 
 ## Step ARC-1: 需求归档
 
@@ -27,8 +27,8 @@
 2. fast 模式: 跳过（无 requirement-spec.md）
 3. standard 模式: 跳过（无 requirement-spec.md，仅有 design.md）
 4. full 模式:
-   - 首次归档: 复制 `deliverables/{REQ-ID}/ba/requirement-spec.md` → `spec/requirement-spec.md`
-   - 变更归档: merge 到 `spec/requirement-spec.md`
+   - 首次归档: 复制 `deliverables/{REQ-ID}/ba/requirement-spec.md` → `output/spec/requirement-spec.md`
+   - 变更归档: merge 到 `output/spec/requirement-spec.md`
 5. 校验目标文件存在且非空（full 模式）
 6. `[PM] ARC-1 完成`
 
@@ -39,8 +39,8 @@
 1. `[PM] 启动 ARC-2 设计归档`
 2. fast 模式: 跳过（无 design.md）
 3. standard/full 模式:
-   - 首次归档: 复制 `deliverables/{REQ-ID}/sa/design.md` → `spec/design.md`
-   - 变更归档: 合并新设计内容到 `spec/design.md`，更新 Tasks 清单和对照表
+   - 首次归档: 复制 `deliverables/{REQ-ID}/sa/design.md` → `output/spec/design.md`
+   - 变更归档: 合并新设计内容到 `output/spec/design.md`，更新 Tasks 清单和对照表
 4. 校验目标文件存在且非空（standard/full 模式）
 5. `[PM] ARC-2 完成`
 
@@ -64,7 +64,7 @@
 | documentation | deliverables/{REQ-ID}/output/ | output/ | — |
 | custom | deliverables/{REQ-ID}/output/ | output/ | 由 plan-action.md 指定 |
 
-> 注：归档目标 `output/` 是项目根目录下与 `deliverables/` 平级的目录。
+> 注：归档目标 `output/` 是项目根目录下与 `deliverables/` 平级的目录。所有交付相关产物统一归档于此（含 spec/、reference/、产出物）。
 
 4. 首次归档: 直接复制全部文件（排除开发环境目录）
 5. 变更归档: 覆盖已有同名文件，保留不冲突的已有文件
@@ -75,15 +75,25 @@
 > .venv/, node_modules/, __pycache__/, .pytest_cache/, .ruff_cache/,
 > .git/, .DS_Store, *.pyc, *.pyo, .env
 
-## Step ARC-4: 执行指标生成
+## Step ARC-4: 参考资料归档
 
 **执行角色:** PM
 
-1. `[PM] 启动 ARC-4 执行指标生成`
+1. `[PM] 启动 ARC-4 参考资料归档`
+2. 检查 `reference/` 目录是否存在且非空
+3. 如存在: 复制 `reference/` → `output/reference/`（覆盖已有同名文件）
+4. 如不存在或为空: 跳过
+5. `[PM] ARC-4 完成`
+
+## Step ARC-5: 执行指标生成
+
+**执行角色:** PM
+
+1. `[PM] 启动 ARC-5 执行指标生成`
 2. 根据 .state.md 中的数据（repair_history、sr_status、task_started_at 等）填写 `templates/metrics-template.md`
 3. 保存为 `deliverables/{REQ-ID}/metrics.md`
 4. 校验文件存在且非空
-5. `[PM] ARC-4 完成，执行指标已生成`
+5. `[PM] ARC-5 完成，执行指标已生成`
 
 ---
 
@@ -106,9 +116,9 @@
 2. PM 逐项核对 SR4 通过标准：
    ```
    SR4 通过标准:
-   - [ ] 归档完整（spec/ 和 output/ 非空）
+   - [ ] 归档完整（output/spec/ 和 output/ 产出物非空）
    - [ ] 产出物可用（output/ 中文件与 plan-action.md 对应）
-   - [ ] 文档一致（spec/ 内容与实际实现匹配）
+   - [ ] 文档一致（output/spec/ 内容与实际实现匹配）
    - [ ] 无遗漏归档（output_type 对应的额外归档已执行）
    ```
 3. 向用户呈现决策上下文：
@@ -119,7 +129,7 @@
    归档概况:
      - 归档模式: {首次/变更}
      - 产出类型: {output_type}
-     - 归档文件数: spec/ {N} 个, output/ {N} 个
+     - 归档文件数: output/spec/ {N} 个, output/ 产出物 {N} 个
 
    质量状态:
      - 最终审计: SR3 已通过
@@ -127,8 +137,9 @@
      - 修复总轮次: {累计修复次数}
 
    归档清单:
-     - 需求规格: spec/requirement-spec.md
-     - 技术设计: spec/design.md
+     - 需求规格: output/spec/requirement-spec.md
+     - 技术设计: output/spec/design.md
+     - 参考资料: output/reference/
      - 最终产物: output/ {文件列表}
 
    本次需求编号: {REQ-ID}
@@ -150,17 +161,17 @@
 
 ## CHANGE 模式特殊处理
 
-> 注：`spec/baselines/` 存放的是归档版本历史（每次变更归档前的快照），与 `deliverables/{REQ-ID}/baselines/`（propose 阶段 SR1 通过时的过程快照）不同。前者用于归档回溯，后者用于 SR1 驳回时回退。
+> 注：变更归档前，将当前 output/spec/ 的文件备份到 `deliverables/{REQ-ID}/baselines/`，与 propose 阶段 SR1 的过程快照统一存放在同一位置，方便回溯。
 
-1. 归档前自动备份当前 spec/ 到 spec/baselines/
-   - spec/baselines/requirement-spec.v{N}.md
-   - spec/baselines/design.v{N}.md
+1. 归档前自动备份当前 output/spec/ 到 deliverables/{REQ-ID}/baselines/
+   - deliverables/{REQ-ID}/baselines/requirement-spec.v{N}.md
+   - deliverables/{REQ-ID}/baselines/design.v{N}.md
 2. 版本号自动递增（检测已有 baseline 文件确定 N）
 3. merge 时保持已有内容结构，仅追加或更新变更部分
 
 ## 变更归档 Merge 策略
 
-归档时按以下规则处理 spec/ 文件的合并：
+归档时按以下规则处理 output/spec/ 文件的合并：
 
 ### 新增需求（本次 REQ-ID 引入的全新内容）
 - 追加到 spec 文件末尾

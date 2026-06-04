@@ -6,8 +6,8 @@
 
 set -euo pipefail
 
-SPEC_DIR="spec"
-BASELINES_DIR="spec/baselines"
+SPEC_DIR="output/spec"
+BASELINES_DIR="$DELIVERABLES_DIR/$req_id/baselines"
 DELIVERABLES_DIR="deliverables"
 ERRORS=0
 
@@ -25,9 +25,9 @@ if [ -n "$req_id" ]; then
     echo "INFO: REQ-ID=$req_id"
 fi
 
-# 检查 spec/ 是否有内容可对比
+# 检查 output/spec/ 是否有内容可对比
 if [ ! -d "$SPEC_DIR" ] || [ -z "$(ls -A "$SPEC_DIR" 2>/dev/null | grep -v baselines)" ]; then
-    echo "INFO: spec/ 为空，无基线可对比（首次归档场景）"
+    echo "INFO: output/spec/ 为空，无基线可对比（首次归档场景）"
     exit 0
 fi
 

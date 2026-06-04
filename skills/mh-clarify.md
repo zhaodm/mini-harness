@@ -12,10 +12,10 @@
 2. 如存在，读取其中 req_id，检查 `deliverables/{req_id}/.state.md` 的 phase
 3. 检测场景模式（按优先级从高到低判断）：
    - **RESUME**: 最近 REQ 的 phase 非空且 phase≠done → 有未完成的流程，提示用户继续或放弃
-   - **CHANGE**: spec/ 目录下存在 .md 文件（即有已归档的历史需求）→ 变更模式
+   - **CHANGE**: output/spec/ 目录下存在 .md 文件（即有已归档的历史需求）→ 变更模式
    - **NEW**: 以上均不满足 → 全新项目
 
-⚠️ 关键：phase=done 且 spec/ 有文件时，必须进入 CHANGE 模式，不得识别为 NEW。
+⚠️ 关键：phase=done 且 output/spec/ 有文件时，必须进入 CHANGE 模式，不得识别为 NEW。
 
 ### CHANGE 模式 - 增量开发
 
@@ -108,7 +108,7 @@
    - 每轮最多 3 个问题
    - 聚焦于消除歧义、明确边界、确认优先级
 3. CHANGE 模式下：
-   - 读取 spec/ 下已有规格
+   - 读取 output/spec/ 下已有规格
    - 仅围绕变更点提问，不重复已有内容
 4. 根据用户回答，生成 Proposal 草稿
 

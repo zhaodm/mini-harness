@@ -167,9 +167,11 @@ output_type 与 mode（fast/standard/full）正交：mode 控制流程严谨度�
 
 | 步骤ID | 活动名称         | 执行角色           | 上游输入                              | 交付输出                   |
 | ------ | ---------------- | ------------------ | ------------------------------------- | -------------------------- |
-| ARC-1  | 需求归档         | PM                 | `deliverables/{REQ-ID}/ba/requirement-spec.md` | `spec/requirement-spec.md` |
-| ARC-2  | 设计归档         | PM                 | `deliverables/{REQ-ID}/sa/design.md`           | `spec/design.md`           |
+| ARC-1  | 需求归档         | PM                 | `deliverables/{REQ-ID}/ba/requirement-spec.md` | `output/spec/requirement-spec.md` |
+| ARC-2  | 设计归档         | PM                 | `deliverables/{REQ-ID}/sa/design.md`           | `output/spec/design.md`           |
 | ARC-3  | 代码归档         | PM                 | `deliverables/{REQ-ID}/output/`        | `output/`          |
+| ARC-4  | 参考资料归档     | PM                 | `reference/`                           | `output/reference/`       |
+| ARC-5  | 执行指标生成     | PM                 | `.state.md`                            | `deliverables/{REQ-ID}/metrics.md` |
 | SR4    | **项目结项确认** | PM（人机交互决策） |                                       |                            |
 
 ---
@@ -251,9 +253,9 @@ output_type 与 mode（fast/standard/full）正交：mode 控制流程严谨度�
 
 系统行为：
 - 检测归档模式：
-  - **首次归档**（spec/ 为空）：直接复制需求、设计、代码到归档目录
-  - **变更归档**（spec/ 已有文件）：将变更内容 merge 到现有 spec 文件
-- 将代码归档到 output/
+  - **首次归档**（output/spec/ 为空）：直接复制需求、设计、代码到归档目录
+  - **变更归档**（output/spec/ 已有文件）：将变更内容 merge 到现有 spec 文件
+- 将所有交付产物归档到 output/（含 spec/、reference/、产出物）
 - 呈现归档摘要供用户确认结项（SR4）
 
 **查看最终成果**

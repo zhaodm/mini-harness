@@ -52,7 +52,7 @@
 
 - 禁止修改上游制品（已交付的 handoff、已审批的 baseline）
 - handoff 文件不可修改，重试创建新文件（追加轮次后缀）
-- 归档后的 spec/ 文件仅通过 CHANGE 模式的 merge 流程修改
+- 归档后的 output/spec/ 文件仅通过 CHANGE 模式的 merge 流程修改
 
 ## 4. 自检纪律
 

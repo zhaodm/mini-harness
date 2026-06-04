@@ -48,8 +48,8 @@ mini-harness/
 │   └── output-guides/           产出结构参考（3 个）
 ├── docs/                        设计参考（人工阅读，PM 运行时不读）
 ├── deliverables/                运行时产物（按 REQ-ID 隔离）
-├── spec/                        归档规格
-└── output/                      最终产物
+├── deliverables/                运行时产物（按 REQ-ID 隔离）
+└── output/                      最终交付（spec/ + reference/ + 产出物）
 ```
 
 ---

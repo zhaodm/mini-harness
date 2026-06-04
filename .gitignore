@@ -7,11 +7,9 @@ deliverables/REQ*/
 # 保留全局指针
 !deliverables/.state.md
 
-# spec/ 用户归档产物（框架仓库不含用户数据）
-spec/*.md
-spec/baselines/
+# spec/ 已合并至 output/spec/，不再单独存在
 
-# output 产物（使用者文件）
+# output 产物（使用者文件，含 spec/、reference/、交付物）
 output/
 
 # reference 参考资料（使用者文件）

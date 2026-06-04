@@ -169,7 +169,7 @@
 4. 等待用户决策：
    - **通过**:
      - 创建 baselines: `deliverables/{REQ-ID}/baselines/requirement-spec.v1.md` 等
-       > 注：此处 baselines 是 propose 阶段的过程快照，用于 SR1 驳回时回退。与 `spec/baselines/`（archive 阶段的归档版本历史）不同。
+       > 注：此处 baselines 是 propose 阶段的过程快照，用于 SR1 驳回时回退。变更归档时的 spec 基线快照也存放于此目录。
      - 写入 `deliverables/{REQ-ID}/SR1-record.md`
      - 更新 `deliverables/{REQ-ID}/.state.md`: phase=propose, current_step=PROPOSE-DONE, sr_status.SR1=approved
      - `[PM] SR1 通过，可执行 /mh-apply`

@@ -6,7 +6,7 @@
 set -euo pipefail
 
 DELIVERABLES_DIR="deliverables"
-SPEC_DIR="spec"
+SPEC_DIR="output/spec"
 OUTPUT_DIR="output"
 ERRORS=0
 
@@ -194,11 +194,11 @@ check_b() {
             fi
         done
         # spec/ 归档完整性（与 archive 阶段互补——done 时再次确认）
-        if [ "$mode" != "fast" ] && [ ! -s "spec/design.md" ]; then
-            echo "WARN: spec/design.md 不存在（ARC-2 归档可能未执行）"
+        if [ "$mode" != "fast" ] && [ ! -s "output/spec/design.md" ]; then
+            echo "WARN: output/spec/design.md 不存在（ARC-2 归档可能未执行）"
         fi
-        if [ "$mode" = "full" ] && [ ! -s "spec/requirement-spec.md" ]; then
-            echo "WARN: spec/requirement-spec.md 不存在（ARC-1 归档可能未执行）"
+        if [ "$mode" = "full" ] && [ ! -s "output/spec/requirement-spec.md" ]; then
+            echo "WARN: output/spec/requirement-spec.md 不存在（ARC-1 归档可能未执行）"
         fi
     fi
 

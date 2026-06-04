@@ -119,9 +119,10 @@ PM 恢复时检测 `deliverables/{REQ-ID}/.state.md` 中 `auto_advance: true`：
 模式: {fast|standard|full}
 总耗时: {从 init 启动到 archive 完成的时间}
 归档产物:
-  - spec/requirement-spec.md（full模式）
-  - spec/design.md（standard/full模式）
-  - output/*
+  - output/spec/requirement-spec.md（full模式）
+  - output/spec/design.md（standard/full模式）
+  - output/reference/*
+  - output/*（产出物）
 项目状态: DONE
 ══════════════════════════════════════
 ```
