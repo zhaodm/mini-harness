@@ -89,6 +89,7 @@ END FOR
    - [ ] 所有 Task 通过 TE 审计（无 Critical/Major 缺陷）
    - [ ] 代码质量达标（所有 Task 的 dev-test=PASS, post-verify=PASS）
    - [ ] 无 TODO/FIXME 残留（verify.sh D 类检查通过）
+   - [ ] 内容质量达标（verify-qa.sh 通过，无 FAIL 项）
    - [ ] 需求覆盖无明显遗漏
    ```
 3. 向用户呈现决策上下文：
