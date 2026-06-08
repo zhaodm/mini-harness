@@ -21,6 +21,24 @@ completed_at: ""
 
 {一段话描述本次任务的目标和范围}
 
+## 环境限制
+
+<!-- PM 必填。标注 SubAgent 环境的关键限制，避免 Agent 无效尝试 -->
+- Bash 权限: {有 | 无（仅代码实现，验证由 PM 外部执行）}
+- 网络访问: {有 | 无}
+- 可用工具: {Read, Write, Edit | 全部}
+
+## 执行前必读文件（按顺序）
+
+<!-- 区别于白名单：白名单是"允许读"，本节是"必须先读且按此顺序"，减少探索 -->
+1. {file_path} — {读取目的}
+2. {file_path} — {读取目的}
+
+## Token 预算参考
+
+- 预期复杂度: {极简<10k | 小<20k | 中<50k | 大<80k}
+- 超出预算行为: 停止执行，在回报中标注 issues="token budget exceeded"
+
 ## 产出规格（大型产出或返工时 PM 填写，简单任务可删除本节）
 
 - depth_level: {checklist | summary | full-architecture | code-level}
@@ -35,6 +53,7 @@ completed_at: ""
 
 ## 期望输出
 
+<!-- ⚠️ PM 自检: DE 任务的输出路径必须以 deliverables/{REQ-ID}/output/ 开头，禁止直接指向根目录 output/ -->
 - `{output_path}`
 
 ## 约束

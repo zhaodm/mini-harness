@@ -47,6 +47,7 @@
 - 非 PM 角色仅读取 handoff 白名单中的文件
 - 非 PM 角色禁止引用对话历史中其他角色的推理或产出
 - 非 PM 角色完成后仅报告文件路径，不展开产物内容
+- 角色写入权限由 `scripts/role-guard.sh`（PreToolUse Hook）强制执行，白名单见脚本
 
 ## 3. 产物保护
 
@@ -63,6 +64,7 @@
 - 交付判定四层校验：verify.sh（结构）+ verify-qa.sh（内容质量）+ verify-ppt.sh（PPT专项）+ verify-archive.sh（归档质量）
 - 脚本 FAIL 时禁止推进流程，无论 Agent 是否声称"已完成"
 - SR4 阶段发现代码逻辑缺陷时，必须退回 apply 阶段走 repair flow，禁止在 SR4 内循环修复
+- 质量门禁失败时 PM 使用 `templates/quality-gate-report-template.md` 归因并派发修复，禁止自行改码
 
 ## 5. 断点恢复
 

@@ -36,8 +36,9 @@ check_archiveignore() {
     echo "--- ARC-1: 项目专属禁止项 ---"
 
     if [ ! -f "$IGNORE_FILE" ]; then
-        echo "INFO: .archiveignore 不存在，跳过项目专属检查"
-        echo "      （建议 propose 阶段由 SA 生成此文件）"
+        echo "FAIL: .archiveignore 不存在（clarify 阶段应已生成）"
+        echo "      路径: $IGNORE_FILE"
+        ERRORS=$((ERRORS + 1))
         echo ""
         return
     fi
@@ -47,9 +48,22 @@ check_archiveignore() {
         # 跳过注释和空行
         [[ "$pattern" =~ ^[[:space:]]*#.*$ || -z "${pattern// }" ]] && continue
 
-        if find "$OUTPUT_DIR" -name "$pattern" 2>/dev/null | grep -q .; then
+        # 支持目录模式（以 / 结尾）和文件模式
+        local matches=""
+        if [[ "$pattern" == */ ]]; then
+            # 目录模式：用 -path 匹配
+            matches=$(find "$OUTPUT_DIR" -type d -path "*/${pattern%/}" 2>/dev/null | head -5)
+        else
+            # 文件/通配模式：同时用 -name 和 -path
+            matches=$(find "$OUTPUT_DIR" -name "$pattern" 2>/dev/null | head -5)
+            if [ -z "$matches" ]; then
+                matches=$(find "$OUTPUT_DIR" -path "*/$pattern" 2>/dev/null | head -5)
+            fi
+        fi
+
+        if [ -n "$matches" ]; then
             echo "FAIL: output/ 包含禁止项: $pattern"
-            find "$OUTPUT_DIR" -name "$pattern" 2>/dev/null | head -3 | while read -r f; do
+            echo "$matches" | head -3 | while read -r f; do
                 echo "  - $f"
             done
             violations=$((violations + 1))
@@ -156,12 +170,75 @@ check_output_nonempty() {
 }
 
 # ─────────────────────────────────────────────
+# ARC-5: 文档产出按 REQ-ID 目录隔离检查
+# 归档的 .md 文件必须落在 {req-id}/ 子目录下
+# ─────────────────────────────────────────────
+check_reqid_isolation() {
+    echo "--- ARC-5: REQ-ID 目录隔离 ---"
+
+    local req_lower
+    req_lower=$(echo "$req_id" | tr '[:upper:]' '[:lower:]')
+
+    # 检查 output/docs/ 下是否存在本次归档的文件未落在 req-id 子目录
+    if [ ! -d "$OUTPUT_DIR/docs" ]; then
+        echo "INFO: output/docs/ 不存在，跳过 REQ-ID 隔离检查"
+        echo ""
+        return
+    fi
+
+    # 查找 .state.md 的修改时间作为本次归档的时间基准
+    local state_mtime=""
+    if [ -f "$REQ_DIR/.state.md" ]; then
+        state_mtime="$REQ_DIR/.state.md"
+    fi
+
+    # 检查 output/docs/ 下的 .md 文件是否在 req-id 子目录中
+    local stray_docs=0
+    while IFS= read -r doc_file; do
+        [ -f "$doc_file" ] || continue
+        # 跳过顶层通用文件（如 CHANGELOG.md, deployment-guide.md）
+        local rel_path="${doc_file#$OUTPUT_DIR/docs/}"
+        # 如果路径中不包含 req-id 子目录，且文件比 .state.md 新（本次归档产出）
+        if [[ ! "$rel_path" =~ ${req_lower}/ ]]; then
+            if [ -n "$state_mtime" ] && [ "$doc_file" -nt "$state_mtime" ]; then
+                echo "FAIL: 文档未归入 ${req_lower}/ 子目录: $doc_file"
+                stray_docs=$((stray_docs + 1))
+            fi
+        fi
+    done < <(find "$OUTPUT_DIR/docs" -name "*.md" -not -path "*/node_modules/*" 2>/dev/null)
+
+    # 检查测试报告目录
+    local test_report_dirs
+    test_report_dirs=$(find "$OUTPUT_DIR" -type d -name "reports" 2>/dev/null)
+    for report_dir in $test_report_dirs; do
+        while IFS= read -r report_file; do
+            [ -f "$report_file" ] || continue
+            local rel_path="${report_file#$report_dir/}"
+            if [[ ! "$rel_path" =~ ${req_lower}/ ]]; then
+                if [ -n "$state_mtime" ] && [ "$report_file" -nt "$state_mtime" ]; then
+                    echo "FAIL: 测试报告未归入 ${req_lower}/ 子目录: $report_file"
+                    stray_docs=$((stray_docs + 1))
+                fi
+            fi
+        done < <(find "$report_dir" -name "*.md" 2>/dev/null)
+    done
+
+    if [ "$stray_docs" -eq 0 ]; then
+        echo "PASS: 文档产出已按 REQ-ID 目录隔离"
+    else
+        ERRORS=$((ERRORS + stray_docs))
+    fi
+    echo ""
+}
+
+# ─────────────────────────────────────────────
 # 执行所有检查
 # ─────────────────────────────────────────────
 check_archiveignore
 check_file_duplication
 check_update_direction
 check_output_nonempty
+check_reqid_isolation
 
 # ─────────────────────────────────────────────
 # 汇总

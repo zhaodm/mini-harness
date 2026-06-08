@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.7.0] - 2026-06-08
+
+CR-003: 基于 REQ002 实战复盘的框架改进 — 脚本硬约束替代自然语言软约束。
+
+### 核心新增
+
+- **scripts/role-guard.sh**: PreToolUse Hook，实时阻止角色越权文件写入（PM/DE/SA/BA/TE/UX 各有路径白名单）
+- **templates/quality-gate-report-template.md**: 质量门禁失败归因报告模板（错误清单+归因Task+集成问题）
+
+### 增强
+
+- **scripts/verify-archive.sh**: .archiveignore 校验从 INFO 升级为 FAIL；新增目录模式(-path)支持；新增 ARC-5 REQ-ID 目录隔离检查
+- **templates/handoff-template.md**: 新增环境限制/执行前必读文件/Token预算参考/期望输出路径自检 4 个结构化字段
+- **.claude/settings.json**: 配置 PreToolUse Hook（Write|Edit → role-guard.sh）
+- **CLAUDE.md**: +2行指针（§2 指向 role-guard.sh，§4 指向 quality-gate-report-template）
+
+### 设计决策
+
+- 拒绝用自然语言膨胀 CLAUDE.md/skills/agents（CR-001 证明无效）
+- 所有关键约束通过 Hook（实时阻止）或脚本（FAIL阻塞）落地
+- CLAUDE.md 仅加指针，不复述脚本逻辑
+
+### 数据基础
+
+- REQ002 实战：15 Task / 3 Batch / ~4h / PM 两次越权 / SR4 被驳回 2 次 / .archiveignore 存在但未执行
+- CR-001-E（自然语言"禁止越权"）REQ002 中失败，证明需升级到 Hook 层
+
+---
+
 ## [0.6.1] - 2026-06-01
 
 上下文效率优化 — 减少 PM 运行时噪音，修复文档不一致。
