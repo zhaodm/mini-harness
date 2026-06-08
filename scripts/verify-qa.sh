@@ -236,6 +236,116 @@ check_lessons_after_rejection() {
 }
 
 # ─────────────────────────────────────────────
+# QA-8: 返工轮次 handoff 须含用户反馈
+# ─────────────────────────────────────────────
+check_handoff_feedback() {
+    echo "--- QA-8: 返工 handoff 用户反馈检查 ---"
+    local checked=0
+    local missing=0
+
+    for hf in "$REQ_DIR"/handoffs/*-R[2-9]*.md "$REQ_DIR"/handoffs/*-R1[0-9]*.md; do
+        [ -f "$hf" ] || continue
+        checked=$((checked + 1))
+        if ! grep -qi "用户反馈\|用户原文\|user_feedback\|反馈原文" "$hf" 2>/dev/null; then
+            echo "WARN: $(basename "$hf") 为返工轮次但无用户反馈原文"
+            missing=$((missing + 1))
+        fi
+    done
+
+    if [ $checked -eq 0 ]; then
+        echo "INFO: 无返工轮次 handoff，跳过"
+    elif [ $missing -eq 0 ]; then
+        echo "PASS: 所有返工 handoff 含用户反馈"
+    else
+        WARNS=$((WARNS + missing))
+    fi
+    echo ""
+}
+
+# ─────────────────────────────────────────────
+# QA-9: 修复轮次须有对应 code-report
+# ─────────────────────────────────────────────
+check_repair_reports() {
+    echo "--- QA-9: 修复轮次 code-report 存在性 ---"
+
+    if [ ! -f "$REQ_DIR/.state.md" ]; then
+        echo "INFO: 无 .state.md，跳过"
+        echo ""
+        return
+    fi
+
+    local repair_round
+    repair_round=$(grep "^repair_round:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "0")
+
+    if [ "$repair_round" -eq 0 ] 2>/dev/null; then
+        echo "INFO: repair_round=0，无修复轮次"
+        echo ""
+        return
+    fi
+
+    local missing=0
+    for i in $(seq 2 $((repair_round + 1))); do
+        if ! ls "$REQ_DIR"/de/code-report-r${i}*.md >/dev/null 2>&1; then
+            echo "FAIL: repair_round=$repair_round 但缺少 de/code-report-r${i}*.md"
+            missing=$((missing + 1))
+        fi
+    done
+
+    if [ $missing -eq 0 ]; then
+        echo "PASS: 所有修复轮次有对应 code-report"
+    else
+        ERRORS=$((ERRORS + missing))
+    fi
+    echo ""
+}
+
+# ─────────────────────────────────────────────
+# QA-10: TE 审计须覆盖 audit-dimensions.md 维度
+# ─────────────────────────────────────────────
+check_audit_coverage() {
+    echo "--- QA-10: 审计维度覆盖度 ---"
+
+    local dims="$REQ_DIR/te/audit-dimensions.md"
+    if [ ! -f "$dims" ]; then
+        echo "INFO: te/audit-dimensions.md 不存在，跳过覆盖度检查"
+        echo ""
+        return
+    fi
+
+    # 统计维度行数（表格行，排除表头和分隔符）
+    local dim_count
+    dim_count=$(grep -c "^|[^-]" "$dims" 2>/dev/null || echo "0")
+    dim_count=$((dim_count > 1 ? dim_count - 1 : 0))  # 去掉表头
+
+    if [ "$dim_count" -eq 0 ]; then
+        echo "INFO: audit-dimensions.md 中未检测到维度条目"
+        echo ""
+        return
+    fi
+
+    # 检查最终测试报告是否覆盖了这些维度
+    local report=""
+    for r in "$REQ_DIR"/te/final-test-report.md "$REQ_DIR"/te/*test-report*.md; do
+        [ -f "$r" ] && report="$r" && break
+    done
+
+    if [ -z "$report" ]; then
+        echo "WARN: 有 audit-dimensions.md（$dim_count 个维度）但无测试报告"
+        WARNS=$((WARNS + 1))
+    else
+        local covered
+        covered=$(grep -c "✅\|❌\|PASS\|FAIL\|通过\|不通过" "$report" 2>/dev/null || echo "0")
+        if [ "$covered" -lt "$dim_count" ]; then
+            echo "WARN: audit-dimensions 有 $dim_count 个维度，报告覆盖标记仅 $covered 项"
+            WARNS=$((WARNS + 1))
+        else
+            echo "PASS: 审计覆盖度充分（$covered/$dim_count）"
+        fi
+    fi
+    echo ""
+}
+
+# ─────────────────────────────────────────────
 # 执行所有检查
 # ─────────────────────────────────────────────
 check_ba_ambiguity
@@ -245,6 +355,9 @@ check_handoff_completion
 check_slidespec_quality
 check_ppt_inline_styles
 check_lessons_after_rejection
+check_handoff_feedback
+check_repair_reports
+check_audit_coverage
 
 # ─────────────────────────────────────────────
 # 汇总

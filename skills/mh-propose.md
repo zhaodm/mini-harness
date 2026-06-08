@@ -46,11 +46,15 @@
    - to: SA
    - 白名单: `deliverables/{REQ-ID}/proposal.md`
    - 期望输出: `deliverables/{REQ-ID}/sa/design.md`
+   - 额外期望输出:
+     - `deliverables/{REQ-ID}/.archiveignore`（归档排除列表，基于 tech_stack）
+     - `deliverables/{REQ-ID}/sa/verify-strategy.md`（Batch 验证命令 + 降级方案 + 集成点）
    - 约束: 简版设计（架构 + Tasks清单 + 需求映射简表，无需时序图）。因 standard 模式跳过 BA，SA 需在 design.md 中补充 Proposal 要点→Task→验证方式 的映射表
 3. 写入 handoff-TE: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-REQ3-R1.md`
    - to: TE
    - 白名单: `deliverables/{REQ-ID}/proposal.md`
    - 期望输出: `deliverables/{REQ-ID}/te/testcases.md`
+   - 额外期望输出: `deliverables/{REQ-ID}/te/audit-dimensions.md`（本项目 SR2/SR3 审计维度清单）
    - 约束: 基于 Proposal 设计测试用例，覆盖功能验收和边界条件
 4. 更新 `deliverables/{REQ-ID}/.state.md`: current_step=REQ-2+REQ-3
 5. 并行派发任务:
@@ -108,10 +112,14 @@
    - to: SA
    - 白名单: `deliverables/{REQ-ID}/ba/requirement-spec.md`
    - 期望输出: `deliverables/{REQ-ID}/sa/design.md`
+   - 额外期望输出:
+     - `deliverables/{REQ-ID}/.archiveignore`（归档排除列表，基于 tech_stack）
+     - `deliverables/{REQ-ID}/sa/verify-strategy.md`（Batch 验证命令 + 降级方案 + 集成点）
 3. 写入 handoff-TE: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-REQ3-R1.md`
    - to: TE
    - 白名单: `deliverables/{REQ-ID}/ba/requirement-spec.md`
    - 期望输出: `deliverables/{REQ-ID}/te/testcases.md`
+   - 额外期望输出: `deliverables/{REQ-ID}/te/audit-dimensions.md`（本项目 SR2/SR3 审计维度清单）
 4. 更新 `deliverables/{REQ-ID}/.state.md`: current_step=REQ-2+REQ-3
 5. 并行派发任务:
    - [Claude Code] 同时 spawn 两个 SubAgent（SA + TE），各自注入对应 handoff + agent 定义 + 白名单文件
@@ -192,6 +200,11 @@ PM 编排计划时，必须标注 Task 间依赖关系，用于 apply 阶段的�
 - Task-2: {描述} [deps: none]
 - Task-3: {描述} [deps: Task-1]
 - Task-4: {描述} [deps: Task-1, Task-2]
+
+## 集成点（跨 Task 调用链，SA 从 verify-strategy.md 摘录，可选）
+
+- INT-1: Task-{A}({模块}) → Task-{B}({模块}): {调用关系描述}
+- INT-2: Task-{C}({模块}) → Task-{D}({模块}): {调用关系描述}
 ```
 
 **依赖判断标准：**

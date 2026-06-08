@@ -95,7 +95,7 @@
 
 1. `[PM] 启动 ARC-5 执行指标生成`
 2. 根据 .state.md 中的数据（repair_history、sr_status、task_started_at 等）填写 `templates/metrics-template.md`
-3. 保存为 `deliverables/{REQ-ID}/metrics.md`
+3. 保存为 `output/metrics.md`（直接写入归档目标，不在 deliverables 顶层创建副本）
 4. 校验文件存在且非空
 5. `[PM] ARC-5 完成，执行指标已生成`
 
@@ -144,15 +144,19 @@
 
 **full 模式：** 完整 SR4。
 1. `[PM] 启动 SR4 项目结项确认`
-2. PM 逐项核对 SR4 通过标准：
+2. **前置自动校验：** 执行 `scripts/verify-archive.sh`
+   - PASS → 继续人工确认
+   - FAIL → 修复归档问题后重新执行（不计入 SR4 驳回）
+3. PM 逐项核对 SR4 通过标准：
    ```
    SR4 通过标准:
+   - [ ] verify-archive.sh 全部通过
    - [ ] 归档完整（output/spec/ 和 output/ 产出物非空）
    - [ ] 产出物可用（output/ 中文件与 plan-action.md 对应）
    - [ ] 文档一致（output/spec/ 内容与实际实现匹配）
    - [ ] 无遗漏归档（output_type 对应的额外归档已执行）
    ```
-3. 向用户呈现决策上下文：
+4. 向用户呈现决策上下文：
    ```
    [人工审批节点]
    评审节点: SR4（结项确认）
@@ -177,7 +181,7 @@
    PM 建议: {确认结项/建议复查} ({理由})
    请确认: 确认结项 / 驳回（请说明原因）
    ```
-4. 等待用户决策：
+5. 等待用户决策：
    - **确认结项**:
      - 写入 `deliverables/{REQ-ID}/SR4-record.md`
      - 更新 `deliverables/{REQ-ID}/.state.md`:
@@ -189,6 +193,8 @@
      - `[PM] 项目结项完成。需求 {REQ-ID} 已归档。`
    - **驳回**:
      - 记录原因，根据问题回退到对应阶段
+     - **如驳回原因属于代码逻辑缺陷**（接口不匹配、运行时错误、功能缺失等）→ 退回 apply 阶段走 repair flow，禁止在 SR4 内循环修复
+     - **如驳回原因属于归档问题**（文件缺失、目录混乱、文档不完整等）→ PM 修复后重新提交 SR4
 
 ## CHANGE 模式特殊处理
 

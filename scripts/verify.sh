@@ -88,13 +88,15 @@ check_b() {
 
     # propose 阶段产物检查（propose/apply/archive 都需要）
     if [ "$phase" = "propose" ] || [ "$phase" = "apply" ] || [ "$phase" = "archive" ]; then
-        # SA design.md - required for standard/full
+        # SA design.md - required for standard/full (支持单文件或多文件模式)
         if [ "$mode" != "fast" ]; then
-            if [ ! -s "$REQ_DIR/sa/design.md" ]; then
-                echo "FAIL: $REQ_DIR/sa/design.md 缺失或为空"
-                ERRORS=$((ERRORS + 1))
+            if [ -s "$REQ_DIR/sa/design.md" ]; then
+                echo "PASS: $REQ_DIR/sa/design.md（单文件模式）"
+            elif [ -s "$REQ_DIR/sa/overview.md" ]; then
+                echo "PASS: $REQ_DIR/sa/overview.md（多文件模式）"
             else
-                echo "PASS: $REQ_DIR/sa/design.md"
+                echo "FAIL: $REQ_DIR/sa/ 缺少 design.md 或 overview.md"
+                ERRORS=$((ERRORS + 1))
             fi
         fi
 
@@ -169,11 +171,11 @@ check_b() {
     # archive 阶段产物检查
     if [ "$phase" = "archive" ]; then
         if [ "$mode" != "fast" ]; then
-            if [ ! -s "$SPEC_DIR/design.md" ]; then
-                echo "FAIL: $SPEC_DIR/design.md 缺失或为空"
-                ERRORS=$((ERRORS + 1))
+            if [ -s "$SPEC_DIR/design.md" ] || [ -s "$SPEC_DIR/design-overview.md" ]; then
+                echo "PASS: $SPEC_DIR/ 设计文档存在"
             else
-                echo "PASS: $SPEC_DIR/design.md"
+                echo "FAIL: $SPEC_DIR/ 缺少 design.md 或 design-overview.md"
+                ERRORS=$((ERRORS + 1))
             fi
         fi
         if [ "$mode" = "full" ]; then
@@ -194,8 +196,8 @@ check_b() {
             fi
         done
         # spec/ 归档完整性（与 archive 阶段互补——done 时再次确认）
-        if [ "$mode" != "fast" ] && [ ! -s "output/spec/design.md" ]; then
-            echo "WARN: output/spec/design.md 不存在（ARC-2 归档可能未执行）"
+        if [ "$mode" != "fast" ] && [ ! -s "output/spec/design.md" ] && [ ! -s "output/spec/design-overview.md" ]; then
+            echo "WARN: output/spec/ 缺少设计文档（ARC-2 归档可能未执行）"
         fi
         if [ "$mode" = "full" ] && [ ! -s "output/spec/requirement-spec.md" ]; then
             echo "WARN: output/spec/requirement-spec.md 不存在（ARC-1 归档可能未执行）"

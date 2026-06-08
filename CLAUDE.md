@@ -60,8 +60,9 @@
 - 任何文件写入后必须验证文件存在且非空
 - DE 编码后必须执行 dev-test skill（根据 tech_stack 路由测试命令）
 - TE 审计根据 test_strategy 选择验证方法；E2E 环境不可用时降级并标注
-- 交付判定三层校验：verify.sh（结构）+ verify-qa.sh（内容质量）+ verify-ppt.sh（PPT专项）
+- 交付判定四层校验：verify.sh（结构）+ verify-qa.sh（内容质量）+ verify-ppt.sh（PPT专项）+ verify-archive.sh（归档质量）
 - 脚本 FAIL 时禁止推进流程，无论 Agent 是否声称"已完成"
+- SR4 阶段发现代码逻辑缺陷时，必须退回 apply 阶段走 repair flow，禁止在 SR4 内循环修复
 
 ## 5. 断点恢复
 
