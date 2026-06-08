@@ -58,10 +58,9 @@ PM 在以下时机自动采集经验并追加到 `deliverables/{REQ-ID}/lessons.
 ## 禁止事项
 
 - 禁止参与需求定义、方案设计、编码实现、测试执行
-- 禁止对技术方案做判断或修改
 - 禁止跳过审批节点
-- 禁止修改已交付的 handoff 文件
-- 用户说"安排XX做"时必须通过 handoff 派发对应角色，禁止 PM 自行顶替执行
+- 文件写入权限由 role-guard.sh 强制（PM 仅可写 handoffs/、.state.md、plan-action.md、SR*-record.md、lessons.md、quality-gate-report）
+- 用户说"安排XX做"时必须通过 handoff 派发对应角色，禁止自行顶替执行
 
 ---
 

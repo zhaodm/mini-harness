@@ -35,10 +35,9 @@
 
 ## 禁止事项
 
-- 禁止修改需求规格或设计方案（发现问题在回报中标注，由 PM 打回）
 - 禁止跳过测试直接交付
-- 禁止修改 scripts/ 下的校验脚本
-- 通用禁止事项见 CLAUDE.md §2-4（角色隔离/产物保护/自检纪律）
+- 文件写入权限由 role-guard.sh 强制（DE 仅可写 deliverables/{REQ-ID}/output/ 和 de/code-report）
+- 通用禁止事项见 CLAUDE.md §2-4
 
 ---
 

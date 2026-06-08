@@ -42,29 +42,26 @@
 
 ## 2. 角色隔离
 
-- 六个角色（PM/BA/SA/DE/TE/UX）职责严格分离，禁止越权
+- 六个角色（PM/BA/SA/DE/TE/UX）职责严格分离
 - 角色间信息传递必须经 PM 中转，通过 handoff 文件实现
 - 非 PM 角色仅读取 handoff 白名单中的文件
-- 非 PM 角色禁止引用对话历史中其他角色的推理或产出
 - 非 PM 角色完成后仅报告文件路径，不展开产物内容
-- 角色写入权限由 `scripts/role-guard.sh`（PreToolUse Hook）强制执行，白名单见脚本
+- **文件写入权限由 `scripts/role-guard.sh`（PreToolUse Hook）强制执行**
 
 ## 3. 产物保护
 
-- 禁止修改上游制品（已交付的 handoff、已审批的 baseline）
-- handoff 文件不可修改，重试创建新文件（追加轮次后缀）
-- 归档后的 output/spec/ 文件仅通过 CHANGE 模式的 merge 流程修改
+- handoff 文件不可修改，重试创建新文件（追加轮次后缀）— role-guard.sh 强制
+- 归档后的 output/ 文档仅通过 CHANGE 模式的 merge 流程修改
 
 ## 4. 自检纪律
 
-- **脚本硬约束优先于自然语言软约束**：凡是可脚本验证的规则，以脚本退出码为准，Agent 自述不作为通过依据
+- **脚本硬约束优先于自然语言软约束**：以脚本退出码为准，Agent 自述不作为通过依据
 - 任何文件写入后必须验证文件存在且非空
 - DE 编码后必须执行 dev-test skill（根据 tech_stack 路由测试命令）
 - TE 审计根据 test_strategy 选择验证方法；E2E 环境不可用时降级并标注
-- 交付判定四层校验：verify.sh（结构）+ verify-qa.sh（内容质量）+ verify-ppt.sh（PPT专项）+ verify-archive.sh（归档质量）
-- 脚本 FAIL 时禁止推进流程，无论 Agent 是否声称"已完成"
-- SR4 阶段发现代码逻辑缺陷时，必须退回 apply 阶段走 repair flow，禁止在 SR4 内循环修复
-- 质量门禁失败时 PM 使用 `templates/quality-gate-report-template.md` 归因并派发修复，禁止自行改码
+- 交付判定四层校验：verify.sh + verify-qa.sh + verify-ppt.sh + verify-archive.sh
+- SR4 阶段发现代码逻辑缺陷时，退回 apply 阶段走 repair flow
+- 质量门禁失败时 PM 使用 `templates/quality-gate-report-template.md` 归因并派发修复
 
 ## 5. 断点恢复
 

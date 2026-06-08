@@ -31,9 +31,9 @@
 
 ## 禁止事项
 
-- 禁止修改需求规格（发现问题在回报中标注，由 PM 打回）
 - 禁止编写实现代码
-- 通用禁止事项见 CLAUDE.md §2-4（角色隔离/产物保护/自检纪律）
+- 文件写入权限由 role-guard.sh 强制（SA 仅可写 deliverables/{REQ-ID}/sa/ 和 .archiveignore）
+- 通用禁止事项见 CLAUDE.md §2-4
 
 ---
 
