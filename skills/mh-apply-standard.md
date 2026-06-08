@@ -38,11 +38,13 @@ END FOR
 对每个 Batch-{B}：
 
 1. `[PM] 启动 Batch-{B}，包含 Task: {列表}，并行派发给 DE`
-2. 为 Batch 内每个 Task-{N} 写入 handoff:
+2. 为 Batch 内每个 Task-{N} 写入 handoff（或合并派发）:
    - `deliverables/{REQ-ID}/handoffs/{REQ-ID}-DEV1-T{N}-R1.md`
    - to: DE
    - 白名单: `deliverables/{REQ-ID}/sa/design.md`（Task-{N} 部分）, 已有代码, 前序 Batch 产出代码
    - 期望输出: `deliverables/{REQ-ID}/output/`, `deliverables/{REQ-ID}/de/code-report-t{N}.md`
+   - **批量合并规则**: 同 Batch 内无共享依赖且属于同模块的 Task，允许合并为一个 handoff（上限 3 Task/handoff），handoff 中逐个列出 Task 描述和期望输出
+   - **上下文裁剪**: 如 design.md 含 `## 6. 接口契约摘要`，白名单标注 DE 精读该节 + Task 对应段落（使用 handoff 的"上下文裁剪指示"节）
 3. 并行派发:
    - [Claude Code] 同时 spawn 多个 DE SubAgent，每个处理一个 Task
    - [Cline] 逐个串行执行
@@ -80,10 +82,31 @@ END FOR
 
 ---
 
+**Step 1.5: 集成预检（所有 Batch 完成后）**
+
+> 在进入 SR2 之前，利用 SA 在 propose 阶段产出的 verify-strategy.md 执行集成检查，提前拦截跨模块问题。
+
+1. `[PM] 所有 Batch 开发完成，执行集成预检`
+2. 检查 `deliverables/{REQ-ID}/sa/verify-strategy.md` 是否存在：
+   - 不存在 → 跳过本步骤，直接进入 SR2
+   - 存在 → 读取其中的"集成检查命令"列表
+3. 在 `deliverables/{REQ-ID}/output/` 目录下逐条执行集成检查命令
+4. 结果处理：
+   - 全部 PASS → `[PM] 集成预检通过，进入 SR2`
+   - 部分 FAIL → 将失败项作为修复任务进入修复循环（读取 `skills/mh-apply-repair.md`），修复通过后重新执行集成预检
+   - 命令不可执行（环境缺失）→ 标注降级，继续进入 SR2
+
+---
+
 **Step 2: SR2 功能评审**
 
 1. `[PM] 所有 Task 完成，启动 SR2 功能评审`
-2. PM 逐项核对 SR2 通过标准：
+2. **机器可检查清单预检**（如 sa/design.md 含 `## 7. 机器可检查清单`）：
+   - PM 逐条执行 grep 检查（`grep -r "{pattern}" {glob}`）
+   - PASS 的项标记为"已自动验证"，不派发 TE Agent 复核
+   - FAIL 的项 + 清单外的语义级检查项 → 派发 TE Agent 验证
+   - 如无机器可检查清单，按原流程全量派发 TE
+3. PM 逐项核对 SR2 通过标准：
    ```
    SR2 通过标准:
    - [ ] 所有 Task 通过 TE 审计（无 Critical/Major 缺陷）

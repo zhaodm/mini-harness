@@ -42,9 +42,27 @@
 > ⚡ 并行优化：SA 和 TE 同时派发，互不依赖（TE 基于 proposal 设计用例）。仅 Claude Code 模式支持并行；Cline 模式退化为串行。
 
 1. `[PM] standard 模式，跳过BA需求分析，并行调度 SA + TE`
-2. 写入 handoff-SA: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-REQ2-R1.md`
+2. **产出结构协商**（SA handoff 编写前必须完成）：
+   - PM 根据 proposal.md 中的模块数量和复杂度，向用户提出设计文档结构建议：
+     ```
+     [结构协商]
+     根据需求规模（{N}个模块），建议设计文档结构:
+       A) 单文件: sa/design.md（模块≤3，适合简单需求）
+       B) 多文件: sa/overview.md + sa/{module}.md（模块>3，适合复杂需求）
+     
+     章节结构:
+       {建议的章节列表}
+     
+     请确认或调整:
+     ```
+   - 用户确认后，将结构写入 SA handoff 的 `产出规格.structure_skeleton`
+3. 写入 handoff-SA: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-REQ2-R1.md`
    - to: SA
    - 白名单: `deliverables/{REQ-ID}/proposal.md`
+     - 如 proposal.md 含 `## 参考摘要`，reference 文件按优先级标注访问级别：
+       - `[HIGH]` 文件 → 白名单中标注 `[FULL]`（SA 完整读取）
+       - `[LOW]` 文件 → 白名单中标注 `[SUMMARY]`（SA 仅读 proposal.md 中的摘要，不读原文）
+       - 未标注的 reference 文件默认 `[FULL]`
    - 期望输出: `deliverables/{REQ-ID}/sa/design.md`
    - 额外期望输出:
      - `deliverables/{REQ-ID}/.archiveignore`（归档排除列表，基于 tech_stack）
@@ -108,9 +126,27 @@
 > ⚡ 并行优化：SA 和 TE 同时派发，均基于 requirement-spec.md 工作。仅 Claude Code 模式支持并行；Cline 模式退化为串行（先 SA 后 TE）。
 
 1. `[PM] 并行调度 SA 架构设计 + TE 测试用例设计`
-2. 写入 handoff-SA: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-REQ2-R1.md`
+2. **产出结构协商**（SA handoff 编写前必须完成）：
+   - PM 根据 requirement-spec.md 中的模块数量和复杂度，向用户提出设计文档结构建议：
+     ```
+     [结构协商]
+     根据需求规模（{N}个模块），建议设计文档结构:
+       A) 单文件: sa/design.md（模块≤3，适合简单需求）
+       B) 多文件: sa/overview.md + sa/{module}.md（模块>3，适合复杂需求）
+     
+     章节结构:
+       {建议的章节列表}
+     
+     请确认或调整:
+     ```
+   - 用户确认后，将结构写入 SA handoff 的 `产出规格.structure_skeleton`
+3. 写入 handoff-SA: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-REQ2-R1.md`
    - to: SA
    - 白名单: `deliverables/{REQ-ID}/ba/requirement-spec.md`
+     - 如 proposal.md 含 `## 参考摘要`，reference 文件按优先级标注访问级别：
+       - `[HIGH]` 文件 → 白名单中标注 `[FULL]`（SA 完整读取）
+       - `[LOW]` 文件 → 白名单中标注 `[SUMMARY]`（SA 仅读 proposal.md 中的摘要，不读原文）
+       - 未标注的 reference 文件默认 `[FULL]`
    - 期望输出: `deliverables/{REQ-ID}/sa/design.md`
    - 额外期望输出:
      - `deliverables/{REQ-ID}/.archiveignore`（归档排除列表，基于 tech_stack）

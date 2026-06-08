@@ -106,6 +106,23 @@
 ## 5. Tasks 清单
 | Task ID | 描述 | 输入 | 输出 | 依赖 | 验证方式 | 预估复杂度 |
 |---------|------|------|------|------|---------|-----------|
+
+## 6. 接口契约摘要（≤200 行）
+
+> DE 编码时优先读取本节而非完整设计。仅含跨模块接口定义，模块内部实现细节不在此列。
+
+| 模块 | 导出接口/类型 | 签名 | 被谁调用 |
+|------|-------------|------|---------|
+
+## 7. 机器可检查清单（可选，standard/full 模式建议填写）
+
+> PM 在 SR2 前逐条执行 grep 检查，PASS 项不再派发 TE Agent 验证，仅 FAIL 项 + 语义级检查项派发 TE。
+
+格式: `CHECK: {grep_pattern} IN {file_glob} — {description}`
+
+示例:
+- CHECK: "export.*Router" IN "src/routes/*.ts" — 路由模块导出
+- CHECK: "implements.*Service" IN "src/services/*.ts" — 服务接口实现
 ```
 
 ---

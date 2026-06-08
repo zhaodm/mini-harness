@@ -346,6 +346,47 @@ check_audit_coverage() {
 }
 
 # ─────────────────────────────────────────────
+# QA-11: Handoff 行数检查（防止上下文膨胀）
+# ─────────────────────────────────────────────
+check_handoff_linecount() {
+    echo "--- QA-11: Handoff 行数检查 ---"
+    local handoff_dir="$REQ_DIR/handoffs"
+    if [ ! -d "$handoff_dir" ]; then
+        echo "SKIP: handoffs/ 目录不存在"
+        echo ""
+        return
+    fi
+
+    local oversized=0
+    local warned=0
+    for f in "$handoff_dir"/*.md; do
+        [ -f "$f" ] || continue
+        local lines
+        lines=$(wc -l < "$f" | tr -d ' ')
+        local fname
+        fname=$(basename "$f")
+        if [ "$lines" -gt 300 ]; then
+            echo "FAIL: $fname = $lines 行（超过 300 行硬上限）"
+            oversized=$((oversized + 1))
+        elif [ "$lines" -gt 200 ]; then
+            echo "WARN: $fname = $lines 行（超过 200 行建议上限）"
+            warned=$((warned + 1))
+        fi
+    done
+
+    if [ $oversized -gt 0 ]; then
+        echo "FAIL: $oversized 个 handoff 超过 300 行"
+        ERRORS=$((ERRORS + 1))
+    elif [ $warned -gt 0 ]; then
+        echo "WARN: $warned 个 handoff 超过 200 行（建议精简）"
+        WARNS=$((WARNS + 1))
+    else
+        echo "PASS: 所有 handoff 行数在合理范围"
+    fi
+    echo ""
+}
+
+# ─────────────────────────────────────────────
 # 执行所有检查
 # ─────────────────────────────────────────────
 check_ba_ambiguity
@@ -358,6 +399,7 @@ check_lessons_after_rejection
 check_handoff_feedback
 check_repair_reports
 check_audit_coverage
+check_handoff_linecount
 
 # ─────────────────────────────────────────────
 # 汇总
