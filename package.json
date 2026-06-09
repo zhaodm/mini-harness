@@ -1,18 +1,6 @@
 {
   "name": "mini-harness",
   "version": "0.1.0",
-  "description": "最小驾驭系统 - Agent驱动的自动化研发框架",
-  "private": true,
-  "scripts": {
-    "check": "./scripts/check-harness.sh",
-    "verify": "./scripts/verify.sh",
-    "baseline": "./scripts/baseline.sh"
-  },
-  "devDependencies": {
-    "playwright": "^1.40.0",
-    "@playwright/test": "^1.40.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  }
+  "type": "module",
+  "private": true
 }

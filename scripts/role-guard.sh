@@ -20,11 +20,11 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 STATE_FILE=$(find deliverables -maxdepth 2 -name ".state.md" -not -path "deliverables/.state.md" 2>/dev/null | head -1)
 [[ -z "$STATE_FILE" ]] && exit 0  # 无活跃需求时不拦截
 
-CURRENT_ROLE=$(grep "^current_role:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')
+CURRENT_ROLES=$(grep "^current_role:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')
 REQ_ID=$(grep "^req_id:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')
-[[ -z "$CURRENT_ROLE" || -z "$REQ_ID" ]] && exit 0
+[[ -z "$CURRENT_ROLES" || -z "$REQ_ID" ]] && exit 0
 
-# 角色权限检查
+# 角色权限检查（单角色）
 check_permission() {
   local role=$1 file=$2 req=$3
 
@@ -65,8 +65,18 @@ check_permission() {
   return 1
 }
 
-if ! check_permission "$CURRENT_ROLE" "$FILE_PATH" "$REQ_ID"; then
-  echo "BLOCKED: ${CURRENT_ROLE} 无权写入 ${FILE_PATH}"
+# 支持逗号分隔多角色并行（如 current_role: SA,TE）
+IFS=',' read -ra ROLES <<< "$CURRENT_ROLES"
+ALLOWED=false
+for ROLE in "${ROLES[@]}"; do
+  if check_permission "$ROLE" "$FILE_PATH" "$REQ_ID"; then
+    ALLOWED=true
+    break
+  fi
+done
+
+if [[ "$ALLOWED" == "false" ]]; then
+  echo "BLOCKED: ${CURRENT_ROLES} 无权写入 ${FILE_PATH}"
   echo "请通过 handoff 派发给有权限的角色处理。"
   exit 2
 fi
