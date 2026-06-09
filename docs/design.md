@@ -56,6 +56,13 @@ mini-harness/
 ├── agents/                      6 角色契约
 ├── skills/                      执行规程（含子文件按需加载）
 ├── scripts/                     硬校验脚本 + 工具脚本
+├── workflows/                   JS Workflow 并行编排层（CR-004）
+│   ├── propose-parallel.js      SA∥TE 并行设计
+│   ├── apply-batch-dev.js       Batch DE 并行开发
+│   ├── apply-batch-test.js      Batch TE 并行审计
+│   ├── apply-final-audit.js     TE 最终审计
+│   └── lib/                     工具函数（prompt-assembler, result-parser）
+├── tests/                       自动化测试套件
 ├── templates/
 │   ├── handoff-template.md      任务派发格式
 │   ├── state-template.md        状态 schema
@@ -96,7 +103,7 @@ mini-harness/
 
 | 平台 | 隔离机制 |
 |------|---------|
-| Claude Code | SubAgent 物理隔离（独立子会话） |
+| Claude Code | SubAgent 物理隔离（独立子会话）+ JS Workflow 并行编排 |
 | Cline | 文件协议 + 行为约束（逻辑隔离） |
 
 ### Agent 契约结构
@@ -116,6 +123,26 @@ mini-harness/
 ```
 
 详见：agents/pm.md "调度协议"节
+
+### 并行编排层（CR-004 Workflow）
+
+并行扇出（SA∥TE、批量 DE、批量 TE）通过 JS Workflow 脚本确定性执行：
+
+```
+PM 主会话（人机交互 + 质量门禁）
+    │
+    ├── 生成 handoff 内容
+    ├── 更新 .state.md: current_role={并行角色}
+    ├── 调用 Workflow 工具 ──→ parallel([agent(SA), agent(TE)])
+    ├── 接收结构化返回
+    ├── 执行质量门禁
+    └── 更新 .state.md: current_role=PM
+```
+
+- Workflow SubAgent 继承 PreToolUse Hook（role-guard.sh 权限控制仍生效）
+- 支持逗号分隔多角色（`current_role: SA,TE`），任一角色有权即放行
+- 工具函数: `workflows/lib/prompt-assembler.js` + `result-parser.js`
+- 详见: `docs/designs/CR-004-hybrid-workflow-design.md`
 
 ---
 

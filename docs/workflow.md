@@ -64,6 +64,10 @@ PM 调度手册。PM 必须严格按此手册执行，不得跳步或自行决�
 
 ## 详细时序
 
+> **CR-004 架构变更：** propose 阶段的 SA∥TE 并行和 apply 阶段的批量 DE∥TE 并行，
+> 通过 JS Workflow 脚本（`workflows/`）确定性执行，不再依赖 PM 解读自然语言指令。
+> PM 主会话保持人机交互和质量门禁职责。详见 `docs/designs/CR-004-hybrid-workflow-design.md`。
+
 ```
 ┌──────┐     ┌──────┐     ┌──────┐     ┌──────┐     ┌──────┐     ┌──────┐
 │ User │     │  PM  │     │  BA  │     │  SA  │     │  DE  │     │  TE  │
@@ -193,6 +197,15 @@ init ──────> propose ──────> apply ──────> a
 | run | skills/mh-run.md | 全流程自动推进（含 fast 连续流） |
 | ppt | skills/mh-ppt.md | output_type=ppt 补充规则（UX wireframe + verify-ppt.sh） |
 | retro | skills/mh-retro.md | 复盘报告 → 变更请求（两阶段，Phase 2 可选） |
+
+**Workflow 脚本（CR-004 并行编排层）：**
+
+| 脚本 | 调用时机 | 并行内容 |
+|------|---------|---------|
+| workflows/propose-parallel.js | propose Step SA∥TE | SA 架构设计 ∥ TE 测试用例设计 |
+| workflows/apply-batch-dev.js | apply 每个 Batch 开发 | Batch 内多 Task DE 并行 |
+| workflows/apply-batch-test.js | apply 每个 Batch 审计 | Batch 内多 Task TE 并行 |
+| workflows/apply-final-audit.js | apply SR2 后最终审计 | TE 全量审计 |
 
 > Skills 文件是 Agent 的唯一执行依据。本文档仅作为人类阅读的流程参考。
 

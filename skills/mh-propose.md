@@ -37,12 +37,10 @@
 
 跳过 BA，SA 和 TE 并行执行，无 SR1。
 
-**Step 1: 并行调度 SA 架构设计 + TE 测试用例设计（REQ-2 ∥ REQ-3）**
+**Step 1: 产出结构协商 + 并行调度 SA∥TE（REQ-2 ∥ REQ-3）**
 
-> ⚡ 并行优化：SA 和 TE 同时派发，互不依赖（TE 基于 proposal 设计用例）。仅 Claude Code 模式支持并行；Cline 模式退化为串行。
-
-1. `[PM] standard 模式，跳过BA需求分析，并行调度 SA + TE`
-2. **产出结构协商**（SA handoff 编写前必须完成）：
+1. `[PM] standard 模式，跳过BA需求分析，启动 SA∥TE 并行`
+2. **产出结构协商**（人机交互，Workflow 调用前必须完成）：
    - PM 根据 proposal.md 中的模块数量和复杂度，向用户提出设计文档结构建议：
      ```
      [结构协商]
@@ -56,34 +54,41 @@
      请确认或调整:
      ```
    - 用户确认后，将结构写入 SA handoff 的 `产出规格.structure_skeleton`
-3. 写入 handoff-SA: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-REQ2-R1.md`
+
+3. **生成 SA handoff 内容**（按 templates/handoff-template.md 格式）：
    - to: SA
    - 白名单: `deliverables/{REQ-ID}/proposal.md`
      - 如 proposal.md 含 `## 参考摘要`，reference 文件按优先级标注访问级别：
-       - `[HIGH]` 文件 → 白名单中标注 `[FULL]`（SA 完整读取）
-       - `[LOW]` 文件 → 白名单中标注 `[SUMMARY]`（SA 仅读 proposal.md 中的摘要，不读原文）
-       - 未标注的 reference 文件默认 `[FULL]`
+       - `[HIGH]` → 白名单标注 `[FULL]`（SA 完整读取）
+       - `[LOW]` → 白名单标注 `[SUMMARY]`（SA 仅读摘要）
    - 期望输出: `deliverables/{REQ-ID}/sa/design.md`
-   - 额外期望输出:
-     - `deliverables/{REQ-ID}/.archiveignore`（归档排除列表，基于 tech_stack）
-     - `deliverables/{REQ-ID}/sa/verify-strategy.md`（Batch 验证命令 + 降级方案 + 集成点）
-   - 约束: 简版设计（架构 + Tasks清单 + 需求映射简表，无需时序图）。因 standard 模式跳过 BA，SA 需在 design.md 中补充 Proposal 要点→Task→验证方式 的映射表
-3. 写入 handoff-TE: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-REQ3-R1.md`
+   - 额外期望输出: `.archiveignore` + `sa/verify-strategy.md`
+   - 约束: 简版设计（架构 + Tasks清单 + 需求映射简表）。SA 需补充 Proposal 要点→Task→验证方式 映射表
+
+4. **生成 TE handoff 内容**：
    - to: TE
    - 白名单: `deliverables/{REQ-ID}/proposal.md`
    - 期望输出: `deliverables/{REQ-ID}/te/testcases.md`
-   - 额外期望输出: `deliverables/{REQ-ID}/te/audit-dimensions.md`（本项目 SR2/SR3 审计维度清单）
-   - 约束: 基于 Proposal 设计测试用例，覆盖功能验收和边界条件
-4. 更新 `deliverables/{REQ-ID}/.state.md`: current_step=REQ-2+REQ-3
-5. 并行派发任务:
-   - [Claude Code] 同时 spawn 两个 SubAgent（SA + TE），各自注入对应 handoff + agent 定义 + 白名单文件
-   - [Cline] 串行执行：先 SA 后 TE（Cline 不支持并行）
-6. 等待所有回报，执行质量门禁（agents/pm.md "SA 产出验收" + "TE 产出验收"清单）:
+   - 额外期望输出: `te/audit-dimensions.md`（SR2/SR3 审计维度清单）
+
+5. **更新 state 并调用 Workflow**：
+   - 更新 `.state.md`: current_step=REQ-2+REQ-3, current_role=SA,TE
+   - 写入 handoff 文件: `{REQ-ID}-REQ2-R1.md` + `{REQ-ID}-REQ3-R1.md`
+   - 调用 Workflow `propose-parallel`:
+     ```
+     args.reqId = "{REQ-ID}"
+     args.mode = "standard"
+     args.saPrompt = agents/sa.md 内容 + SA handoff 内容
+     args.tePrompt = agents/te.md 内容 + TE handoff 内容
+     ```
+
+6. **Workflow 返回后，执行质量门禁**（agents/pm.md "SA 产出验收" + "TE 产出验收"清单）：
    - `deliverables/{REQ-ID}/sa/design.md` 存在且非空
    - `deliverables/{REQ-ID}/te/testcases.md` 存在且非空
    - 全部通过 → 继续
-   - 不通过 → 驳回对应角色（新 handoff 附未通过项 + 位置 + 修正方向）
-7. 更新 `deliverables/{REQ-ID}/.state.md`: current_handoff=""
+   - 不通过 → 生成驳回 handoff（新轮次），重新调用 Workflow
+
+7. 更新 `.state.md`: current_handoff="", current_role=PM
 8. `[PM] REQ-2 + REQ-3 完成，技术方案和测试用例已生成`
 
 **Step 2: PM 计划编排（REQ-4）**
@@ -110,62 +115,37 @@
    - to: BA
    - 白名单: reference/*, `deliverables/{REQ-ID}/proposal.md`
    - 期望输出: `deliverables/{REQ-ID}/ba/requirement-spec.md`
-3. 更新 `deliverables/{REQ-ID}/.state.md`: current_step=REQ-1, current_handoff={REQ-ID}-REQ1-R1.md
-4. 派发任务:
-   - [Claude Code] spawn SubAgent，注入 handoff + agents/ba.md + 白名单文件
-   - [Cline] 切换角色为 BA，指示读取 handoff
-5. 接收回报，执行质量门禁（agents/pm.md "BA 产出验收"清单）:
-   - `deliverables/{REQ-ID}/ba/requirement-spec.md` 存在且非空
-   - 全部通过 → 继续
-   - 不通过 → 驳回（新 handoff 附未通过项 + 位置 + 修正方向）
-6. 更新 `deliverables/{REQ-ID}/.state.md`: current_handoff=""
+3. 更新 `.state.md`: current_step=REQ-1, current_role=BA, current_handoff={REQ-ID}-REQ1-R1.md
+4. 派发 BA SubAgent（单角色，无需 Workflow）
+5. 接收回报，执行质量门禁（agents/pm.md "BA 产出验收"清单）
+6. 更新 `.state.md`: current_handoff="", current_role=PM
 7. `[PM] REQ-1 完成，需求规格已生成`
 
-**Step 2: 并行调度 SA 架构设计 + TE 测试用例设计（REQ-2 ∥ REQ-3）**
-
-> ⚡ 并行优化：SA 和 TE 同时派发，均基于 requirement-spec.md 工作。仅 Claude Code 模式支持并行；Cline 模式退化为串行（先 SA 后 TE）。
+**Step 2: 产出结构协商 + 并行调度 SA∥TE（REQ-2 ∥ REQ-3）**
 
 1. `[PM] 并行调度 SA 架构设计 + TE 测试用例设计`
-2. **产出结构协商**（SA handoff 编写前必须完成）：
-   - PM 根据 requirement-spec.md 中的模块数量和复杂度，向用户提出设计文档结构建议：
-     ```
-     [结构协商]
-     根据需求规模（{N}个模块），建议设计文档结构:
-       A) 单文件: sa/design.md（模块≤3，适合简单需求）
-       B) 多文件: sa/overview.md + sa/{module}.md（模块>3，适合复杂需求）
-     
-     章节结构:
-       {建议的章节列表}
-     
-     请确认或调整:
-     ```
-   - 用户确认后，将结构写入 SA handoff 的 `产出规格.structure_skeleton`
-3. 写入 handoff-SA: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-REQ2-R1.md`
+2. **产出结构协商**（同 standard 模式）
+
+3. **生成 SA handoff 内容**：
    - to: SA
    - 白名单: `deliverables/{REQ-ID}/ba/requirement-spec.md`
-     - 如 proposal.md 含 `## 参考摘要`，reference 文件按优先级标注访问级别：
-       - `[HIGH]` 文件 → 白名单中标注 `[FULL]`（SA 完整读取）
-       - `[LOW]` 文件 → 白名单中标注 `[SUMMARY]`（SA 仅读 proposal.md 中的摘要，不读原文）
-       - 未标注的 reference 文件默认 `[FULL]`
+     - reference 文件按优先级标注（同 standard）
    - 期望输出: `deliverables/{REQ-ID}/sa/design.md`
-   - 额外期望输出:
-     - `deliverables/{REQ-ID}/.archiveignore`（归档排除列表，基于 tech_stack）
-     - `deliverables/{REQ-ID}/sa/verify-strategy.md`（Batch 验证命令 + 降级方案 + 集成点）
-3. 写入 handoff-TE: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-REQ3-R1.md`
+   - 额外期望输出: `.archiveignore` + `sa/verify-strategy.md`
+
+4. **生成 TE handoff 内容**：
    - to: TE
    - 白名单: `deliverables/{REQ-ID}/ba/requirement-spec.md`
    - 期望输出: `deliverables/{REQ-ID}/te/testcases.md`
-   - 额外期望输出: `deliverables/{REQ-ID}/te/audit-dimensions.md`（本项目 SR2/SR3 审计维度清单）
-4. 更新 `deliverables/{REQ-ID}/.state.md`: current_step=REQ-2+REQ-3
-5. 并行派发任务:
-   - [Claude Code] 同时 spawn 两个 SubAgent（SA + TE），各自注入对应 handoff + agent 定义 + 白名单文件
-   - [Cline] 串行执行：先 SA 后 TE
-6. 等待所有回报，执行质量门禁（agents/pm.md "SA 产出验收" + "TE 产出验收"清单）:
-   - `deliverables/{REQ-ID}/sa/design.md` 存在且非空
-   - `deliverables/{REQ-ID}/te/testcases.md` 存在且非空
-   - 全部通过 → 继续
-   - 不通过 → 驳回对应角色（新 handoff 附未通过项 + 位置 + 修正方向）
-7. 更新 `deliverables/{REQ-ID}/.state.md`: current_handoff=""
+   - 额外期望输出: `te/audit-dimensions.md`
+
+5. **更新 state 并调用 Workflow**：
+   - 更新 `.state.md`: current_step=REQ-2+REQ-3, current_role=SA,TE
+   - 写入 handoff 文件
+   - 调用 Workflow `propose-parallel`（同 standard）
+
+6. **Workflow 返回后，执行质量门禁**（同 standard）
+7. 更新 `.state.md`: current_handoff="", current_role=PM
 8. `[PM] REQ-2 + REQ-3 完成，技术方案和测试用例已生成`
 
 **Step 3: PM 计划编排（REQ-4）**
@@ -213,9 +193,8 @@
 4. 等待用户决策：
    - **通过**:
      - 创建 baselines: `deliverables/{REQ-ID}/baselines/requirement-spec.v1.md` 等
-       > 注：此处 baselines 是 propose 阶段的过程快照，用于 SR1 驳回时回退。变更归档时的 spec 基线快照也存放于此目录。
      - 写入 `deliverables/{REQ-ID}/SR1-record.md`
-     - 更新 `deliverables/{REQ-ID}/.state.md`: phase=propose, current_step=PROPOSE-DONE, sr_status.SR1=approved
+     - 更新 `.state.md`: phase=propose, current_step=PROPOSE-DONE, sr_status.SR1=approved
      - `[PM] SR1 通过，可执行 /mh-apply`
    - **驳回**:
      - 记录驳回原因到 SR1-record.md
@@ -244,9 +223,9 @@ PM 编排计划时，必须标注 Task 间依赖关系，用于 apply 阶段的�
 ```
 
 **依赖判断标准：**
-- Task-B 的实现需要 Task-A 的产出代码（如 Task-B 调用 Task-A 创建的函数）→ `[deps: Task-A]`
+- Task-B 的实现需要 Task-A 的产出代码 → `[deps: Task-A]`
 - Task-B 仅在逻辑上与 Task-A 相关但代码不依赖 → `[deps: none]`
-- 无法确定时，标记为 `[deps: none]`（宁可并行多一些，由 TE 审计发现问题）
+- 无法确定时，标记为 `[deps: none]`
 
 **批次计算规则：**
 - Batch-1: 所有 `[deps: none]` 的 Task
@@ -266,22 +245,22 @@ PM 编排完成后，必须自检以下质量标准：
 - 不出现"10+ 个 Task 但每个只改 1 行"（过度拆分）
 
 **依赖检查：**
-- 依赖图无环（Task-A deps Task-B，Task-B 不能 deps Task-A）
-- Batch-1 占比合理（通常 40-70% 的 Task 在 Batch-1）
-- 如果所有 Task 都是 `[deps: none]`，质疑是否遗漏了依赖（数据模型 Task 通常是其他 Task 的前置）
+- 依赖图无环
+- Batch-1 占比合理（通常 40-70%）
+- 所有 Task 都是 `[deps: none]` 时，质疑是否遗漏依赖
 
 **完整性检查：**
-- 对照 design.md 的 Tasks 清单，确认无遗漏
+- 对照 design.md Tasks 清单，确认无遗漏
 - 对照需求/Proposal 要点，确认每条至少映射到 1 个 Task
 
 **可验证性检查：**
-- 每个 Task 有明确的验证方式（来自 design.md 的验证方式列）
-- 验证方式与 test_strategy 一致（如 test_strategy=unit，验证方式不应是"人工检查"）
+- 每个 Task 有明确的验证方式
+- 验证方式与 test_strategy 一致
 
 ---
 
 ## 异常处理
 
-- 任何步骤的 SubAgent 回报 status=failed: PM 检查失败原因，决定重试或上升人工
-- 文件校验失败（不存在或为空）: 重新派发任务，轮次+1
+- Workflow 返回 status=failed: PM 检查失败原因，决定重试或上升人工
+- 文件校验失败（不存在或为空）: 生成驳回 handoff，重新调用 Workflow（轮次+1）
 - 轮次达到 5 次: 上升人工审核
