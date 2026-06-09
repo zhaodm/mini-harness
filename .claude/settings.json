@@ -7,7 +7,12 @@
     "PreToolUse": [
       {
         "matcher": "Write|Edit",
-        "command": "bash scripts/role-guard.sh"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/role-guard.sh"
+          }
+        ]
       }
     ]
   }
