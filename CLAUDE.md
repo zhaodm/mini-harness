@@ -23,6 +23,7 @@
 | /mh-archive | 归档+结项 | skills/mh-archive.md |
 | /mh-run | 全流程自动推进 | skills/mh-run.md |
 | /mh-ppt | PPT 类 HTML 页面开发 | skills/mh-ppt.md |
+| /mh-retro | 复盘+变更请求 | skills/mh-retro.md |
 
 ---
 

@@ -27,6 +27,7 @@
 | 硬校验规则 | scripts/*.sh | docs/design.md §7.4 |
 | output_type 体系 | CLAUDE.md §7 | docs/design.md §10 |
 | PPT 补充规则 | skills/mh-ppt.md | docs/design.md §11 |
+| 复盘与变更请求流程 | skills/mh-retro.md | docs/retrospectives/, docs/requirements/ |
 | 金标准示例 | templates/examples/*.md | — |
 | 产出结构参考 | templates/output-guides/*.md | — |
 | 执行指标模板 | templates/metrics-template.md | skills/mh-archive.md ARC-4 |

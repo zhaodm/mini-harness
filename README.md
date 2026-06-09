@@ -77,6 +77,7 @@ web-app / backend-api / cli-tool / data-pipeline / infrastructure / documentatio
 | `/mh-apply` | 开发 + 审计 + 人工审批 |
 | `/mh-archive` | 归档 + 经验沉淀 + 结项 |
 | `/mh-ppt` | PPT 类 HTML 开发快捷入口 |
+| `/mh-retro` | 复盘 + 变更请求（框架自身改进） |
 
 ### 最终产出
 
@@ -121,7 +122,10 @@ output/
 |------|------|
 | CLAUDE.md | 全局规则（最高约束） |
 | docs/design.md | 架构设计文档（10章） |
+| docs/workflow.md | 流程总览 + 状态机 |
 | docs/source-of-truth.md | 权威源映射 |
+| docs/retrospectives/ | 复盘报告（执行数据 + 问题分析） |
+| docs/requirements/ | 变更请求（框架改进方案） |
 | agents/*.md | 角色契约定义 |
 | skills/*.md | 执行规程 |
 

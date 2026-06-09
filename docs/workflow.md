@@ -192,6 +192,35 @@ init ──────> propose ──────> apply ──────> a
 | archive | skills/mh-archive.md | 需求归档 → 设计归档 → 产出物归档（output_type 感知）→ SR4（含 merge 策略） |
 | run | skills/mh-run.md | 全流程自动推进（含 fast 连续流） |
 | ppt | skills/mh-ppt.md | output_type=ppt 补充规则（UX wireframe + verify-ppt.sh） |
+| retro | skills/mh-retro.md | 复盘报告 → 变更请求（两阶段，Phase 2 可选） |
 
 > Skills 文件是 Agent 的唯一执行依据。本文档仅作为人类阅读的流程参考。
+
+---
+
+## 框架维护命令
+
+以下命令不属于需求交付流程，用于框架自身的持续改进：
+
+| 命令 | 用途 | 触发时机 |
+|------|------|---------|
+| /mh-retro | 对已完成需求进行复盘，生成改进报告和变更请求 | 需求交付完成后，用户主动发起 |
+
+```
+                        /mh-retro
+                    ──────────────────
+                    [框架自身改进]
+
+                     PM
+                     │
+                     ▼
+                     Phase 1: 复盘报告
+                     │ (docs/retrospectives/)
+                     ▼
+                     用户确认
+                     │
+                     ▼ (可选)
+                     Phase 2: 变更请求
+                       (docs/requirements/)
+```
 
