@@ -12,12 +12,12 @@
    - 如不存在：从 `templates/state-pointer-template.md` 拷贝到 `deliverables/.state.md`
 2. 如存在，读取其中 req_id，检查 `deliverables/{req_id}/.state.md` 的 phase
 3. 加载历史经验：如 `output/lessons-learned.md` 存在，读取并在后续流程中传达给各角色
-4. 检测场景模式（按优先级从高到低判断）：
-   - **RESUME**: 最近 REQ 的 phase 非空且 phase≠done → 有未完成的流程，提示用户继续或放弃
-   - **CHANGE**: output/spec/ 目录下存在 .md 文件（即有已归档的历史需求）→ 变更模式
-   - **NEW**: 以上均不满足 → 全新项目
+4. **场景检测：调用 `workflows/lib/detect-scenario.js` 的 `detectScenario()` 函数**
+   - 输入: `{ globalStateExists, reqStatePhase, outputSpecFiles, activeReqId }`
+   - 输出: `{ scenario: 'NEW'|'RESUME'|'CHANGE', reason, activeReqId? }`
+   - 优先级: RESUME > CHANGE > NEW（硬编码，不再依赖 PM 理解规则）
 
-⚠️ 关键：phase=done 且 output/spec/ 有文件时，必须进入 CHANGE 模式，不得识别为 NEW。
+⚠️ 关键：phase=done 且 output/spec/ 有文件时，脚本自动返回 CHANGE，无需 PM 判断。
 
 ### CHANGE 模式 - 增量开发
 
@@ -124,10 +124,14 @@
 
 **执行角色:** PM（人机交互）
 
-1. 基于需求澄清结果和环境检测，PM 推荐 output_type：
+1. **调用 `workflows/lib/recommend-type-mode.js` 的 `recommendTypeMode()` 获取推荐：**
+   - 输入: `{ techStack, frameworks, referenceFileCount, referenceLineCount, browserAvailable, userHints }`
+   - 输出: `{ recommendedType, typeConfidence, recommendedMode, modeConfidence, reasoning }`
+
+2. 将推荐结果呈现给用户：
    ```
    [产出类型选择]
-   根据需求分析，建议产出类型为: {推荐类型}
+   根据需求分析，建议产出类型为: {recommendedType}（{reasoning}）
 
      web-app        — Web 应用（前端/全栈，需浏览器测试）
      backend-api    — 后端服务/API（REST/gRPC，需接口测试）
@@ -141,16 +145,6 @@
 
    请选择或确认:
    ```
-
-2. 推荐逻辑：
-   - 检测到 Playwright/Cypress + 前端框架（React/Vue/Angular）→ web-app
-   - 检测到 Express/FastAPI/Gin/Spring 等 → backend-api
-   - 检测到 CLI 框架（commander/click/cobra）→ cli-tool
-   - reference/ 中全是文档 + language=unknown → documentation
-   - 用户明确说"PPT"/"演示"/"slides" → ppt
-   - 检测到 Terraform/Pulumi/CDK → infrastructure
-   - 检测到 dbt/Airflow/Spark → data-pipeline
-   - 无明确信号 → 请用户选择
 
 3. 用户确认后写入 `deliverables/{REQ-ID}/.state.md`: output_type={选择}
 
@@ -177,7 +171,7 @@ Proposal 草稿完成后，PM 根据需求规模向用户推荐模式：
 
 ```
 [模式选择]
-根据需求规模分析，建议使用 {推荐模式} 模式：
+根据需求规模分析，建议使用 {recommendedMode} 模式：
 
   fast     — 小调整（bug修复、≤5个文件、无需重新设计）
              流程：PM出plan → DE开发 → TE轻量审计 → 人工确认 → 归档
@@ -197,10 +191,7 @@ Proposal 草稿完成后，PM 根据需求规模向用户推荐模式：
 请选择模式:
 ```
 
-推荐逻辑：
-- 涉及文件 ≤5 且无新架构 → 推荐 fast
-- 单模块新功能或中等改动 → 推荐 standard
-- 跨模块、多角色协作、需完整追溯 → 推荐 full
+> 推荐逻辑已脚本化至 `workflows/lib/recommend-type-mode.js`，由 `recommendTypeMode()` 返回的 `recommendedMode` 字段提供。PM 直接使用脚本输出，无需自行判断。
 
 用户选择后，写入 `deliverables/{REQ-ID}/.state.md`: `mode: {fast|standard|full}`
 

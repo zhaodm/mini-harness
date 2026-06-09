@@ -32,7 +32,11 @@
 
 `[PM] 启动 RET-1 数据采集`
 
-读取以下文件（按可用性逐一检查）：
+读取以下文件（按可用性逐一检查），然后**调用 `workflows/lib/retro-collect.js` 的 `retroCollect()` 聚合：**
+- 输入: `{ reqId, stateData, lessonsContent, processLogContent, handoffFiles, taskCount, batchCount }`
+- 输出: `{ metrics, problems: [{cpId, title, symptom, rootCause, impact}], dataSourcesCount }`
+
+数据源：
 
 | 文件 | 用途 |
 |------|------|
@@ -178,22 +182,22 @@
 
 `[PM] CR-1 完成，分配编号 CR-{NNN}`
 
-### Step CR-2: 筛选系统性问题
+### Step CR-2 + CR-3: 筛选系统性问题 + 分层设计方案
 
-`[PM] 启动 CR-2 筛选系统性问题`
+`[PM] 启动 CR-2/CR-3 筛选+分层设计`
 
-从 Phase 1 问题清单中筛选：
-- 仅保留**系统性问题**（框架缺陷，非个案操作失误）
-- 按严重度排序：P0 → P1 → P2
-- 相关问题合并为同一"问题域"
+**调用 `workflows/lib/retro-synthesize.js` 的 `retroSynthesize()` 函数：**
+- 输入: `{ problems: [{cpId, title, severity, domain, isSystemic}] }`
+- 输出: `{ recommendations: [{problemDomain, cpIds, layer, rationale, deliverables}], crSlug }`
 
-`[PM] CR-2 完成，{N} 个问题归入 {M} 个问题域`
+脚本自动完成：
+- 过滤非系统性问题（isSystemic=false）
+- 同域问题合并，取最高严重度
+- 按决策树分配约束层: P0→脚本, P1→模板, P2→Skill
 
-### Step CR-3: 分层设计方案
+PM 仅需为每个 recommendation 补充具体改动描述。
 
-`[PM] 启动 CR-3 分层设计方案`
-
-对每个问题域，按约束力从强到弱选择改善层级：
+约束层参考（脚本已内置优先级）：
 
 | 优先级 | 层级 | 载体 | 适用场景 |
 |--------|------|------|---------|

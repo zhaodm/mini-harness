@@ -16,12 +16,13 @@
 
 ## 归档模式检测
 
-- **首次归档**: output/spec/ 目录为空或不存在 → 直接复制
-- **变更归档**: output/spec/ 目录已有文件 → merge 模式
+**调用 `workflows/lib/detect-archive-mode.js` 的 `detectArchiveMode()` 函数：**
+- 输入: `{ outputSpecFiles, baselineFiles, reqId, mode }`
+- 输出: `{ archiveMode: 'first'|'change', existingFiles, nextBaselineVersion, skipSpec? }`
 
 > ⚠️ 核心原则：`output/spec/` 下的文档必须始终是**全量文档**（包含所有历史需求的累积内容），不是增量差异。
 > - 首次归档：deliverables/{REQ-ID}/ 中的文档即为全量，直接复制
-> - 变更归档：将本次增量内容 merge 进已有全量文档，确保结果仍是完整的全量文档
+> - 变更归档：调用 `workflows/lib/archive-merge.js` 的 `archiveMerge()` 将增量 merge 进全量
 
 ## Step ARC-1: 需求归档
 
@@ -208,21 +209,25 @@
 
 ## 变更归档 Merge 策略
 
-归档时按以下规则处理 output/spec/ 文件的合并：
+**调用 `workflows/lib/archive-merge.js` 的 `archiveMerge()` 函数执行合并：**
+- 输入: `{ existingContent, newContent, reqId, mergeType: 'append'|'replace'|'deprecate', targetReqId? }`
+- 输出: `{ mergedContent, operations: [{type, location, description}] }`
 
-### 新增需求（本次 REQ-ID 引入的全新内容）
+三种合并类型（由脚本确定性执行）：
+
+### 新增需求（mergeType='append'）
 - 追加到 spec 文件末尾
-- 用 `<!-- REQ-{ID} START -->` / `<!-- REQ-{ID} END -->` 注释标注来源
+- 自动用 `<!-- REQ-{ID} START -->` / `<!-- REQ-{ID} END -->` 注释标注来源
 - 保持已有内容不变
 
-### 修改需求（本次 REQ-ID 修改了已有内容）
-- 定位到对应 REQ-ID 标注的段落
-- 替换该段落内容
+### 修改需求（mergeType='replace'）
+- 脚本自动定位对应 REQ-ID 标注的段落并替换
+- 如目标标签不存在，降级为 append
 - 更新注释标注为最新 REQ-ID
 
-### 删除需求（本次 REQ-ID 废弃了已有内容）
+### 删除需求（mergeType='deprecate'）
 - 不物理删除原文
-- 在对应段落开头添加: `[DEPRECATED by REQ-{ID}] — {废弃原因}`
+- 脚本在对应段落开头添加: `[DEPRECATED by REQ-{ID}] — {废弃原因}`
 - 保留原文供追溯
 
 ### 无标注的历史内容

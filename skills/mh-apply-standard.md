@@ -12,16 +12,16 @@
 
 ```
 读取 plan-action.md 中的 Task 列表和依赖关系（[deps: ...]）
-计算并行批次:
-  Batch-1: 所有 deps=none 的 Task
-  Batch-2: 依赖仅在 Batch-1 中的 Task
-  Batch-N: 依赖仅在前序 Batch 中的 Task
-  （无依赖标注时，所有 Task 视为 deps=none，归入同一批次）
+
+**调用 `workflows/lib/calculate-batches.js` 的 `calculateBatches()` 计算批次：**
+- 输入: `{ tasks: [{id, deps}], mergeThreshold: 3 }`
+- 输出: `{ batches: [{batchId, standard: [{taskId}], merged: [{taskIds}]}] }`
+- 脚本自动完成拓扑排序+贪心合并，PM 无需手动分批
 
 FOR 每个 Batch（跳过已完成的 Task）:
     生成 DE handoff → 调用 Workflow apply-batch-dev → 质量门禁
     生成 TE handoff → 调用 Workflow apply-batch-test → 检查审计结论
-    失败 Task → 修复循环
+    失败 Task → 修复循环（调用 decide-repair.js 判断 retry/escalate）
     人工批量确认
     记入 completed_steps
 END FOR

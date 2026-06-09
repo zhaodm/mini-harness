@@ -8,12 +8,16 @@
 
 ## 核心规则：自动推进
 
-本 skill 与逐阶段执行的唯一区别：
+**推进决策调用 `workflows/lib/auto-advance.js` 的 `autoAdvance()` 函数：**
+- 输入: `{ phase, currentStep, mode, srStatus, repairRound, autoAdvance: true }`
+- 输出: `{ action: 'advance'|'pause'|'end', nextPhase?, reason }`
 
-1. 当某阶段到达 DONE 标记时，**禁止停下来等待用户输入下一个命令**
-2. 替代行为：打印推进心跳后，立即读取下一阶段的 skill 文件并继续执行
-3. 所有阶段内的人工审批节点（SR1/SR2/SR3/SR4、逐任务人工确认、Proposal确认、模式选择）照常暂停等待用户决策
-4. 在 `deliverables/{REQ-ID}/.state.md` 中写入 `auto_advance: true`，用于断点恢复时识别模式
+PM 行为由脚本返回值决定：
+- `action='advance'` → 打印推进心跳，读取 nextPhase 对应 skill 继续执行
+- `action='pause'` → 暂停等待用户决策（审批/确认/修复升级）
+- `action='end'` → 打印最终摘要，流程结束
+
+在 `deliverables/{REQ-ID}/.state.md` 中写入 `auto_advance: true`，用于断点恢复时识别模式。
 
 ---
 

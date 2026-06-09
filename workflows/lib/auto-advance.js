@@ -1,0 +1,167 @@
+/**
+ * auto-advance.js — 状态机推进引擎
+ *
+ * 根据当前 phase/step/mode 判断下一步动作: advance(自动推进) / pause(等待人工) / end(结束)。
+ * 将 mh-run.md 中的状态转移表编码为确定性逻辑。
+ *
+ * @module workflows/lib/auto-advance
+ */
+
+/**
+ * @typedef {Object} AutoAdvanceInput
+ * @property {string} phase - 当前阶段 (init/propose/apply/archive/done)
+ * @property {string} currentStep - 当前步骤标识
+ * @property {string} mode - 执行模式 (fast/standard/full)
+ * @property {Object} srStatus - SR1-SR4 审批状态
+ * @property {number} repairRound - 当前修复轮次（>0 表示修复中）
+ * @property {boolean} autoAdvance - 是否启用自动推进
+ */
+
+/**
+ * @typedef {Object} AutoAdvanceResult
+ * @property {'advance'|'pause'|'end'} action - 动作
+ * @property {string} [nextPhase] - advance 时的目标阶段
+ * @property {string} [nextStep] - advance 时的目标步骤
+ * @property {string} reason - 决策理由
+ */
+
+// 需要人工暂停的步骤（所有模式通用）
+const PAUSE_STEPS = new Set([
+  'SR1-PENDING',
+  'SR2-PENDING',
+  'SR3-PENDING',
+  'SR4-PENDING',
+  'BATCH-CONFIRM',
+  'PROPOSAL-CONFIRM',
+  'MODE-SELECT'
+]);
+
+/**
+ * 状态机推进决策
+ *
+ * 优先级:
+ * 1. autoAdvance=false → 一律 pause
+ * 2. phase=done → end
+ * 3. repairRound > 0 → pause（修复循环内部处理）
+ * 4. 人工审批步骤 → pause
+ * 5. 阶段完成标记 → advance 到下一阶段
+ * 6. 其他 → pause（未识别的步骤保守处理）
+ *
+ * @param {AutoAdvanceInput} input
+ * @returns {AutoAdvanceResult}
+ */
+export function autoAdvance(input) {
+  const { phase, currentStep, mode, srStatus, repairRound, autoAdvance: autoMode } = input;
+
+  // 规则 1: 未启用自动推进
+  if (!autoMode) {
+    return {
+      action: 'pause',
+      reason: 'auto_advance 未启用，等待用户手动触发下一阶段'
+    };
+  }
+
+  // 规则 2: 已完成
+  if (phase === 'done') {
+    return {
+      action: 'end',
+      reason: '流程已完成 (phase=done)'
+    };
+  }
+
+  // 规则 3: 修复循环中
+  if (repairRound > 0) {
+    return {
+      action: 'pause',
+      reason: `修复循环进行中 (round=${repairRound})，阶段内处理`
+    };
+  }
+
+  // 规则 4: 人工审批步骤
+  if (PAUSE_STEPS.has(currentStep)) {
+    // fast 模式下部分审批可跳过，但 SR1-PENDING 在 fast 下不会出现
+    return {
+      action: 'pause',
+      reason: `等待人工审批: ${currentStep}`
+    };
+  }
+
+  // 规则 5: 阶段完成标记 → 推进
+  const transition = resolveTransition(phase, currentStep, mode);
+  if (transition) {
+    return transition;
+  }
+
+  // 规则 6: 未识别步骤，保守 pause
+  return {
+    action: 'pause',
+    reason: `未识别的步骤状态: ${phase}/${currentStep}`
+  };
+}
+
+/**
+ * 根据阶段完成标记解析转移目标
+ */
+function resolveTransition(phase, currentStep, mode) {
+  // init → propose
+  if (phase === 'init' && currentStep === 'INIT-DONE') {
+    return {
+      action: 'advance',
+      nextPhase: 'propose',
+      nextStep: 'PROPOSE-START',
+      reason: 'clarify 完成，自动推进 → propose'
+    };
+  }
+
+  // propose → apply
+  if (phase === 'propose') {
+    // standard/fast: PROPOSE-DONE 直接推进
+    if (currentStep === 'PROPOSE-DONE' && (mode === 'standard' || mode === 'fast')) {
+      return {
+        action: 'advance',
+        nextPhase: 'apply',
+        nextStep: 'APPLY-START',
+        reason: 'propose 完成（无 SR1），自动推进 → apply'
+      };
+    }
+    // full: SR1 通过后推进
+    if (currentStep === 'SR1-DONE' && mode === 'full') {
+      return {
+        action: 'advance',
+        nextPhase: 'apply',
+        nextStep: 'APPLY-START',
+        reason: 'SR1 通过，自动推进 → apply'
+      };
+    }
+  }
+
+  // apply → archive
+  if (phase === 'apply' && currentStep === 'SR3-DONE') {
+    return {
+      action: 'advance',
+      nextPhase: 'archive',
+      nextStep: 'ARC-START',
+      reason: 'SR3 通过，自动推进 → archive'
+    };
+  }
+
+  // archive → done
+  if (phase === 'archive') {
+    // fast: 归档完成直接结束
+    if (mode === 'fast' && (currentStep === 'ARC-DONE' || currentStep === 'SR4-DONE')) {
+      return {
+        action: 'end',
+        reason: 'fast 模式归档完成，流程结束'
+      };
+    }
+    // standard/full: SR4 通过后结束
+    if (currentStep === 'SR4-DONE') {
+      return {
+        action: 'end',
+        reason: 'SR4 通过，流程结束'
+      };
+    }
+  }
+
+  return null;
+}

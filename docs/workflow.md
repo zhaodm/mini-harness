@@ -207,6 +207,20 @@ init ──────> propose ──────> apply ──────> a
 | workflows/apply-batch-test.js | apply 每个 Batch 审计 | Batch 内多 Task TE 并行 |
 | workflows/apply-final-audit.js | apply SR2 后最终审计 | TE 全量审计 |
 
+**决策逻辑库（CR-005 脚本化层）：**
+
+| 脚本 | 替代的 NL 约束 | 功能 |
+|------|--------------|------|
+| workflows/lib/detect-scenario.js | mh-clarify 前置检查 | RESUME/CHANGE/NEW 场景检测 |
+| workflows/lib/calculate-batches.js | mh-apply 批次计算 | 拓扑排序 + 贪心合并 |
+| workflows/lib/decide-repair.js | mh-apply-repair 收敛追踪 | 发散/抖动/停滞/耗尽检测 → retry/escalate |
+| workflows/lib/detect-archive-mode.js | mh-archive 模式检测 | 首次/变更归档 + baseline 版本管理 |
+| workflows/lib/recommend-type-mode.js | mh-clarify Step 3-4 | tech_stack → output_type + mode 推荐 |
+| workflows/lib/archive-merge.js | mh-archive merge 策略 | REQ-ID 标签定位 + 追加/替换/废弃 |
+| workflows/lib/retro-collect.js | mh-retro Phase 1 | 多数据源聚合 → 结构化指标+问题列表 |
+| workflows/lib/retro-synthesize.js | mh-retro Phase 2 | 系统性问题 → 约束层推荐(脚本>模板>Skill>NL) |
+| workflows/lib/auto-advance.js | mh-run 状态机 | phase/step/mode → advance/pause/end |
+
 > Skills 文件是 Agent 的唯一执行依据。本文档仅作为人类阅读的流程参考。
 
 ---

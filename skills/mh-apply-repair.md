@@ -22,6 +22,16 @@ PM 在派发修复前，必须基于 TE 报告进行根因分析：
 
 ## 收敛追踪与提前升级
 
+**调用 `workflows/lib/decide-repair.js` 的 `decideRepair()` 函数判断下一步动作：**
+- 输入: `{ repairRound, repairHistory: [{round, errorType, failedCount}], maxRounds: 5 }`
+- 输出: `{ action: 'retry'|'escalate', reason, escalationType? }`
+
+脚本内置的升级条件（PM 无需自行判断）：
+- 连续 2 轮 failed_count 增加（发散）→ 立即升级人工
+- 连续 2 轮 error_type 变化（修一个坏一个）→ 立即升级人工
+- 连续 3 轮同一错误且无进展（停滞）→ 升级人工
+- 第 5 轮仍未通过（耗尽）→ 升级人工
+
 更新 `.state.md` 中 repair_history（每轮追加）：
 ```yaml
 repair_history:
@@ -39,10 +49,9 @@ repair_history:
     action_taken: "补充响应体映射，确保包含 user_id"
 ```
 
-**提前升级条件**（不等到第 5 轮）：
-- 连续 2 轮 failed_count 增加（发散）→ 立即升级人工
-- 连续 2 轮 error_type 变化（修一个坏一个）→ 立即升级人工
-- 第 3 轮仍为同一错误且无进展 → 升级人工
+**提前升级条件**已编码至 `decide-repair.js`，PM 根据返回的 `action` 字段执行：
+- `action='retry'` → 继续修复派发
+- `action='escalate'` → 立即暂停，呈现 `reason` 给用户
 
 ---
 
