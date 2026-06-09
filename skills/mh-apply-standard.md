@@ -38,7 +38,12 @@
 ## Step 2: SR2 功能评审（人工审批）
 
 1. 机器可检查清单预检（design.md `## 7.` 节，grep 自动验证）
-2. PM 核对 SR2 标准: 所有 Task 通过审计 / 代码质量达标 / 无 TODO / 需求覆盖无遗漏
+2. PM 核对 SR2 标准:
+   - 所有 Task 通过 TE 审计（无 Critical/Major 缺陷）
+   - 代码质量达标（dev-test=PASS, post-verify=PASS）
+   - 无 TODO/FIXME 残留（`scripts/verify.sh` D 类检查通过）
+   - 内容质量达标（`scripts/verify-qa.sh` 通过）
+   - 需求覆盖无明显遗漏
 3. 向用户呈现完成概况+风险评估+PM 建议，等待确认
 4. 通过 → SR2-record.md；驳回 → 回退指定 Task
 

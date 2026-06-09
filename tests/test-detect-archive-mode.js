@@ -100,6 +100,28 @@ const nover = detectArchiveMode({
 });
 assert('无 .vN. 格式 → nextBaselineVersion=1', nover.nextBaselineVersion === 1);
 
+// --- 7. extraArchive: ppt 类型额外归档 ---
+console.log('\n--- 7. extraArchive 规则 ---');
+
+const ppt = detectArchiveMode({
+  outputSpecFiles: [],
+  baselineFiles: [],
+  reqId: 'REQ008',
+  mode: 'standard',
+  outputType: 'ppt'
+});
+assert('ppt 有 extraArchive 规则', ppt.extraArchive.length === 1);
+assert('ppt extra 含 wireframes', ppt.extraArchive[0].source.includes('wireframes'));
+
+const webApp = detectArchiveMode({
+  outputSpecFiles: [],
+  baselineFiles: [],
+  reqId: 'REQ009',
+  mode: 'standard',
+  outputType: 'web-app'
+});
+assert('web-app 无 extraArchive', webApp.extraArchive.length === 0);
+
 // === 结果 ===
 console.log('\n========================');
 console.log(`总计: ${pass + fail} | \x1b[32m通过: ${pass}\x1b[0m | \x1b[31m失败: ${fail}\x1b[0m`);

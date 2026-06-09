@@ -23,6 +23,7 @@
  * @property {string} [nextPhase] - advance 时的目标阶段
  * @property {string} [nextStep] - advance 时的目标步骤
  * @property {string} reason - 决策理由
+ * @property {Object} [stateResets] - advance 时需要重置的 .state.md 字段
  */
 
 // 需要人工暂停的步骤（所有模式通用）
@@ -33,7 +34,8 @@ const PAUSE_STEPS = new Set([
   'SR4-PENDING',
   'BATCH-CONFIRM',
   'PROPOSAL-CONFIRM',
-  'MODE-SELECT'
+  'MODE-SELECT',
+  'WIREFRAME-CONFIRM'
 ]);
 
 /**
@@ -141,7 +143,8 @@ function resolveTransition(phase, currentStep, mode) {
       action: 'advance',
       nextPhase: 'archive',
       nextStep: 'ARC-START',
-      reason: 'SR3 通过，自动推进 → archive'
+      reason: 'SR3 通过，自动推进 → archive',
+      stateResets: { repair_round: 0, repair_task: '' }
     };
   }
 

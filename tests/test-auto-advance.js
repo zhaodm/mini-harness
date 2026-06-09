@@ -209,6 +209,26 @@ const batchConfirm = autoAdvance({
 });
 assert('Batch 确认 → pause', batchConfirm.action === 'pause');
 
+// --- 15. Wireframe 审批 → pause ---
+console.log('\n--- 15. Wireframe 审批 ---');
+
+const wireframe = autoAdvance({
+  phase: 'apply',
+  currentStep: 'WIREFRAME-CONFIRM',
+  mode: 'standard',
+  srStatus: { SR1: 'skipped', SR2: 'pending', SR3: 'pending', SR4: 'pending' },
+  repairRound: 0,
+  autoAdvance: true
+});
+assert('Wireframe 确认 → pause', wireframe.action === 'pause');
+
+// --- 16. SR3-DONE 返回 stateResets ---
+console.log('\n--- 16. stateResets ---');
+
+assert('SR3-DONE 返回 stateResets', sr3Done.stateResets !== undefined);
+assert('stateResets 含 repair_round=0', sr3Done.stateResets.repair_round === 0);
+assert('stateResets 含 repair_task=""', sr3Done.stateResets.repair_task === '');
+
 // === 结果 ===
 console.log('\n========================');
 console.log(`总计: ${pass + fail} | \x1b[32m通过: ${pass}\x1b[0m | \x1b[31m失败: ${fail}\x1b[0m`);

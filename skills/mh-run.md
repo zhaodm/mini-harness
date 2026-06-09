@@ -27,7 +27,14 @@
 - SR1/SR2/SR3/SR4 审批
 - Batch 人工确认
 - Proposal 确认 / 模式选择
+- Wireframe 审批（ppt 模式）
 - 修复循环发散或耗尽（由 `decideRepair()` 触发）
+
+## 状态重置
+
+`autoAdvance()` 返回 `stateResets` 字段时，PM 必须同步更新 `.state.md`：
+- SR3-DONE → archive: 重置 `repair_round=0, repair_task=""`
+- Fast 模式 apply 完成 → archive: 同上
 
 ## Fast 模式特殊行为
 

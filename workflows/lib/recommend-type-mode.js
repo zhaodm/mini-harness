@@ -174,11 +174,96 @@ export function recommendTypeMode(input) {
     modeConfidence = 'medium';
   }
 
+  // test_strategy 推导
+  const testStrategy = deriveTestStrategy(recommendedType, browserAvailable);
+
   return {
     recommendedType,
     typeConfidence,
     recommendedMode,
     modeConfidence,
+    testStrategy,
     reasoning
   };
+}
+
+// test_strategy 映射表
+const TEST_STRATEGY_MAP = {
+  'web-app': 'e2e',       // 降级: browser 不可用时 → integration
+  'backend-api': 'integration',
+  'cli-tool': 'integration',
+  'data-pipeline': 'smoke',
+  'infrastructure': 'smoke',
+  'documentation': 'manual',
+  'ppt': 'manual',
+  'library': 'unit',
+  'custom': 'manual'
+};
+
+/**
+ * 根据 output_type 和浏览器可用性推导 test_strategy
+ *
+ * @param {string} outputType
+ * @param {boolean} browserAvailable
+ * @returns {string} test_strategy
+ */
+function deriveTestStrategy(outputType, browserAvailable) {
+  const base = TEST_STRATEGY_MAP[outputType] || 'manual';
+  // web-app 特殊处理: 浏览器不可用时降级为 integration
+  if (outputType === 'web-app' && !browserAvailable) {
+    return 'integration';
+  }
+  return base;
+}
+
+// 技术栈检测映射（供调用方使用）
+const TECH_DETECT_MAP = {
+  language: {
+    'pyproject.toml': 'python', 'setup.py': 'python', 'requirements.txt': 'python',
+    'package.json': 'javascript', 'tsconfig.json': 'typescript',
+    'go.mod': 'go',
+    'Cargo.toml': 'rust',
+    'pom.xml': 'java', 'build.gradle': 'java', 'build.gradle.kts': 'kotlin',
+    'mix.exs': 'elixir', 'Gemfile': 'ruby'
+  },
+  packageManager: {
+    'poetry.lock': 'poetry', 'uv.lock': 'uv', 'Pipfile.lock': 'pipenv',
+    'package-lock.json': 'npm', 'yarn.lock': 'yarn', 'pnpm-lock.yaml': 'pnpm', 'bun.lockb': 'bun',
+    'go.sum': 'go modules', 'Cargo.lock': 'cargo'
+  },
+  lintTool: {
+    '.eslintrc': 'eslint', '.eslintrc.js': 'eslint', '.eslintrc.json': 'eslint', 'eslint.config.js': 'eslint',
+    'ruff.toml': 'ruff', '.flake8': 'flake8', 'pyproject.toml[tool.ruff]': 'ruff',
+    '.golangci.yml': 'golangci-lint', 'clippy.toml': 'clippy'
+  }
+};
+
+/**
+ * 根据项目文件列表检测技术栈
+ *
+ * @param {string[]} projectFiles - 项目根目录文件名列表
+ * @returns {{language: string, packageManager: string, lintTool: string}}
+ */
+export function detectTechStack(projectFiles) {
+  const result = { language: 'unknown', packageManager: '', lintTool: '' };
+
+  for (const file of projectFiles) {
+    if (!result.language || result.language === 'unknown') {
+      if (TECH_DETECT_MAP.language[file]) {
+        result.language = TECH_DETECT_MAP.language[file];
+      }
+    }
+    if (!result.packageManager) {
+      if (TECH_DETECT_MAP.packageManager[file]) {
+        result.packageManager = TECH_DETECT_MAP.packageManager[file];
+      }
+    }
+    if (!result.lintTool) {
+      if (TECH_DETECT_MAP.lintTool[file]) {
+        result.lintTool = TECH_DETECT_MAP.lintTool[file];
+      }
+    }
+  }
+
+  return result;
 }

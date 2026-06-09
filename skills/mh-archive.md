@@ -13,7 +13,8 @@
 ## 归档模式检测
 
 **调用 `detectArchiveMode()`**（`workflows/lib/detect-archive-mode.js`）：
-- 输出: `{ archiveMode, existingFiles, nextBaselineVersion, skipSpec? }`
+- 输入含 `outputType`，返回 `extraArchive` 规则（如 ppt → 额外归档 ux/wireframes/）
+- 输出: `{ archiveMode, existingFiles, nextBaselineVersion, skipSpec?, extraArchive }`
 
 ---
 

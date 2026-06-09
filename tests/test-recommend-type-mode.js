@@ -2,7 +2,7 @@
 // 用法: node tests/test-recommend-type-mode.js
 // 退出码: 0=全部通过, 1=有失败
 
-import { recommendTypeMode } from '../workflows/lib/recommend-type-mode.js';
+import { recommendTypeMode, detectTechStack } from '../workflows/lib/recommend-type-mode.js';
 
 let pass = 0;
 let fail = 0;
@@ -178,6 +178,32 @@ const dbt = recommendTypeMode({
   userHints: []
 });
 assert('dbt → data-pipeline', dbt.recommendedType === 'data-pipeline');
+
+// --- 13. testStrategy: web-app + browser → e2e ---
+console.log('\n--- 13. testStrategy 推导 ---');
+
+assert('web-app + browser → e2e', react.testStrategy === 'e2e');
+assert('web-app 无 browser → integration', small.testStrategy === 'integration');
+assert('backend-api → integration', express.testStrategy === 'integration');
+assert('infrastructure → smoke', terraform.testStrategy === 'smoke');
+assert('data-pipeline → smoke', dbt.testStrategy === 'smoke');
+assert('documentation → manual', docs.testStrategy === 'manual');
+
+// --- 14. detectTechStack ---
+console.log('\n--- 14. detectTechStack ---');
+
+const ts1 = detectTechStack(['package.json', 'package-lock.json', '.eslintrc.json', 'tsconfig.json']);
+assert('package.json → javascript', ts1.language === 'javascript');
+assert('package-lock.json → npm', ts1.packageManager === 'npm');
+assert('.eslintrc.json → eslint', ts1.lintTool === 'eslint');
+
+const ts2 = detectTechStack(['pyproject.toml', 'poetry.lock', 'ruff.toml']);
+assert('pyproject.toml → python', ts2.language === 'python');
+assert('poetry.lock → poetry', ts2.packageManager === 'poetry');
+assert('ruff.toml → ruff', ts2.lintTool === 'ruff');
+
+const ts3 = detectTechStack(['README.md']);
+assert('无配置文件 → unknown', ts3.language === 'unknown');
 
 // === 结果 ===
 console.log('\n========================');

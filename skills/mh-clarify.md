@@ -22,7 +22,12 @@
 
 ## 环境预检
 
-扫描根目录配置文件，自动推断 tech_stack 写入 `.state.md`。检测不完整时向用户确认。
+**调用 `detectTechStack()`**（`workflows/lib/recommend-type-mode.js`）自动推断，或手动扫描配置文件：
+- 语言: pyproject.toml→Python, package.json→JS/TS, go.mod→Go, Cargo.toml→Rust, pom.xml→Java
+- 包管理器: poetry.lock→poetry, package-lock.json→npm, yarn.lock→yarn, pnpm-lock.yaml→pnpm
+- 浏览器检测（仅 UI 类型）: Playwright/Selenium/Cypress 可用性
+
+检测不完整时向用户确认。结果写入 `.state.md` tech_stack 和 env 字段。
 
 ## Step 1: 初始化任务目录
 
@@ -40,6 +45,8 @@
 
 **调用 `recommendTypeMode()`**（`workflows/lib/recommend-type-mode.js`），向用户呈现推荐结果并请求确认。
 
+函数同时返回 `testStrategy`（含 browser_available 条件降级: web-app 无浏览器 → integration）。
+
 用户确认后写入 output_type + test_strategy 到 `.state.md`。
 
 ## Step 4: 模式选择
@@ -52,7 +59,7 @@
 
 1. 写入 `deliverables/{REQ-ID}/proposal.md`
 2. 向用户呈现，请求确认
-3. 确认 → 更新 `.state.md`: phase=init, current_step=INIT-DONE
+3. 确认 → 更新 `.state.md`: phase=init, current_step=INIT-DONE；更新 `deliverables/.state.md`: req_id={REQ-ID}（全局指针）
 4. 驳回 → 修改后重新呈现，循环直到确认
 
 ### Proposal 格式

@@ -58,7 +58,8 @@ export function detectArchiveMode(input) {
   const result = {
     archiveMode,
     existingFiles: hasExistingSpec ? [...outputSpecFiles] : [],
-    nextBaselineVersion: maxVersion + 1
+    nextBaselineVersion: maxVersion + 1,
+    extraArchive: getExtraArchiveRules(input.outputType)
   };
 
   // fast 模式标记
@@ -67,4 +68,27 @@ export function detectArchiveMode(input) {
   }
 
   return result;
+}
+
+// output_type → 额外归档规则
+const EXTRA_ARCHIVE_RULES = {
+  ppt: [{ source: 'ux/wireframes/', target: 'output/wireframes/', description: 'UX wireframe 归档' }],
+  custom: [{ source: 'plan-action.md 指定', target: '由计划定义', description: '自定义归档路径' }]
+};
+
+// 归档排除规则
+export const ARCHIVE_EXCLUDES = [
+  '.venv/', 'node_modules/', '__pycache__/', '.pytest_cache/', '.ruff_cache/',
+  '.git/', '.DS_Store', '*.pyc', '*.pyo', '.env'
+];
+
+/**
+ * 获取 output_type 对应的额外归档规则
+ *
+ * @param {string} [outputType] - 产出类型
+ * @returns {{source: string, target: string, description: string}[]}
+ */
+function getExtraArchiveRules(outputType) {
+  if (!outputType) return [];
+  return EXTRA_ARCHIVE_RULES[outputType] || [];
 }
