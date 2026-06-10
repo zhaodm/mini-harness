@@ -53,7 +53,6 @@
 
 `recommendTypeMode()` 同时返回 `recommendedMode`，向用户呈现 fast/standard/full 三选一。用户选择后写入 mode。
 
-> 💡 full 模式可声明"跳过所有人工审核点"，框架自动通过 SR1-SR4。
 
 ## Step 5: Proposal 定稿
 

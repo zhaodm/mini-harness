@@ -21,9 +21,9 @@
 | 状态 schema | templates/state-template.md | docs/design.md §4.4 |
 | Handoff 协议与格式 | templates/handoff-template.md | docs/design.md §5.3 |
 | 日志格式 | templates/logging-standard.md | — |
-| 修复收敛机制 | skills/mh-apply.md "修复循环"节 | docs/design.md §6 |
-| repair_history schema | templates/state-template.md | skills/mh-apply.md 示例 |
-| repair_snapshots schema | templates/state-template.md | skills/mh-apply.md "修复派发"节 |
+| 修复收敛机制 | skills/mh-apply-repair.md "决策"节 | docs/design.md §6 |
+| repair_history schema | templates/state-template.md | skills/mh-apply-repair.md 示例 |
+| repair_snapshots schema | templates/state-template.md | skills/mh-apply-repair.md "修复派发"节 |
 | 硬校验规则 | scripts/*.sh | docs/design.md §7.4 |
 | output_type 体系 | CLAUDE.md §7 | docs/design.md §10 |
 | PPT 补充规则 | skills/mh-ppt.md | docs/design.md §11 |

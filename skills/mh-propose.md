@@ -69,7 +69,6 @@
    - to: TE
    - 白名单: `deliverables/{REQ-ID}/proposal.md`
    - 期望输出: `deliverables/{REQ-ID}/te/testcases.md`
-   - 额外期望输出: `te/audit-dimensions.md`（SR2/SR3 审计维度清单）
 
 5. **更新 state 并调用 Workflow**：
    - 更新 `.state.md`: current_step=REQ-2+REQ-3, current_role=SA,TE
@@ -137,7 +136,6 @@
    - to: TE
    - 白名单: `deliverables/{REQ-ID}/ba/requirement-spec.md`
    - 期望输出: `deliverables/{REQ-ID}/te/testcases.md`
-   - 额外期望输出: `te/audit-dimensions.md`
 
 5. **更新 state 并调用 Workflow**：
    - 更新 `.state.md`: current_step=REQ-2+REQ-3, current_role=SA,TE

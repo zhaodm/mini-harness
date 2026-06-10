@@ -23,6 +23,27 @@
 ## 输出
 
 - deliverables/{REQ-ID}/sa/design.md
+- deliverables/{REQ-ID}/sa/verify-strategy.md（standard/full 模式额外产出）
+
+### verify-strategy.md 格式
+
+当 test_strategy 为 e2e 或 integration 时，SA 需额外产出验证策略文件，供 apply 阶段集成预检使用：
+
+```markdown
+# 验证策略
+
+## 集成预检项
+| 检查项 | 命令/方式 | 通过标准 | 失败时动作 |
+|--------|-----------|----------|-----------|
+
+## 环境依赖
+- {运行测试所需的外部依赖，如数据库、浏览器、API mock}
+
+## 降级方案
+- E2E 不可用时降级为: {integration / smoke / manual}
+```
+
+触发条件：test_strategy ∈ {e2e, integration}。test_strategy 为 smoke / manual / none 时无需产出。
 
 ## 阻塞条件
 

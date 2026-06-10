@@ -50,6 +50,9 @@ tech_stack:
 # === 验证策略 ===
 test_strategy: ""              # e2e | unit | integration | smoke | manual | none
 
+# === PPT 专用 ===
+ppt_design_mode: ""            # system | creative（仅 output_type=ppt 时使用）
+
 # === 环境信息 ===
 env:
   browser_available: false     # 浏览器 E2E 测试环境是否可用

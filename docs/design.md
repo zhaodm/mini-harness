@@ -359,8 +359,11 @@ output/lessons-learned.md           ← 全量累积（跨 REQ 持久化）
 | 脚本 | 用途 | 调用时机 |
 |------|------|---------|
 | scripts/verify.sh | 结构校验（A/B/C/D/E 类） | TE 审计、SR 审批前 |
-| scripts/verify-qa.sh | 内容质量校验（QA-1~7） | SR2 审批前 |
+| scripts/verify-qa.sh | 内容质量校验（QA-1~13） | SR2 审批前 |
 | scripts/verify-ppt.sh | PPT 专项校验 | PPT 类 TE 审计 |
+| scripts/verify-archive.sh | 归档完整性校验 | SR4 归档审批前 |
+| scripts/verify-code-review.sh | Code Review 格式与维度校验（CR-1~5） | TE Code Review 后 |
+| scripts/role-guard.sh | 角色文件写入权限拦截（PreToolUse Hook） | 每次文件写入时 |
 | scripts/baseline.sh | 基线对比 | 检测非流程修改 |
 | scripts/check-harness.sh | 框架自检 | 框架维护时 |
 
