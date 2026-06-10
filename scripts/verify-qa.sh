@@ -300,50 +300,8 @@ check_repair_reports() {
 }
 
 # ─────────────────────────────────────────────
-# QA-10: TE 审计须覆盖 audit-dimensions.md 维度
+# QA-10: (已废弃 — audit-dimensions.md 由 CR-007 废弃，覆盖度由 deriveReviewScope + testcases.md 保障)
 # ─────────────────────────────────────────────
-check_audit_coverage() {
-    echo "--- QA-10: 审计维度覆盖度 ---"
-
-    local dims="$REQ_DIR/te/audit-dimensions.md"
-    if [ ! -f "$dims" ]; then
-        echo "INFO: te/audit-dimensions.md 不存在，跳过覆盖度检查"
-        echo ""
-        return
-    fi
-
-    # 统计维度行数（表格行，排除表头和分隔符）
-    local dim_count
-    dim_count=$(grep -c "^|[^-]" "$dims" 2>/dev/null || echo "0")
-    dim_count=$((dim_count > 1 ? dim_count - 1 : 0))  # 去掉表头
-
-    if [ "$dim_count" -eq 0 ]; then
-        echo "INFO: audit-dimensions.md 中未检测到维度条目"
-        echo ""
-        return
-    fi
-
-    # 检查最终测试报告是否覆盖了这些维度
-    local report=""
-    for r in "$REQ_DIR"/te/final-test-report.md "$REQ_DIR"/te/*test-report*.md; do
-        [ -f "$r" ] && report="$r" && break
-    done
-
-    if [ -z "$report" ]; then
-        echo "WARN: 有 audit-dimensions.md（$dim_count 个维度）但无测试报告"
-        WARNS=$((WARNS + 1))
-    else
-        local covered
-        covered=$(grep -c "✅\|❌\|PASS\|FAIL\|通过\|不通过" "$report" 2>/dev/null || echo "0")
-        if [ "$covered" -lt "$dim_count" ]; then
-            echo "WARN: audit-dimensions 有 $dim_count 个维度，报告覆盖标记仅 $covered 项"
-            WARNS=$((WARNS + 1))
-        else
-            echo "PASS: 审计覆盖度充分（$covered/$dim_count）"
-        fi
-    fi
-    echo ""
-}
 
 # ─────────────────────────────────────────────
 # QA-11: Handoff 行数检查（防止上下文膨胀）
@@ -483,7 +441,6 @@ check_ppt_inline_styles
 check_lessons_after_rejection
 check_handoff_feedback
 check_repair_reports
-check_audit_coverage
 check_handoff_linecount
 check_regression_coverage
 check_testcase_sedimentation

@@ -75,7 +75,7 @@ v0.8.0 架构审查报告指出 12 项问题。经逐项核实，其中 2 项不
 | templates/state-template.md | 新增 1 字段定义 | 无 |
 | agents/sa.md | 新增产出格式段落 | 低 |
 | skills/mh-propose.md | 移除 audit-dimensions.md 引用 | 低——需确认无其他依赖 |
-| docs/designs/design.md | §9 新增 3 行 | 无 |
+| docs/design.md | §9 新增 3 行 | 无 |
 
 ---
 
@@ -104,7 +104,7 @@ v0.8.0 架构审查报告指出 12 项问题。经逐项核实，其中 2 项不
 - [ ] `grep "ppt_design_mode" templates/state-template.md` 返回非空
 - [ ] `grep "verify-strategy" agents/sa.md` 返回非空
 - [ ] `grep "audit-dimensions" skills/mh-propose.md` 返回空
-- [ ] `grep "verify-archive.sh\|verify-code-review.sh\|role-guard.sh" docs/designs/design.md` 三个均命中
+- [ ] `grep "verify-archive.sh\|verify-code-review.sh\|role-guard.sh" docs/design.md` 三个均命中
 - [ ] `npm test` 退出码 0
 
 ---

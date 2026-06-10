@@ -146,6 +146,7 @@ PM 接收角色回报后，按以下顺序执行：
 - [ ] 每个 Task 有明确的验证方式
 - [ ] Task 数量与需求复杂度匹配（非 1 个 Task 包揽全部）
 - [ ] structure_skeleton 已定义时，产出的文件/章节结构须符合预定义（不符合则驳回）
+- [ ] test_strategy 为 e2e/integration 时，sa/verify-strategy.md 存在且格式合规
 
 ### DE 产出验收
 
