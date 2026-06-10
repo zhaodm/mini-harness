@@ -26,8 +26,10 @@ DE 一次性开发所有任务 → TE 轻量审计 → 人工确认（唯一审�
 2. 写入 handoff: `deliverables/{REQ-ID}/handoffs/{REQ-ID}-TEST1-R1.md`
    - to: TE
    - 白名单: `deliverables/{REQ-ID}/output/`, `deliverables/{REQ-ID}/proposal.md`, `deliverables/{REQ-ID}/.state.md`
+   - 如 `output/tests/regression-suite.md` 存在，白名单追加并标注 `regression_suite_exists: true`
+   - **调用 `deriveReviewScope('fast', outputType)`** → 注入 `review_scope`
    - 期望输出: `deliverables/{REQ-ID}/te/temp-test-report.md`
-   - 约束: fast 模式轻量验证——工程检查（lint+构建）+ 关键路径抽查（验证核心功能可用），不要求完整覆盖分析。根据 .state.md 中 test_strategy 执行对应验证；如 test_strategy=manual，生成人工检查清单（仅核心项）
+   - 约束: fast 模式轻量验证——工程检查（lint+构建）+ 关键路径抽查（验证核心功能可用），不要求完整覆盖分析。回归不降级（全量执行）。Code Review 按 review_scope.dimensions 执行（仅 security + error-handling）。根据 .state.md 中 test_strategy 执行对应验证；如 test_strategy=manual，生成人工检查清单（仅核心项）
 3. 派发任务给 TE
 4. 接收回报，执行质量门禁（agents/pm.md "TE 产出验收"清单）:
    - PASS → 继续 Step 3

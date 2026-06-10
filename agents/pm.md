@@ -160,6 +160,9 @@ PM 接收角色回报后，按以下顺序执行：
 - [ ] PASS 时无未解决的失败项
 - [ ] FAIL 时每个失败项有：复现步骤 + 期望vs实际 + 严重程度
 - [ ] 降级验证时标注了原因和未覆盖的风险
+- [ ] **`scripts/verify-code-review.sh` 通过**（Code Review 格式合规）
+- [ ] **`scripts/verify-qa.sh` QA-12 通过**（回归套件存在时报告含回归结果）
+- [ ] **`scripts/verify-qa.sh` QA-13 通过**（归档阶段用例沉淀完整性）
 
 ### UX 产出验收
 

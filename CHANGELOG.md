@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.8.0] - 2026-06-10
+
+CR-006: TE Code Review 强化 + 测试用例沉淀机制 — 脚本化优先，复用已有模块。
+
+### 核心新增
+
+- **workflows/lib/code-review-rules.js**: Code Review 规则引擎（7 维度定义 + getReviewScope 路由 + validateReviewReport 格式校验 + determineVerdict 判定）
+- **workflows/lib/regression-suite.js**: 回归套件管理引擎（parseTestcases 解析 + aggregateToSuite 追加/去重 + validateSuiteIntegrity + getSuiteStats），复用 archive-merge.js 标签策略
+- **scripts/verify-code-review.sh**: Code Review 报告格式硬校验（CR-1~5 检查项，替代 PM 自然语言判断）
+- **templates/regression-suite-template.md**: 回归套件空模板（按 REQ 分组 + 优先级索引）
+
+### 扩展
+
+- **workflows/lib/recommend-type-mode.js**: +`deriveReviewScope(mode, outputType)` — Code Review 范围路由，复用已有 output_type 分发逻辑
+- **workflows/lib/result-parser.js**: +`extractReviewVerdict()` + `extractRegressionVerdict()` — 从 TE 输出提取 Code Review 和回归判定
+- **scripts/verify-qa.sh**: +QA-12 回归套件覆盖校验 + QA-13 归档用例沉淀完整性校验
+
+### 文档更新
+
+- **agents/te.md**: +Code Review 职责章节（引用脚本而非 NL 规则）+ 回归测试执行章节 + PASS/FAIL 条件更新 + 3 条新反模式
+- **agents/pm.md**: TE 质量门禁 +3 项脚本校验引用（verify-code-review.sh / QA-12 / QA-13）
+- **skills/mh-apply-standard.md**: 最终审计 handoff 注入 review_scope + regression_suite_exists
+- **skills/mh-apply-fast.md**: 轻量审计注入 review_scope + 回归不降级
+- **skills/mh-archive.md**: +ARC-5 测试用例沉淀步骤（调用 regression-suite.js aggregateToSuite）
+- **CLAUDE.md §4**: 交付判定升级为五层校验 + 6 条脚本硬约束规则
+
+### 测试
+
+- **tests/test-code-review-rules.js**: 43 assertions — 维度结构、路由正确性、格式校验、判定逻辑
+- **tests/test-regression-suite.js**: 45 assertions — 解析、首次创建、追加、去重、完整性校验、统计
+- **tests/test-verify-code-review.sh**: 10 scenarios — 类型跳过、合规通过、各检查项失败
+- **tests/run-all-tests.sh**: 注册 3 个新测试套件，全量 15 套件 298 assertions 通过
+
+### 设计决策
+
+- Code Review 维度从 NL 描述变为 JS 结构化数据，TE 和校验脚本共享同一数据源
+- 回归套件管理复用已有 archive-merge.js 的 REQ-ID 标签 append/replace 策略
+- PM 质量门禁从"人工逐项对照"变为"引用脚本退出码"
+- fast 模式下 Code Review 降级为抽查，但回归不降级（兼容性底线）
+- deriveReviewScope 放在已有 recommend-type-mode.js 中扩展，避免重复路由逻辑
+
+---
+
 ## [0.7.0] - 2026-06-08
 
 CR-003: 基于 REQ002 实战复盘的框架改进 — 脚本硬约束替代自然语言软约束。

@@ -11,8 +11,9 @@
 3. 根据 test_strategy 执行对应测试类型
 4. 执行回归测试（确保已有功能未被破坏）
 5. 执行工程验证（代码规范、构建、lint）— 使用 tech_stack 中的工具
-6. 生成测试报告
-7. 设计测试用例（propose 阶段）
+6. **执行 Code Review**（根据 handoff 中 review_scope 字段）
+7. 生成测试报告
+8. 设计测试用例（propose 阶段）
 
 ## 输入
 
@@ -66,6 +67,8 @@
 - 需求覆盖无遗漏（每条 GWT/验收条件都有对应验证）
 - 无已知未修复的 Critical/Major 缺陷
 - 工程验证通过（lint + 构建）
+- Code Review 无 Critical 发现（或已标注 SKIPPED）
+- 回归套件全部通过（如 regression-suite.md 存在）
 
 ### FAIL 条件（任一即 FAIL）
 
@@ -73,6 +76,8 @@
 - 存在 Critical 或 Major 缺陷
 - 需求覆盖有遗漏（某条需求完全未验证）
 - 构建失败
+- Code Review 存在 Critical 发现
+- 回归用例失败
 
 ### 严重程度定义
 
@@ -92,6 +97,9 @@
 - ❌ 发现问题但描述模糊（"有个bug"）→ 必须提供：复现步骤 + 期望 + 实际 + 严重程度
 - ❌ 降级验证时不标注原因和风险 → 必须说明降级原因和未覆盖的风险
 - ❌ 因为是修复轮次就只测修复点 → 修复轮次必须全量回归
+- ❌ 只跑测试不做 Code Review → 必须按 review_scope 执行评审
+- ❌ 跳过回归套件 → 如 regression-suite.md 存在必须执行全量回归
+- ❌ Code Review 自行判断范围 → 必须依据 handoff 中 review_scope 字段
 
 ---
 
@@ -131,6 +139,97 @@
 - 仅执行工程验证（lint + 构建）
 - 报告中标注 `[MINIMAL VERIFICATION - 仅工程检查]`
 - 列出未验证的功能风险
+
+---
+
+## Code Review 职责
+
+TE 在审计时同步执行 Code Review。评审范围由 handoff 中 `review_scope` 字段指定
+（PM 调用 `deriveReviewScope()` 自动生成，TE 不自行判断范围）。
+
+### 执行规则
+
+- `review_scope.skip = true` → 标注 `Code Review 判定: SKIPPED — {reason}`，不执行
+- `review_scope.dimensions` 列出本次需检查的维度 ID，逐项评审
+- 发现问题按 Critical / Major / Minor 分级（阈值定义见 `workflows/lib/code-review-rules.js`）
+- Critical > 0 → Code Review 判定: FAIL（触发整体 FAIL）
+
+### 维度 ID 参考（详细定义见 code-review-rules.js）
+
+| ID | 维度 | Critical 阈值 |
+|----|------|--------------|
+| naming | 命名规范 | 核心 API 命名误导性 |
+| error-handling | 错误处理 | 未处理的致命异常路径 |
+| security | 安全模式 | SQL注入/XSS/认证绕过 |
+| complexity | 代码复杂度 | 单函数>100行且无拆分理由 |
+| dry | DRY 原则 | 3处以上相同逻辑未抽取 |
+| api-consistency | API 一致性 | 同项目内风格严重不一致 |
+| dependencies | 依赖合理性 | 引入已知 CVE 漏洞依赖 |
+
+### 输出格式（硬约束，由 `scripts/verify-code-review.sh` 校验）
+
+报告中必须包含 `## Code Review` 章节：
+
+```markdown
+## Code Review
+
+### 评审范围
+- 文件数: {N}
+- 新增/修改行数: +{N} / ~{N}
+
+### 发现
+
+| # | 维度 | 严重程度 | 文件:行号 | 描述 | 建议 |
+|---|------|---------|----------|------|------|
+
+### 结论
+- Critical: {N} 项
+- Major: {N} 项
+- Minor: {N} 项
+- Code Review 判定: {PASS | FAIL | SKIPPED}
+```
+
+> 格式不合规时 `verify-code-review.sh` 返回 exit 1，PM 驳回。
+
+---
+
+## 回归测试执行
+
+### 触发条件
+
+- `output/tests/regression-suite.md` 存在 → 必须执行全量回归
+- 不存在 → 标注 `[NO REGRESSION SUITE - 首次开发]`，仅验证当前 testcases
+
+### 执行规则
+
+- 读取回归套件全部用例
+- 按 test_strategy 执行可自动化用例（Manual 类型生成检查清单）
+- 回归用例失败 → 整体 FAIL（不降级，不跳过）
+- fast 模式下回归不降级（仍执行全量）
+
+### 输出格式（硬约束，由 `scripts/verify-qa.sh` QA-12 校验）
+
+报告中必须包含 `## 回归测试` 章节：
+
+```markdown
+## 回归测试
+
+### 概要
+- 套件版本: {last_updated}
+- 总用例数: {N}
+- 本次执行: {N}
+
+### 结果
+| 用例ID | 标题 | 来源 | 结果 | 备注 |
+|--------|------|------|------|------|
+
+### 回归结论
+- 通过: {N}/{N}
+- 失败: {N} 项
+- 回归判定: {PASS | FAIL}
+```
+
+> 回归套件存在但报告无回归章节时 QA-12 返回 exit 1。
 
 ---
 
@@ -197,6 +296,39 @@
 - 测试框架: {tech_stack.test_framework}
 - 运行平台: {OS}
 - 浏览器: {如适用}
+
+## Code Review
+
+### 评审范围
+- 文件数: {N}
+- 新增/修改行数: +{N} / ~{N}
+
+### 发现
+
+| # | 维度 | 严重程度 | 文件:行号 | 描述 | 建议 |
+|---|------|---------|----------|------|------|
+
+### 结论
+- Critical: {N} 项
+- Major: {N} 项
+- Minor: {N} 项
+- Code Review 判定: {PASS | FAIL | SKIPPED}
+
+## 回归测试
+
+### 概要
+- 套件版本: {last_updated}
+- 总用例数: {N}
+- 本次执行: {N}
+
+### 结果
+| 用例ID | 标题 | 来源 | 结果 | 备注 |
+|--------|------|------|------|------|
+
+### 回归结论
+- 通过: {N}/{N}
+- 失败: {N} 项
+- 回归判定: {PASS | FAIL}
 ```
 
 ---

@@ -51,3 +51,58 @@ export function isAuditPassed(teOutput) {
   // 兜底：无明确结论时，检查是否包含 FAIL 关键字
   return !teOutput.includes('FAIL');
 }
+
+/**
+ * 从 TE SubAgent 输出中提取 Code Review 判定
+ * CR-006: 供 PM 质量门禁和 Workflow 结果判定使用
+ *
+ * @param {string} rawOutput - SubAgent 原始输出
+ * @returns {{ reviewVerdict: 'PASS'|'FAIL'|'SKIPPED'|'MISSING', criticalCount: number, majorCount: number, minorCount: number }}
+ */
+export function extractReviewVerdict(rawOutput) {
+  const verdictMatch = rawOutput.match(/Code Review 判定:\s*(PASS|FAIL|SKIPPED)/i);
+  if (!verdictMatch) {
+    return { reviewVerdict: 'MISSING', criticalCount: 0, majorCount: 0, minorCount: 0 };
+  }
+
+  const reviewVerdict = verdictMatch[1].toUpperCase();
+
+  let criticalCount = 0, majorCount = 0, minorCount = 0;
+  const criticalMatch = rawOutput.match(/Critical:\s*(\d+)/i);
+  const majorMatch = rawOutput.match(/Major:\s*(\d+)/i);
+  const minorMatch = rawOutput.match(/Minor:\s*(\d+)/i);
+
+  if (criticalMatch) criticalCount = parseInt(criticalMatch[1], 10);
+  if (majorMatch) majorCount = parseInt(majorMatch[1], 10);
+  if (minorMatch) minorCount = parseInt(minorMatch[1], 10);
+
+  return { reviewVerdict, criticalCount, majorCount, minorCount };
+}
+
+/**
+ * 从 TE SubAgent 输出中提取回归测试判定
+ * CR-006: 供 PM 质量门禁和 Workflow 结果判定使用
+ *
+ * @param {string} rawOutput - SubAgent 原始输出
+ * @returns {{ regressionVerdict: 'PASS'|'FAIL'|'MISSING'|'NO_SUITE', totalCases: number, failedCases: number }}
+ */
+export function extractRegressionVerdict(rawOutput) {
+  // 检查是否标注无回归套件
+  if (/NO REGRESSION SUITE|无回归套件/i.test(rawOutput)) {
+    return { regressionVerdict: 'NO_SUITE', totalCases: 0, failedCases: 0 };
+  }
+
+  const verdictMatch = rawOutput.match(/回归判定:\s*(PASS|FAIL)/i);
+  if (!verdictMatch) {
+    return { regressionVerdict: 'MISSING', totalCases: 0, failedCases: 0 };
+  }
+
+  let totalCases = 0, failedCases = 0;
+  const totalMatch = rawOutput.match(/总用例数:\s*(\d+)/);
+  const failMatch = rawOutput.match(/失败:\s*(\d+)/);
+
+  if (totalMatch) totalCases = parseInt(totalMatch[1], 10);
+  if (failMatch) failedCases = parseInt(failMatch[1], 10);
+
+  return { regressionVerdict: verdictMatch[1].toUpperCase(), totalCases, failedCases };
+}

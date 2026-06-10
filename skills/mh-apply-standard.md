@@ -51,7 +51,13 @@
 
 ## Step 3: TE 最终审计
 
-1. 生成全量审计 handoff（E2E + 回归 + 工程验证）
+1. 生成全量审计 handoff（E2E + 回归 + Code Review + 工程验证）
+   - **调用 `deriveReviewScope(mode, outputType)`** 获取 review_scope
+   - 白名单追加: `output/tests/regression-suite.md`（如存在）
+   - handoff 中注入字段:
+     - `review_scope`: { skip, dimensions, depth }
+     - `regression_suite_exists`: true/false
+   - 期望输出: final-test-report.md（含 Code Review 章节 + 回归测试章节）
 2. 调用 Workflow `apply-final-audit`
 3. passed=true → SR3；passed=false → 修复循环
 

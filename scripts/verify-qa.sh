@@ -387,6 +387,91 @@ check_handoff_linecount() {
 }
 
 # ─────────────────────────────────────────────
+# QA-12: 回归套件覆盖校验（TE 报告必须含回归结果）
+# ─────────────────────────────────────────────
+check_regression_coverage() {
+    echo "--- QA-12: 回归套件覆盖校验 ---"
+
+    local suite="output/tests/regression-suite.md"
+    if [ ! -f "$suite" ]; then
+        echo "INFO: regression-suite.md 不存在（首次开发），跳过"
+        echo ""
+        return
+    fi
+
+    local phase
+    phase=$(grep "^phase:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+    # 仅在 apply/archive/done 阶段校验
+    if [[ "$phase" != "apply" && "$phase" != "archive" && "$phase" != "done" ]]; then
+        echo "INFO: phase=$phase, 回归校验在 apply+ 阶段执行"
+        echo ""
+        return
+    fi
+
+    local report=""
+    for r in "$REQ_DIR"/te/final-test-report.md "$REQ_DIR"/te/temp-test-report.md; do
+        [ -f "$r" ] && report="$r" && break
+    done
+
+    if [ -z "$report" ]; then
+        echo "WARN: regression-suite.md 存在但无 TE 测试报告"
+        WARNS=$((WARNS + 1))
+    elif ! grep -qi "回归\|regression" "$report" 2>/dev/null; then
+        echo "FAIL: regression-suite.md 存在但 TE 报告未包含回归测试结果"
+        ERRORS=$((ERRORS + 1))
+    else
+        # 进一步检查: 回归结论必须明确
+        if ! grep -qiE "回归判定:[[:space:]]*(PASS|FAIL)" "$report" 2>/dev/null; then
+            echo "WARN: 回归章节存在但缺少明确判定（回归判定: PASS/FAIL）"
+            WARNS=$((WARNS + 1))
+        else
+            echo "PASS: TE 报告包含回归测试结果及判定"
+        fi
+    fi
+    echo ""
+}
+
+# ─────────────────────────────────────────────
+# QA-13: 归档时测试用例沉淀完整性
+# ─────────────────────────────────────────────
+check_testcase_sedimentation() {
+    echo "--- QA-13: 测试用例沉淀完整性 ---"
+
+    local phase
+    phase=$(grep "^phase:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+    if [[ "$phase" != "archive" && "$phase" != "done" ]]; then
+        echo "INFO: phase=$phase, 沉淀校验在 archive/done 阶段执行"
+        echo ""
+        return
+    fi
+
+    local testcases="$REQ_DIR/te/testcases.md"
+    local suite="output/tests/regression-suite.md"
+
+    if [ ! -f "$testcases" ]; then
+        echo "INFO: 无 testcases.md（可能为 fast 模式或 manual 策略），跳过"
+        echo ""
+        return
+    fi
+
+    if [ ! -f "$suite" ]; then
+        echo "FAIL: testcases.md 存在但 regression-suite.md 未创建（归档沉淀未执行）"
+        ERRORS=$((ERRORS + 1))
+        echo ""
+        return
+    fi
+
+    # 检查当前 REQ 的用例是否已沉淀（REQ-ID 标签存在）
+    if ! grep -q "<!-- REQ-${req_id} START -->" "$suite" 2>/dev/null; then
+        echo "FAIL: regression-suite.md 中缺少 REQ-${req_id} 标签段（沉淀不完整）"
+        ERRORS=$((ERRORS + 1))
+    else
+        echo "PASS: REQ-${req_id} 用例已沉淀到回归套件"
+    fi
+    echo ""
+}
+
+# ─────────────────────────────────────────────
 # 执行所有检查
 # ─────────────────────────────────────────────
 check_ba_ambiguity
@@ -400,6 +485,8 @@ check_handoff_feedback
 check_repair_reports
 check_audit_coverage
 check_handoff_linecount
+check_regression_coverage
+check_testcase_sedimentation
 
 # ─────────────────────────────────────────────
 # 汇总

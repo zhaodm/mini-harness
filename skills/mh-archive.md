@@ -40,11 +40,26 @@
 
 ---
 
-## Step ARC-5: 执行指标
+## Step ARC-5: 测试用例沉淀
+
+**调用 `regression-suite.js` 的 `aggregateToSuite()`：**
+
+1. `[PM] 沉淀测试用例到回归套件`
+2. 读取 `deliverables/{REQ-ID}/te/testcases.md`
+   - 如不存在（fast 模式 / test_strategy=manual|none）→ 跳过，标注原因
+3. 调用 `parseTestcases(content, reqId)` 解析结构化用例
+4. 读取 `output/tests/regression-suite.md`（不存在则从 `templates/regression-suite-template.md` 初始化）
+5. 调用 `aggregateToSuite(existingContent, newCases, reqId)`
+6. 写入更新后的 `output/tests/regression-suite.md`
+7. `[PM] 回归套件已更新: +{added} 新增, {updated} 更新, 共 {total} 条`
+
+---
+
+## Step ARC-6: 执行指标
 
 从 .state.md 填写 `templates/metrics-template.md` → 保存为 `output/metrics.md`。
 
-## Step ARC-6: 经验沉淀（人机交互）
+## Step ARC-7: 经验沉淀（人机交互）
 
 1. 读取 `deliverables/{REQ-ID}/lessons.md`（自动采集的 CP-N 条目）
 2. 向用户呈现，询问补充经验

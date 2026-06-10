@@ -60,9 +60,15 @@
 - 任何文件写入后必须验证文件存在且非空
 - DE 编码后必须执行 dev-test skill（根据 tech_stack 路由测试命令）
 - TE 审计根据 test_strategy 选择验证方法；E2E 环境不可用时降级并标注
-- 交付判定四层校验：verify.sh + verify-qa.sh + verify-ppt.sh + verify-archive.sh
+- 交付判定五层校验：verify.sh + verify-qa.sh + verify-code-review.sh + verify-ppt.sh + verify-archive.sh
 - SR4 阶段发现代码逻辑缺陷时，退回 apply 阶段走 repair flow
 - 质量门禁失败时 PM 使用 `templates/quality-gate-report-template.md` 归因并派发修复
+- TE Code Review 范围由 `deriveReviewScope()` 计算注入 handoff，TE 不自行判断
+- TE 审计报告格式由 `scripts/verify-code-review.sh` 硬校验（CR-1~5），退出码为准
+- 回归套件完整性由 `scripts/verify-qa.sh` QA-12（回归覆盖）+ QA-13（沉淀完整性）硬校验
+- 归档阶段调用 `regression-suite.js` 的 `aggregateToSuite()` 沉淀用例，不依赖 NL 描述
+- 任何变更（新增/修改/修复）在 propose 阶段必须设计对应测试用例
+- 回归套件存在时，TE 最终审计必须执行全量回归，任何用例失败视为 FAIL，不可降级
 
 ## 5. 断点恢复
 

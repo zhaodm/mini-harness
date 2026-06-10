@@ -267,3 +267,54 @@ export function detectTechStack(projectFiles) {
 
   return result;
 }
+
+// ─── CR-006: Code Review 范围路由 ───
+
+// 跳过 Code Review 的 output_type
+const SKIP_REVIEW_TYPES = ['documentation', 'ppt'];
+
+// 简化评审的 output_type（仅安全 + 依赖 + 错误处理）
+const SIMPLE_REVIEW_TYPES = ['data-pipeline', 'infrastructure'];
+const SIMPLE_DIMENSIONS = ['security', 'dependencies', 'error-handling'];
+
+// 全量评审维度 ID 列表
+const FULL_DIMENSIONS = ['naming', 'error-handling', 'security', 'complexity', 'dry', 'api-consistency', 'dependencies'];
+
+// 模式 → 维度子集（null = 全量）
+const MODE_REVIEW_SCOPE = {
+  fast: ['security', 'error-handling'],
+  standard: null,
+  full: null
+};
+
+/**
+ * 根据 mode + outputType 返回 Code Review 执行范围
+ * 供 PM 生成 TE handoff 时注入，TE 据此决定评审深度
+ *
+ * @param {string} mode - fast | standard | full
+ * @param {string} outputType - output_type 字段值
+ * @returns {{ skip: boolean, dimensions: string[], depth: string, reason?: string }}
+ */
+export function deriveReviewScope(mode, outputType) {
+  if (SKIP_REVIEW_TYPES.includes(outputType)) {
+    return { skip: true, dimensions: [], depth: 'none', reason: `output_type=${outputType}, 非代码产出` };
+  }
+
+  let dimensions;
+
+  // 简化类型
+  if (SIMPLE_REVIEW_TYPES.includes(outputType)) {
+    dimensions = SIMPLE_DIMENSIONS;
+  } else {
+    dimensions = FULL_DIMENSIONS;
+  }
+
+  // 按 mode 过滤
+  const modeFilter = MODE_REVIEW_SCOPE[mode];
+  if (modeFilter) {
+    dimensions = dimensions.filter(d => modeFilter.includes(d));
+  }
+
+  const depth = mode === 'full' ? 'full' : (mode === 'fast' ? 'spot-check' : 'standard');
+  return { skip: false, dimensions, depth };
+}
