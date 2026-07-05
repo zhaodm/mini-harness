@@ -53,6 +53,8 @@
 
 - handoff 文件不可修改，重试创建新文件（追加轮次后缀）— role-guard.sh 强制
 - 归档后的 output/ 文档仅通过 CHANGE 模式的 merge 流程修改
+- output/ 目录结构遵循 `templates/output-structure.md` 规范（docs/src/tests/deploy/assets/reference）
+- 归档目录结构合规性由 `scripts/verify-archive.sh` ARC-7 检查（WARN 级别）
 
 ## 4. 自检纪律
 
@@ -67,6 +69,8 @@
 - TE 审计报告格式由 `scripts/verify-code-review.sh` 硬校验（CR-1~5），退出码为准
 - 回归套件完整性由 `scripts/verify-qa.sh` QA-12（回归覆盖）+ QA-13（沉淀完整性）硬校验
 - 归档阶段调用 `regression-suite.js` 的 `aggregateToSuite()` 沉淀用例，不依赖 NL 描述
+- 归档阶段调用 `knowledge-base.js` 的 `buildKnowledgeBase()` + `mergeKnowledgeBase()` 生成分层知识库（Layer 0/1/2 + kb-verify.sh），不依赖 NL 描述
+- 分层知识库完整性由 `scripts/verify-archive.sh` ARC-6 硬校验（system-map 存在 + domains 非空 + 行数约束），mode=standard/full 时强制
 - 任何变更（新增/修改/修复）在 propose 阶段必须设计对应测试用例
 - 回归套件存在时，TE 最终审计必须执行全量回归，任何用例失败视为 FAIL，不可降级
 

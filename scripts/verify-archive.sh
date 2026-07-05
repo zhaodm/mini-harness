@@ -232,6 +232,165 @@ check_reqid_isolation() {
 }
 
 # ─────────────────────────────────────────────
+# ARC-6: 分层知识库校验
+# mode=standard/full 且 output_type ≠ documentation 时强制
+# ─────────────────────────────────────────────
+check_knowledge_base() {
+    echo "--- ARC-6: 分层知识库校验 ---"
+
+    # 读取 mode 和 output_type
+    local mode=""
+    local output_type=""
+    if [ -f "$REQ_DIR/.state.md" ]; then
+        mode=$(grep "^mode:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+        output_type=$(grep "^output_type:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+    fi
+
+    # fast 模式或 documentation 类型跳过
+    if [ "$mode" = "fast" ]; then
+        echo "INFO: fast 模式，跳过知识库校验"
+        echo ""
+        return
+    fi
+    if [ "$output_type" = "documentation" ]; then
+        echo "INFO: documentation 类型，跳过知识库校验"
+        echo ""
+        return
+    fi
+
+    local kb_dir="$OUTPUT_DIR/docs/kb"
+
+    # 目录存在性
+    if [ ! -d "$kb_dir" ]; then
+        echo "FAIL: docs/kb/ 目录不存在"
+        ERRORS=$((ERRORS + 1))
+        echo ""
+        return
+    fi
+
+    # Layer 0: system-map.md 存在且非占位符
+    if [ ! -f "$kb_dir/system-map.md" ]; then
+        echo "FAIL: system-map.md 不存在"
+        ERRORS=$((ERRORS + 1))
+    elif grep -q "{一句话定义" "$kb_dir/system-map.md" 2>/dev/null; then
+        echo "FAIL: system-map.md 仍为模板占位符"
+        ERRORS=$((ERRORS + 1))
+    else
+        local sm_lines
+        sm_lines=$(wc -l < "$kb_dir/system-map.md" | tr -d ' ')
+        if [ "$sm_lines" -gt 150 ]; then
+            echo "WARN: system-map.md 超出 150 行限制 ($sm_lines 行)"
+            WARNS=$((WARNS + 1))
+        else
+            echo "PASS: system-map.md ($sm_lines 行)"
+        fi
+    fi
+
+    # Layer 1: domains/ 至少一个域指南
+    if [ ! -d "$kb_dir/domains" ] || [ -z "$(ls -A "$kb_dir/domains" 2>/dev/null)" ]; then
+        echo "FAIL: domains/ 目录为空或不存在"
+        ERRORS=$((ERRORS + 1))
+    else
+        local domain_count
+        domain_count=$(find "$kb_dir/domains" -name "*.md" | wc -l | tr -d ' ')
+        echo "PASS: domains/ 含 $domain_count 份域指南"
+
+        # 行数检查
+        for df in "$kb_dir/domains"/*.md; do
+            [ -f "$df" ] || continue
+            local dl
+            dl=$(wc -l < "$df" | tr -d ' ')
+            if [ "$dl" -gt 400 ]; then
+                echo "WARN: $(basename "$df") 超出 400 行限制 ($dl 行)"
+                WARNS=$((WARNS + 1))
+            fi
+        done
+    fi
+
+    # Layer 2: recipes/（code 类产出建议有）
+    local code_types="web-app backend-api cli-tool library"
+    if echo "$code_types" | grep -qw "$output_type"; then
+        if [ ! -d "$kb_dir/recipes" ] || [ -z "$(ls -A "$kb_dir/recipes" 2>/dev/null)" ]; then
+            echo "WARN: recipes/ 为空（code 类产出建议提供操作食谱）"
+            WARNS=$((WARNS + 1))
+        else
+            local recipe_count
+            recipe_count=$(find "$kb_dir/recipes" -name "*.md" | wc -l | tr -d ' ')
+            echo "PASS: recipes/ 含 $recipe_count 份食谱"
+        fi
+    fi
+
+    # kb-verify.sh 存在
+    if [ ! -f "$kb_dir/kb-verify.sh" ]; then
+        echo "WARN: kb-verify.sh 不存在（建议交付新鲜度检查脚本）"
+        WARNS=$((WARNS + 1))
+    else
+        echo "PASS: kb-verify.sh 已交付"
+    fi
+
+    echo ""
+}
+
+# ─────────────────────────────────────────────
+# ARC-7: 目录结构合规性检查
+# output/ 顶层只允许规范目录和根文件
+# ─────────────────────────────────────────────
+check_output_structure() {
+    echo "--- ARC-7: 目录结构合规性 ---"
+
+    if [ ! -d "$OUTPUT_DIR" ]; then
+        echo "INFO: output/ 不存在，跳过结构检查"
+        echo ""
+        return
+    fi
+
+    # 允许的顶层目录
+    local allowed_dirs="docs src tests deploy assets reference"
+    local violations=0
+
+    # 检查顶层目录
+    for entry in "$OUTPUT_DIR"/*/; do
+        [ -d "$entry" ] || continue
+        local dirname
+        dirname=$(basename "$entry")
+
+        # 跳过隐藏目录
+        [[ "$dirname" == .* ]] && continue
+
+        local found=false
+        for allowed in $allowed_dirs; do
+            if [ "$dirname" = "$allowed" ]; then
+                found=true
+                break
+            fi
+        done
+
+        if [ "$found" = false ]; then
+            echo "WARN: output/ 下存在非规范目录: $dirname/（应归入 docs/src/tests/deploy/assets/reference）"
+            violations=$((violations + 1))
+        fi
+    done
+
+    # 检查顶层散落的 .md 文件（README.md 除外）
+    for entry in "$OUTPUT_DIR"/*.md; do
+        [ -f "$entry" ] || continue
+        local filename
+        filename=$(basename "$entry")
+        if [ "$filename" != "README.md" ]; then
+            echo "WARN: output/ 根目录存在散落文档: $filename（应移入 docs/）"
+            violations=$((violations + 1))
+        fi
+    done
+
+    if [ "$violations" -eq 0 ]; then
+        echo "PASS: output/ 目录结构合规"
+    else
+        WARNS=$((WARNS + violations))
+    fi
+    echo ""
+}
+
+# ─────────────────────────────────────────────
 # 执行所有检查
 # ─────────────────────────────────────────────
 check_archiveignore
@@ -239,6 +398,8 @@ check_file_duplication
 check_update_direction
 check_output_nonempty
 check_reqid_isolation
+check_knowledge_base
+check_output_structure
 
 # ─────────────────────────────────────────────
 # 汇总
