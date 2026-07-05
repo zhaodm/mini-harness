@@ -12,31 +12,10 @@ DE 完成编码实现后，在填写 code-report.md 之前执行。
 
 ## 前置: 读取技术栈信息
 
-1. 读取 `deliverables/{REQ-ID}/.state.md` 中 tech_stack、test_strategy、output_type、mode 字段
+1. 读取 `deliverables/{REQ-ID}/.state.md` 中 tech_stack、test_strategy 字段
 2. 根据 tech_stack.language 确定命令路由
-3. 根据 mode 确定执行路径（fast 快速路径 / standard+full 完整路径）
 
 ---
-
-## Fast 模式快速路径
-
-当 `mode=fast` 且 `repair_round=0`（首次提交）时，执行精简验证：
-
-1. **测试执行**（必须）：同 Step 1，运行测试
-2. **语法检查**（替代完整 lint）：仅检查语法错误，不检查风格
-   - javascript: `npx tsc --noEmit` 或 `node --check {files}`
-   - python: `python -m py_compile {files}`
-   - go: `go vet ./...`
-   - rust: `cargo check`
-   - java: `mvn compile -q`
-3. **跳过**：完整 lint、完整构建（语法检查已覆盖编译错误）
-4. 进入 Step 4 自检清单
-
-> 注：fast 模式修复轮次（repair_round > 0）时恢复完整路径，确保修复质量。
-
----
-
-## Standard/Full 完整路径
 
 ## Step 1: 测试执行
 
@@ -85,13 +64,13 @@ DE 完成编码实现后，在填写 code-report.md 之前执行。
 | unknown | .state.md tech_stack.build_tool | 读取用户指定的命令；如无则跳过 |
 
 跳过条件：
-- test_strategy=manual 或 test_strategy=none: 跳过构建步骤，记录 "构建跳过（test_strategy={value}，无需自动化构建验证）"
+- test_strategy=manual 或 test_strategy=none: 跳过构建步骤
 
 ## Step 4: 自检清单
 
 逐项确认：
 
-- [ ] 所有新增代码有对应测试（test_strategy=none/manual 时此项改为"已确认无需自动化测试"）
+- [ ] 所有新增代码有对应测试（test_strategy=none/manual 时改为"已确认无需自动化测试"）
 - [ ] 测试全部通过（或已跳过且记录原因）
 - [ ] Lint 无错误（或已跳过且记录原因）
 - [ ] 构建成功（或已跳过且记录原因）
@@ -117,5 +96,4 @@ DE 完成编码实现后，在填写 code-report.md 之前执行。
 
 - 任何一步失败：修复后从该步重新执行
 - DE 内部自修最多 3 次（子循环）：超出后在 handoff 回报中标记 status=failed，附带错误日志
-- 此 3 次限制是 DE 角色内部的自修上限；PM 层面的修复循环最多 5 轮（见 mh-apply.md）
-- 即：每轮 PM 派发修复时，DE 内部最多尝试 3 次自修；若仍失败则回报 PM，PM 决定是否继续下一轮
+- PM 层面的修复循环最多 5 轮（见 mh-apply.md）

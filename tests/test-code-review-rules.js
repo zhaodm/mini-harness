@@ -31,49 +31,36 @@ assert('每个维度有 criticalThreshold', REVIEW_DIMENSIONS.every(d => d.criti
 // --- 2. getReviewScope 路由 ---
 console.log('\n--- 2. getReviewScope 路由正确性 ---');
 
-const fastWeb = getReviewScope('fast', 'web-app');
-assert('fast+web-app: 不跳过', fastWeb.skip === false);
-assert('fast+web-app: 仅 2 维度', fastWeb.dimensions.length === 2);
-assert('fast+web-app: 含 security', fastWeb.dimensions.some(d => d.id === 'security'));
-assert('fast+web-app: 含 error-handling', fastWeb.dimensions.some(d => d.id === 'error-handling'));
-assert('fast+web-app: depth=spot-check', fastWeb.depth === 'spot-check');
+const webApp = getReviewScope('web-app');
+assert('web-app: 不跳过', webApp.skip === false);
+assert('web-app: 7 维度全量', webApp.dimensions.length === 7);
+assert('web-app: depth=standard', webApp.depth === 'standard');
 
-const stdBackend = getReviewScope('standard', 'backend-api');
-assert('standard+backend-api: 不跳过', stdBackend.skip === false);
-assert('standard+backend-api: 7 维度全量', stdBackend.dimensions.length === 7);
-assert('standard+backend-api: depth=standard', stdBackend.depth === 'standard');
+const backendApi = getReviewScope('backend-api');
+assert('backend-api: 不跳过', backendApi.skip === false);
+assert('backend-api: 7 维度全量', backendApi.dimensions.length === 7);
 
-const fullLib = getReviewScope('full', 'library');
-assert('full+library: 不跳过', fullLib.skip === false);
-assert('full+library: depth=full', fullLib.depth === 'full');
+const docSkip = getReviewScope('documentation');
+assert('documentation: 跳过', docSkip.skip === true);
+assert('documentation: dimensions 为空', docSkip.dimensions.length === 0);
+assert('documentation: depth=none', docSkip.depth === 'none');
+assert('documentation: 有 reason', docSkip.reason.includes('documentation'));
 
-const docSkip = getReviewScope('standard', 'documentation');
-assert('standard+documentation: 跳过', docSkip.skip === true);
-assert('standard+documentation: dimensions 为空', docSkip.dimensions.length === 0);
-assert('standard+documentation: depth=none', docSkip.depth === 'none');
-assert('standard+documentation: 有 reason', docSkip.reason.includes('documentation'));
+const pptSkip = getReviewScope('ppt');
+assert('ppt: 跳过', pptSkip.skip === true);
 
-const pptSkip = getReviewScope('full', 'ppt');
-assert('full+ppt: 跳过', pptSkip.skip === true);
+const lib = getReviewScope('library');
+assert('library: 不跳过', lib.skip === false);
 
-const infra = getReviewScope('standard', 'infrastructure');
-assert('standard+infrastructure: 不跳过', infra.skip === false);
-assert('standard+infrastructure: 仅 3 维度（简化）', infra.dimensions.length === 3);
-assert('standard+infrastructure: 含 security', infra.dimensions.some(d => d.id === 'security'));
-assert('standard+infrastructure: 含 dependencies', infra.dimensions.some(d => d.id === 'dependencies'));
-assert('standard+infrastructure: 含 error-handling', infra.dimensions.some(d => d.id === 'error-handling'));
-
-const fastInfra = getReviewScope('fast', 'infrastructure');
-assert('fast+infrastructure: 仅 2 维度（fast 过滤）', fastInfra.dimensions.length === 2);
+const unknownType = getReviewScope('unknown-type');
+assert('unknown-type: 不跳过，使用全量', unknownType.skip === false);
+assert('unknown-type: 7 维度', unknownType.dimensions.length === 7);
 
 // --- 3. shouldSkipReview ---
 console.log('\n--- 3. shouldSkipReview ---');
 
-assert('documentation → skip', shouldSkipReview('documentation') === true);
-assert('ppt → skip', shouldSkipReview('ppt') === true);
-assert('web-app → 不 skip', shouldSkipReview('web-app') === false);
-assert('backend-api → 不 skip', shouldSkipReview('backend-api') === false);
-assert('cli-tool → 不 skip', shouldSkipReview('cli-tool') === false);
+assert('无源代码 → skip', shouldSkipReview(false) === true);
+assert('有源代码 → 不 skip', shouldSkipReview(true) === false);
 
 // --- 4. validateReviewReport ---
 console.log('\n--- 4. validateReviewReport 格式校验 ---');
@@ -117,7 +104,7 @@ assert('合规 FAIL 报告 → valid', r2.valid === true);
 const validSkipped = `
 ## Code Review
 
-Code Review 判定: SKIPPED — output_type=documentation, 非代码产出
+Code Review 判定: SKIPPED — 非代码产出
 `;
 const r3 = validateReviewReport(validSkipped);
 assert('合规 SKIPPED 报告 → valid', r3.valid === true);

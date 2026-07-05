@@ -31,7 +31,7 @@
 ### RET-2~3: 执行概况 + 问题清单
 
 基于 `retroCollect()` 输出生成：
-- 执行概况表（mode / outputType / taskCount / repairRounds / srRejections / result）
+- 执行概况表（taskCount / repairRounds / srRejections / result）
 - 问题清单（按时间编号，区分个案/系统性，标注 P0/P1/P2）
 
 ### RET-4: 历史 CR 效果验证

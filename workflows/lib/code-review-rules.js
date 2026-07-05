@@ -1,7 +1,7 @@
 /**
  * code-review-rules.js — Code Review 规则引擎（纯函数）
  *
- * 定义评审维度、严重程度阈值、模式/类型路由。
+ * 定义评审维度、严重程度阈值、类型路由。
  * 供 TE SubAgent prompt 注入 + verify-code-review.sh 格式校验共同引用。
  *
  * @module workflows/lib/code-review-rules
@@ -71,58 +71,40 @@ export const SEVERITY_LEVELS = {
   Minor: '风格偏差、命名建议、微小优化空间 → 仅建议'
 };
 
-// 模式 → 维度子集映射
-const MODE_SCOPE_MAP = {
-  fast: ['security', 'error-handling'],
-  standard: null,  // null = 全量（按 output_type 过滤）
-  full: null        // 全量 + Minor 也列出
-};
-
-// 跳过 Code Review 的 output_type
-const SKIP_REVIEW_TYPES = ['documentation', 'ppt'];
-
-// 简化评审的 output_type（仅安全 + 依赖 + 错误处理）
-const SIMPLE_REVIEW_TYPES = ['data-pipeline', 'infrastructure'];
-const SIMPLE_DIMENSIONS = ['security', 'dependencies', 'error-handling'];
+// 跳过 Code Review 的产出类型（基于文件检测，这里保留标识供外部判断）
+const SKIP_REVIEW_INDICATORS = ['documentation', 'ppt'];
 
 /**
- * 根据 mode + output_type 返回应执行的评审维度列表
+ * 根据产出类型返回应执行的评审维度列表
+ * 始终执行全量审查（原 standard 行为）
  *
- * @param {string} mode - fast | standard | full
- * @param {string} outputType - output_type 字段值
+ * @param {string} outputType - 产出类型标识（从 tech_stack 或文件检测推断）
  * @returns {{ skip: boolean, dimensions: Object[], depth: string, reason?: string }}
  */
-export function getReviewScope(mode, outputType) {
-  if (SKIP_REVIEW_TYPES.includes(outputType)) {
-    return { skip: true, dimensions: [], depth: 'none', reason: `output_type=${outputType}, 非代码产出` };
+export function getReviewScope(outputType) {
+  if (SKIP_REVIEW_INDICATORS.includes(outputType)) {
+    return { skip: true, dimensions: [], depth: 'none', reason: `${outputType}, 非代码产出` };
   }
 
-  // 按 output_type 过滤适用维度
+  // 按产出类型过滤适用维度
   let dimensions = REVIEW_DIMENSIONS.filter(d => d.applicableTo.includes(outputType));
 
-  // 简化类型进一步收窄
-  if (SIMPLE_REVIEW_TYPES.includes(outputType)) {
-    dimensions = dimensions.filter(d => SIMPLE_DIMENSIONS.includes(d.id));
+  // 如果无法匹配任何类型，使用全量维度
+  if (dimensions.length === 0) {
+    dimensions = [...REVIEW_DIMENSIONS];
   }
 
-  // 按 mode 过滤
-  const modeFilter = MODE_SCOPE_MAP[mode];
-  if (modeFilter) {
-    dimensions = dimensions.filter(d => modeFilter.includes(d.id));
-  }
-
-  const depth = mode === 'full' ? 'full' : (mode === 'fast' ? 'spot-check' : 'standard');
-  return { skip: false, dimensions, depth };
+  return { skip: false, dimensions, depth: 'standard' };
 }
 
 /**
- * 判断是否应跳过 Code Review
+ * 判断是否应跳过 Code Review（基于文件检测）
  *
- * @param {string} outputType
+ * @param {boolean} hasSourceCode - output/ 下是否存在源代码文件
  * @returns {boolean}
  */
-export function shouldSkipReview(outputType) {
-  return SKIP_REVIEW_TYPES.includes(outputType);
+export function shouldSkipReview(hasSourceCode) {
+  return !hasSourceCode;
 }
 
 /**
@@ -154,7 +136,7 @@ export function validateReviewReport(reportContent) {
 
   // CR-4: SKIPPED 时必须有理由
   if (/Code Review 判定:\s*SKIPPED/i.test(reportContent)) {
-    if (!/非代码产出|output_type=|跳过/i.test(reportContent)) {
+    if (!/非代码产出|跳过/i.test(reportContent)) {
       errors.push('Code Review SKIPPED 但未标注理由');
     }
   }

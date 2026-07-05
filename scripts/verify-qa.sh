@@ -24,16 +24,13 @@ fi
 
 REQ_DIR="$DELIVERABLES_DIR/$req_id"
 
-# 读取 mode 和 output_type
+# 读取字段
 get_field() {
     local field="$1"
     grep "^${field}:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo ""
 }
 
-mode=$(get_field "mode")
-output_type=$(get_field "output_type")
-
-echo "=== 内容质量检查: $req_id (mode=$mode, type=$output_type) ==="
+echo "=== 内容质量检查: $req_id ==="
 echo ""
 
 # ─────────────────────────────────────────────
@@ -136,7 +133,7 @@ check_handoff_completion() {
 # QA-5: PPT slide-spec — 每页须含情绪+布局类型
 # ─────────────────────────────────────────────
 check_slidespec_quality() {
-    if [ "$output_type" != "ppt" ]; then return; fi
+    if ! is_ppt_project; then return; fi
     local file="$REQ_DIR/ux/slide-spec.md"
     if [ ! -f "$file" ]; then return; fi
 
@@ -178,7 +175,7 @@ check_slidespec_quality() {
 # QA-6: PPT HTML — 禁止过度内联样式
 # ─────────────────────────────────────────────
 check_ppt_inline_styles() {
-    if [ "$output_type" != "ppt" ]; then return; fi
+    if ! is_ppt_project; then return; fi
     if [ ! -d "$REQ_DIR/output" ]; then return; fi
 
     echo "--- QA-6: PPT HTML 内联样式检查 ---"
@@ -213,7 +210,7 @@ check_lessons_after_rejection() {
 
     # 检查是否有 SR 驳回记录
     local has_rejection=false
-    for sr in SR1 SR2 SR3 SR4; do
+    for sr in SR1 SR3; do
         local sr_status
         sr_status=$(grep -i "${sr}:" "$REQ_DIR/.state.md" 2>/dev/null | grep -i "rejected" || true)
         if [ -n "$sr_status" ]; then
@@ -407,7 +404,7 @@ check_testcase_sedimentation() {
     local suite="output/tests/regression-suite.md"
 
     if [ ! -f "$testcases" ]; then
-        echo "INFO: 无 testcases.md（可能为 fast 模式或 manual 策略），跳过"
+        echo "INFO: 无 testcases.md（可能为 manual 策略），跳过"
         echo ""
         return
     fi
@@ -436,8 +433,6 @@ check_ba_ambiguity
 check_de_report
 check_te_conclusion
 check_handoff_completion
-check_slidespec_quality
-check_ppt_inline_styles
 check_lessons_after_rejection
 check_handoff_feedback
 check_repair_reports

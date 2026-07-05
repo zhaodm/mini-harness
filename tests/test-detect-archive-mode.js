@@ -25,8 +25,7 @@ console.log('--- 1. 首次归档 ---');
 const first1 = detectArchiveMode({
   outputSpecFiles: [],
   baselineFiles: [],
-  reqId: 'REQ001',
-  mode: 'standard'
+  reqId: 'REQ001'
 });
 assert('空 output/spec → first', first1.archiveMode === 'first');
 assert('existingFiles 为空', first1.existingFiles.length === 0);
@@ -38,8 +37,7 @@ console.log('\n--- 2. 变更归档 ---');
 const change1 = detectArchiveMode({
   outputSpecFiles: ['design.md', 'requirement-spec.md'],
   baselineFiles: [],
-  reqId: 'REQ002',
-  mode: 'standard'
+  reqId: 'REQ002'
 });
 assert('有文件 → change', change1.archiveMode === 'change');
 assert('existingFiles 含 2 个文件', change1.existingFiles.length === 2);
@@ -51,8 +49,7 @@ console.log('\n--- 3. Baseline 版本递增 ---');
 const change2 = detectArchiveMode({
   outputSpecFiles: ['design.md'],
   baselineFiles: ['design.v1.md', 'design.v2.md', 'requirement-spec.v1.md'],
-  reqId: 'REQ003',
-  mode: 'full'
+  reqId: 'REQ003'
 });
 assert('archiveMode=change', change2.archiveMode === 'change');
 assert('最大版本 v2 → nextBaselineVersion=3', change2.nextBaselineVersion === 3);
@@ -63,64 +60,39 @@ console.log('\n--- 4. Baseline 版本无序解析 ---');
 const change3 = detectArchiveMode({
   outputSpecFiles: ['design.md'],
   baselineFiles: ['design.v5.md', 'design.v2.md', 'design.v10.md'],
-  reqId: 'REQ004',
-  mode: 'standard'
+  reqId: 'REQ004'
 });
 assert('最大版本 v10 → nextBaselineVersion=11', change3.nextBaselineVersion === 11);
 
-// --- 5. fast 模式: 跳过 spec 归档但仍检测模式 ---
-console.log('\n--- 5. fast 模式 ---');
-
-const fast1 = detectArchiveMode({
-  outputSpecFiles: [],
-  baselineFiles: [],
-  reqId: 'REQ005',
-  mode: 'fast'
-});
-assert('fast 模式空 spec → first', fast1.archiveMode === 'first');
-assert('skipSpec=true', fast1.skipSpec === true);
-
-const fast2 = detectArchiveMode({
-  outputSpecFiles: ['design.md'],
-  baselineFiles: [],
-  reqId: 'REQ006',
-  mode: 'fast'
-});
-assert('fast 模式有 spec → change（产出物可能需要 merge）', fast2.archiveMode === 'change');
-assert('fast 模式 skipSpec=true', fast2.skipSpec === true);
-
-// --- 6. 无 baseline 文件名中版本号 ---
-console.log('\n--- 6. 无版本号的 baseline 文件 ---');
+// --- 5. 无 baseline 文件名中版本号 ---
+console.log('\n--- 5. 无版本号的 baseline 文件 ---');
 
 const nover = detectArchiveMode({
   outputSpecFiles: ['design.md'],
   baselineFiles: ['readme.md', 'notes.txt'],
-  reqId: 'REQ007',
-  mode: 'standard'
+  reqId: 'REQ007'
 });
 assert('无 .vN. 格式 → nextBaselineVersion=1', nover.nextBaselineVersion === 1);
 
-// --- 7. extraArchive: ppt 类型额外归档 ---
-console.log('\n--- 7. extraArchive 规则 ---');
+// --- 6. extraArchive: PPT wireframes ---
+console.log('\n--- 6. extraArchive 规则 ---');
 
 const ppt = detectArchiveMode({
   outputSpecFiles: [],
   baselineFiles: [],
   reqId: 'REQ008',
-  mode: 'standard',
-  outputType: 'ppt'
+  hasPptWireframes: true
 });
-assert('ppt 有 extraArchive 规则', ppt.extraArchive.length === 1);
-assert('ppt extra 含 wireframes', ppt.extraArchive[0].source.includes('wireframes'));
+assert('有 wireframes → extraArchive 规则', ppt.extraArchive.length === 1);
+assert('extra 含 wireframes', ppt.extraArchive[0].source.includes('wireframes'));
 
-const webApp = detectArchiveMode({
+const noPpt = detectArchiveMode({
   outputSpecFiles: [],
   baselineFiles: [],
   reqId: 'REQ009',
-  mode: 'standard',
-  outputType: 'web-app'
+  hasPptWireframes: false
 });
-assert('web-app 无 extraArchive', webApp.extraArchive.length === 0);
+assert('无 wireframes → extraArchive 为空', noPpt.extraArchive.length === 0);
 
 // === 结果 ===
 console.log('\n========================');

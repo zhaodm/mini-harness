@@ -23,7 +23,7 @@ import { archiveMerge } from './archive-merge.js';
  * @property {Object[]} [repairHistory] - .state.md repair_history[]
  * @property {string[]} [outputFiles] - output/ 文件路径列表
  * @property {Object} [techStack] - .state.md tech_stack
- * @property {string} [outputType] - output_type
+ * @property {string} [outputType] - 产出类型（可选，用于推断）
  */
 
 /**
@@ -549,10 +549,10 @@ fi
  *
  * @param {Object} kbFiles - { systemMap, domains: string[], recipes: string[] } 文件路径列表
  * @param {Object} [contents] - { systemMap: string, domains: {name: string}[], recipes: {name: string}[] }
- * @param {string} [outputType]
+ * @param {Object} [options] - { hasSourceCode: boolean }
  * @returns {{ valid: boolean, errors: string[] }}
  */
-export function validateKBIntegrity(kbFiles, contents, outputType) {
+export function validateKBIntegrity(kbFiles, contents, options) {
   const errors = [];
 
   // system-map 存在
@@ -565,10 +565,10 @@ export function validateKBIntegrity(kbFiles, contents, outputType) {
     errors.push('缺少域指南（domains/ 为空）');
   }
 
-  // code 类产出必须有食谱
-  const codeTypes = ['web-app', 'backend-api', 'cli-tool', 'library'];
-  if (codeTypes.includes(outputType) && (!kbFiles.recipes || kbFiles.recipes.length === 0)) {
-    errors.push('code 类产出缺少操作食谱（recipes/ 为空）');
+  // 有源代码产出时必须有食谱
+  const hasSourceCode = options && options.hasSourceCode;
+  if (hasSourceCode && (!kbFiles.recipes || kbFiles.recipes.length === 0)) {
+    errors.push('有代码产出但缺少操作食谱（recipes/ 为空）');
   }
 
   // 行数校验

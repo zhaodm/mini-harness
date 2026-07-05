@@ -233,32 +233,19 @@ check_reqid_isolation() {
 
 # ─────────────────────────────────────────────
 # ARC-6: 分层知识库校验
-# mode=standard/full 且 output_type ≠ documentation 时强制
+# 仅当 output/docs/kb/ 已存在时校验（用户主动请求生成才会存在）
 # ─────────────────────────────────────────────
 check_knowledge_base() {
     echo "--- ARC-6: 分层知识库校验 ---"
 
-    # 读取 mode 和 output_type
-    local mode=""
-    local output_type=""
-    if [ -f "$REQ_DIR/.state.md" ]; then
-        mode=$(grep "^mode:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
-        output_type=$(grep "^output_type:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
-    fi
-
-    # fast 模式或 documentation 类型跳过
-    if [ "$mode" = "fast" ]; then
-        echo "INFO: fast 模式，跳过知识库校验"
-        echo ""
-        return
-    fi
-    if [ "$output_type" = "documentation" ]; then
-        echo "INFO: documentation 类型，跳过知识库校验"
-        echo ""
-        return
-    fi
-
     local kb_dir="$OUTPUT_DIR/docs/kb"
+
+    # 用户未请求生成知识库 → 跳过
+    if [ ! -d "$kb_dir" ]; then
+        echo "INFO: docs/kb/ 不存在（用户未请求生成知识库），跳过"
+        echo ""
+        return
+    fi
 
     # 目录存在性
     if [ ! -d "$kb_dir" ]; then
@@ -307,11 +294,10 @@ check_knowledge_base() {
         done
     fi
 
-    # Layer 2: recipes/（code 类产出建议有）
-    local code_types="web-app backend-api cli-tool library"
-    if echo "$code_types" | grep -qw "$output_type"; then
+    # Layer 2: recipes/（有源代码产出时建议提供）
+    if [ -d "$OUTPUT_DIR/src" ]; then
         if [ ! -d "$kb_dir/recipes" ] || [ -z "$(ls -A "$kb_dir/recipes" 2>/dev/null)" ]; then
-            echo "WARN: recipes/ 为空（code 类产出建议提供操作食谱）"
+            echo "WARN: recipes/ 为空（有代码产出建议提供操作食谱）"
             WARNS=$((WARNS + 1))
         else
             local recipe_count

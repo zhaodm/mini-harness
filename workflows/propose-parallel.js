@@ -6,7 +6,6 @@
  *
  * args:
  *   reqId    — 需求编号 (e.g., "REQ003")
- *   mode     — 流程模式 ("standard" | "full")
  *   saPrompt — SA SubAgent 的完整 prompt（角色契约 + handoff 内容）
  *   tePrompt — TE SubAgent 的完整 prompt（角色契约 + handoff 内容）
  *

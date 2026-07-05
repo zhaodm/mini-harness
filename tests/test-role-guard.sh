@@ -24,7 +24,6 @@ setup_state() {
   mkdir -p deliverables/TEST001/{sa,te,de,ba,ux,output,handoffs}
   cat > deliverables/TEST001/.state.md << EOF
 req_id: TEST001
-mode: standard
 phase: ${phase}
 current_step: REQ-2+REQ-3
 current_role: ${role}

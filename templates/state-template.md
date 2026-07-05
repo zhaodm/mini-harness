@@ -10,8 +10,6 @@
 ```yaml
 # === 基础标识 ===
 req_id: REQ{NNN}              # 需求编号，全局唯一递增
-mode: ""                       # 执行模式: fast | standard | full
-output_type: ""                # 产出类型: web-app | backend-api | cli-tool | data-pipeline | infrastructure | documentation | ppt | library | custom
 
 # === 流程状态 ===
 phase: init                    # 当前阶段: init | propose | apply | archive | done
@@ -19,7 +17,7 @@ current_step: INIT-1           # 当前步骤 ID（见下方步骤 ID 枚举）
 current_role: PM               # 当前执行角色: PM | BA | SA | DE | TE | UX
 current_handoff: ""            # 当前活跃 handoff 文件名（如 REQ001-REQ1-R1.md）
 completed_steps: []            # 已完成步骤列表（字符串数组）
-auto_advance: false            # 是否处于 /mh-run 自动推进模式
+auto_advance: true             # 始终自动推进（/mh-run 唯一入口）
 
 # === 修复循环 ===
 repair_round: 0                # 当前修复轮次（0=未进入修复循环，1-5=修复中）
@@ -34,10 +32,8 @@ task_started_at: ""            # 当前任务开始时间（PM 派发时写入�
 
 # === 审批状态 ===
 sr_status:
-  SR1: pending                 # pending | approved | rejected | skipped
-  SR2: pending                 # pending | approved | rejected | skipped
-  SR3: pending                 # pending | approved | rejected | skipped
-  SR4: pending                 # pending | approved | rejected | skipped
+  SR1: pending                 # pending | approved | rejected（方案确认）
+  SR3: pending                 # pending | approved | rejected（交付确认）
 
 # === 技术栈 ===
 tech_stack:
@@ -49,9 +45,6 @@ tech_stack:
 
 # === 验证策略 ===
 test_strategy: ""              # e2e | unit | integration | smoke | manual | none
-
-# === PPT 专用 ===
-ppt_design_mode: ""            # system | creative（仅 output_type=ppt 时使用）
 
 # === 环境信息 ===
 env:
@@ -69,16 +62,15 @@ last_updated: ""               # ISO 8601 UTC 时间戳，每次更新必须同�
 |------|---------|------|
 | init | INIT-1 | 初始化任务目录 |
 | init | INIT-DONE | clarify 阶段完成 |
-| propose | REQ-1 | BA 需求分析（full） |
+| propose | REQ-1 | BA 需求分析 |
 | propose | REQ-2 | SA 架构设计 |
 | propose | REQ-3 | TE 测试用例设计 |
 | propose | REQ-4 | PM 计划编排 |
 | propose | PROPOSE-DONE | propose 阶段完成 |
-| apply | DEV-1 | DE 开发（fast: 批量 / standard: 逐任务） |
-| apply | TEST-1 | TE 审计（逐任务） |
-| apply | SR2-DONE | SR2 功能评审通过 |
+| apply | DEV-1 | DE 批次开发 |
+| apply | TEST-1 | TE 审计 |
 | apply | TEST-2 | TE 最终审计 |
-| apply | SR3-DONE | SR3 最终评审通过 |
+| apply | SR3-DONE | SR3 交付确认通过 |
 | archive | ARC-1 | 需求归档 |
 | archive | ARC-2 | 设计归档 |
 | archive | ARC-3 | 产出物归档 |
@@ -87,7 +79,7 @@ last_updated: ""               # ISO 8601 UTC 时间戳，每次更新必须同�
 | archive | ARC-6 | 执行指标生成 |
 | archive | ARC-7 | 经验沉淀 |
 | archive | ARC-8 | AI 项目上下文生成 |
-| archive | SR4-DONE | SR4 结项确认通过 |
+| archive | ARC-DONE | 归档完成 |
 
 ---
 

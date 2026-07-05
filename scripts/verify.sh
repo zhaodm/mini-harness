@@ -24,10 +24,10 @@ fi
 
 REQ_DIR="$DELIVERABLES_DIR/$req_id"
 
-# 读取 mode 字段
-get_mode() {
+# 读取 .state.md 字段
+get_field() {
     if [ -n "$req_id" ] && [ -f "$REQ_DIR/.state.md" ]; then
-        grep "^mode:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo ""
+        grep "^${1}:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo ""
     else
         echo ""
     fi
@@ -69,7 +69,7 @@ check_a() {
     fi
 }
 
-# B类检查: 阶段产出物完整性（mode + output_type 感知）
+# B类检查: 阶段产出物完整性
 check_b() {
     echo "=== B类检查: 阶段产出物完整性 ==="
 
@@ -78,50 +78,34 @@ check_b() {
         return
     fi
 
-    local phase mode output_type test_strategy
-    phase=$(grep "^phase:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
-    mode=$(get_mode)
-    output_type=$(grep "^output_type:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
-    test_strategy=$(grep "^test_strategy:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+    local phase test_strategy
+    phase=$(get_field "phase")
+    test_strategy=$(get_field "test_strategy")
 
-    echo "INFO: phase=$phase, mode=$mode, output_type=$output_type, test_strategy=$test_strategy"
+    echo "INFO: phase=$phase, test_strategy=$test_strategy"
 
     # propose 阶段产物检查（propose/apply/archive 都需要）
     if [ "$phase" = "propose" ] || [ "$phase" = "apply" ] || [ "$phase" = "archive" ]; then
-        # SA design.md - required for standard/full (支持单文件或多文件模式)
-        if [ "$mode" != "fast" ]; then
-            if [ -s "$REQ_DIR/sa/design.md" ]; then
-                echo "PASS: $REQ_DIR/sa/design.md（单文件模式）"
-            elif [ -s "$REQ_DIR/sa/overview.md" ]; then
-                echo "PASS: $REQ_DIR/sa/overview.md（多文件模式）"
-            else
-                echo "FAIL: $REQ_DIR/sa/ 缺少 design.md 或 overview.md"
-                ERRORS=$((ERRORS + 1))
-            fi
+        # SA design.md（支持单文件或多文件模式）
+        if [ -s "$REQ_DIR/sa/design.md" ]; then
+            echo "PASS: $REQ_DIR/sa/design.md（单文件模式）"
+        elif [ -s "$REQ_DIR/sa/overview.md" ]; then
+            echo "PASS: $REQ_DIR/sa/overview.md（多文件模式）"
+        else
+            echo "FAIL: $REQ_DIR/sa/ 缺少 design.md 或 overview.md"
+            ERRORS=$((ERRORS + 1))
         fi
 
-        # BA requirement-spec.md - only full mode
-        if [ "$mode" = "full" ]; then
-            if [ ! -s "$REQ_DIR/ba/requirement-spec.md" ]; then
-                echo "FAIL: $REQ_DIR/ba/requirement-spec.md 缺失或为空"
+        # TE testcases.md - skip for manual/none test_strategy
+        if [ "$test_strategy" != "manual" ] && [ "$test_strategy" != "none" ]; then
+            if [ ! -s "$REQ_DIR/te/testcases.md" ]; then
+                echo "FAIL: $REQ_DIR/te/testcases.md 缺失或为空"
                 ERRORS=$((ERRORS + 1))
             else
-                echo "PASS: $REQ_DIR/ba/requirement-spec.md"
+                echo "PASS: $REQ_DIR/te/testcases.md"
             fi
-        fi
-
-        # TE testcases.md - standard/full, skip for manual/none test_strategy
-        if [ "$mode" != "fast" ]; then
-            if [ "$test_strategy" != "manual" ] && [ "$test_strategy" != "none" ]; then
-                if [ ! -s "$REQ_DIR/te/testcases.md" ]; then
-                    echo "FAIL: $REQ_DIR/te/testcases.md 缺失或为空"
-                    ERRORS=$((ERRORS + 1))
-                else
-                    echo "PASS: $REQ_DIR/te/testcases.md"
-                fi
-            else
-                echo "INFO: test_strategy=$test_strategy, testcases.md 非必需"
-            fi
+        else
+            echo "INFO: test_strategy=$test_strategy, testcases.md 非必需"
         fi
 
         # plan-action.md - always required
@@ -141,50 +125,15 @@ check_b() {
         else
             echo "PASS: $REQ_DIR/output/ 非空"
         fi
-
-        # output_type-specific checks
-        case "$output_type" in
-            ppt)
-                if [ ! -s "$REQ_DIR/ux/slide-spec.md" ]; then
-                    echo "FAIL: slide-spec.md 缺失（output_type=ppt）"
-                    ERRORS=$((ERRORS + 1))
-                else
-                    echo "PASS: slide-spec.md 存在（output_type=ppt）"
-                fi
-                ;;
-            web-app)
-                if ! find "$REQ_DIR/output" -type f \( -name "*.html" -o -name "*.jsx" -o -name "*.tsx" -o -name "*.vue" -o -name "*.py" -o -name "*.go" -o -name "*.java" -o -name "*.rs" -o -name "*.js" -o -name "*.ts" -o -name "*.rb" \) 2>/dev/null | grep -q .; then
-                    echo "WARN: output_type=web-app 但未检测到源代码文件"
-                fi
-                ;;
-            backend-api|cli-tool|library)
-                if ! find "$REQ_DIR/output" -type f \( -name "*.py" -o -name "*.go" -o -name "*.java" -o -name "*.rs" -o -name "*.js" -o -name "*.ts" -o -name "*.rb" -o -name "*.c" -o -name "*.cpp" \) 2>/dev/null | grep -q .; then
-                    echo "WARN: output_type=$output_type 但未检测到源代码文件"
-                fi
-                ;;
-            *)
-                echo "INFO: output_type=$output_type, 使用通用产出物检查"
-                ;;
-        esac
     fi
 
     # archive 阶段产物检查
     if [ "$phase" = "archive" ]; then
-        if [ "$mode" != "fast" ]; then
-            if [ -s "$SPEC_DIR/design.md" ] || [ -s "$SPEC_DIR/design-overview.md" ]; then
-                echo "PASS: $SPEC_DIR/ 设计文档存在"
-            else
-                echo "FAIL: $SPEC_DIR/ 缺少 design.md 或 design-overview.md"
-                ERRORS=$((ERRORS + 1))
-            fi
-        fi
-        if [ "$mode" = "full" ]; then
-            if [ ! -s "$SPEC_DIR/requirement-spec.md" ]; then
-                echo "FAIL: $SPEC_DIR/requirement-spec.md 缺失或为空"
-                ERRORS=$((ERRORS + 1))
-            else
-                echo "PASS: $SPEC_DIR/requirement-spec.md"
-            fi
+        if [ -s "$SPEC_DIR/design.md" ] || [ -s "$SPEC_DIR/design-overview.md" ]; then
+            echo "PASS: $SPEC_DIR/ 设计文档存在"
+        else
+            echo "FAIL: $SPEC_DIR/ 缺少 design.md 或 design-overview.md"
+            ERRORS=$((ERRORS + 1))
         fi
     fi
 
@@ -195,16 +144,13 @@ check_b() {
                 echo "WARN: output/ 包含 $excluded/（应排除的开发环境目录）"
             fi
         done
-        # spec/ 归档完整性（与 archive 阶段互补——done 时再次确认）
-        if [ "$mode" != "fast" ] && [ ! -s "output/spec/design.md" ] && [ ! -s "output/spec/design-overview.md" ]; then
+        # spec/ 归档完整性
+        if [ ! -s "output/spec/design.md" ] && [ ! -s "output/spec/design-overview.md" ]; then
             echo "WARN: output/spec/ 缺少设计文档（ARC-2 归档可能未执行）"
-        fi
-        if [ "$mode" = "full" ] && [ ! -s "output/spec/requirement-spec.md" ]; then
-            echo "WARN: output/spec/requirement-spec.md 不存在（ARC-1 归档可能未执行）"
         fi
     fi
 
-    if [ "$phase" != "propose" ] && [ "$phase" != "apply" ] && [ "$phase" != "archive" ]; then
+    if [ "$phase" != "propose" ] && [ "$phase" != "apply" ] && [ "$phase" != "archive" ] && [ "$phase" != "done" ]; then
         echo "INFO: phase=$phase，跳过B类检查"
     fi
 }
@@ -225,7 +171,7 @@ check_c() {
     fi
 
     # .state.md 必填字段校验
-    local required_fields="req_id mode phase current_step current_role last_updated"
+    local required_fields="req_id phase current_step current_role last_updated"
     for field in $required_fields; do
         if ! grep -q "^${field}:" "$REQ_DIR/.state.md" 2>/dev/null; then
             echo "FAIL: .state.md 缺少必填字段: $field"
@@ -236,8 +182,6 @@ check_c() {
     # phase 与产物一致性校验
     local phase
     phase=$(grep "^phase:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
-    local mode
-    mode=$(get_mode)
 
     if [ "$phase" = "apply" ] || [ "$phase" = "archive" ] || [ "$phase" = "done" ]; then
         if [ ! -s "$REQ_DIR/plan-action.md" ]; then
@@ -260,9 +204,9 @@ check_c() {
         handoff_count=$(find "$handoff_dir" -name "*.md" -not -name ".*" | wc -l)
         echo "INFO: 共 $handoff_count 个 handoff 文件"
 
-        # fast 模式至少 2 个 handoff（DEV + TEST），standard/full 至少有 propose 阶段的 handoff
-        if [ "$mode" = "fast" ] && [ "$phase" = "done" ] && [ "$handoff_count" -lt 2 ]; then
-            echo "WARN: fast 模式 phase=done 但 handoff 数量不足（期望 ≥2，实际 $handoff_count）"
+        # phase=done 时至少应有 2 个 handoff（DEV + TEST）
+        if [ "$phase" = "done" ] && [ "$handoff_count" -lt 2 ]; then
+            echo "WARN: phase=done 但 handoff 数量不足（期望 ≥2，实际 $handoff_count）"
         fi
 
         # Handoff 完成回报非空检查（phase=done 时所有 handoff 应已完成）
@@ -298,10 +242,9 @@ check_c() {
         else
             local log_lines
             log_lines=$(wc -l < "$log_file" | tr -d ' ')
-            local min_lines=10
-            [ "$mode" = "fast" ] && min_lines=6
+            local min_lines=6
             if [ "$log_lines" -lt "$min_lines" ]; then
-                echo "WARN: process.log 仅 $log_lines 行（$mode 模式期望 ≥$min_lines）"
+                echo "WARN: process.log 仅 $log_lines 行（期望 ≥$min_lines）"
             else
                 echo "PASS: process.log $log_lines 行"
             fi
@@ -463,8 +406,6 @@ check_e() {
     if [ -f "$REQ_DIR/.state.md" ]; then
         local phase
         phase=$(grep "^phase:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
-        local mode
-        mode=$(get_mode)
 
         # 如果 phase=apply 或更后，plan-action.md 必须存在
         if [ "$phase" = "apply" ] || [ "$phase" = "archive" ] || [ "$phase" = "done" ]; then

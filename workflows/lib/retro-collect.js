@@ -9,10 +9,8 @@
 
 /**
  * @typedef {Object} StateData
- * @property {string} mode - 执行模式
- * @property {string} output_type - 产出类型
  * @property {number} repair_round - 当前修复轮次（完成后应为 0）
- * @property {Object} sr_status - SR1-SR4 状态
+ * @property {Object} sr_status - SR1/SR3 状态
  * @property {Array} repair_history - 修复历史
  */
 
@@ -38,8 +36,6 @@
 
 /**
  * @typedef {Object} Metrics
- * @property {string} mode - 执行模式
- * @property {string} outputType - 产出类型
  * @property {number} taskCount - 任务总数
  * @property {number} batchCount - 批次总数
  * @property {number} repairRounds - 修复轮次数
@@ -75,8 +71,6 @@ export function retroCollect(input) {
   const result = determineResult(stateData);
 
   const metrics = {
-    mode: stateData.mode,
-    outputType: stateData.output_type,
     taskCount: taskCount || 0,
     batchCount: batchCount || 0,
     repairRounds,

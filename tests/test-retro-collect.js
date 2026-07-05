@@ -25,10 +25,8 @@ console.log('--- 1. 完整数据 ---');
 const full = retroCollect({
   reqId: 'REQ001',
   stateData: {
-    mode: 'standard',
-    output_type: 'web-app',
     repair_round: 0,
-    sr_status: { SR1: 'approved', SR2: 'approved', SR3: 'approved', SR4: 'approved' },
+    sr_status: { SR1: 'approved', SR3: 'approved' },
     repair_history: [
       { round: 1, errorType: 'test_failure', failedCount: 3, summary: 'API 500' },
       { round: 2, errorType: 'test_failure', failedCount: 1, summary: '断言失败' }
@@ -58,8 +56,6 @@ const full = retroCollect({
   batchCount: 2
 });
 
-assert('metrics.mode=standard', full.metrics.mode === 'standard');
-assert('metrics.outputType=web-app', full.metrics.outputType === 'web-app');
 assert('metrics.repairRounds=2', full.metrics.repairRounds === 2);
 assert('metrics.taskCount=3', full.metrics.taskCount === 3);
 assert('metrics.batchCount=2', full.metrics.batchCount === 2);
@@ -75,10 +71,8 @@ console.log('\n--- 2. 缺 lessons ---');
 const noLessons = retroCollect({
   reqId: 'REQ002',
   stateData: {
-    mode: 'fast',
-    output_type: 'cli-tool',
     repair_round: 0,
-    sr_status: { SR1: 'skipped', SR2: 'approved', SR3: 'approved', SR4: 'skipped' },
+    sr_status: { SR1: 'approved', SR3: 'approved' },
     repair_history: []
   },
   lessonsContent: null,
@@ -98,10 +92,8 @@ console.log('\n--- 3. 缺 processLog ---');
 const noLog = retroCollect({
   reqId: 'REQ003',
   stateData: {
-    mode: 'full',
-    output_type: 'backend-api',
     repair_round: 0,
-    sr_status: { SR1: 'approved', SR2: 'rejected', SR3: 'approved', SR4: 'approved' },
+    sr_status: { SR1: 'approved', SR3: 'rejected' },
     repair_history: []
   },
   lessonsContent: `# Lessons\n\n## CP-1: 接口设计不合理\n- 现象: SR2 驳回\n- 根因: SA 未考虑幂等性\n- 影响: 重新设计\n`,
@@ -111,8 +103,8 @@ const noLog = retroCollect({
   batchCount: 2
 });
 
-assert('无 processLog → 仍可工作', noLog.metrics.mode === 'full');
-assert('SR2 rejected → srRejections=1', noLog.metrics.srRejections === 1);
+assert('无 processLog → 仍可工作', noLog.metrics.taskCount === 5);
+assert('SR3 rejected → srRejections=1', noLog.metrics.srRejections === 1);
 assert('dataSourcesCount=2（state + lessons）', noLog.dataSourcesCount === 2);
 
 // --- 4. 多轮修复 ---
@@ -121,10 +113,8 @@ console.log('\n--- 4. 多轮修复 ---');
 const multiRepair = retroCollect({
   reqId: 'REQ004',
   stateData: {
-    mode: 'standard',
-    output_type: 'web-app',
     repair_round: 0,
-    sr_status: { SR1: 'skipped', SR2: 'approved', SR3: 'approved', SR4: 'approved' },
+    sr_status: { SR1: 'approved', SR3: 'approved' },
     repair_history: [
       { round: 1, errorType: 'build_error', failedCount: 1, summary: '编译失败' },
       { round: 2, errorType: 'build_error', failedCount: 1, summary: '依赖缺失' },
@@ -148,10 +138,8 @@ console.log('\n--- 5. 空 handoffs ---');
 const noHandoffs = retroCollect({
   reqId: 'REQ005',
   stateData: {
-    mode: 'fast',
-    output_type: 'documentation',
     repair_round: 0,
-    sr_status: { SR1: 'skipped', SR2: 'skipped', SR3: 'approved', SR4: 'skipped' },
+    sr_status: { SR1: 'approved', SR3: 'approved' },
     repair_history: []
   },
   lessonsContent: null,
@@ -162,7 +150,7 @@ const noHandoffs = retroCollect({
 });
 
 assert('无数据 → dataSourcesCount=1（仅 state）', noHandoffs.dataSourcesCount === 1);
-assert('metrics 仍完整', noHandoffs.metrics.mode === 'fast');
+assert('metrics 仍完整', noHandoffs.metrics.taskCount === 1);
 
 // === 结果 ===
 console.log('\n========================');

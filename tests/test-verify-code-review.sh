@@ -35,9 +35,7 @@ setup_env() {
   echo "req_id: $req_id" > "$TMPDIR/deliverables/.state.md"
   cat > "$TMPDIR/deliverables/$req_id/.state.md" <<EOF
 req_id: $req_id
-mode: standard
 phase: apply
-output_type: $output_type
 current_step: TEST-2
 current_role: TE
 last_updated: "2026-06-10T10:00:00Z"
@@ -119,7 +117,7 @@ assert "合规 FAIL → exit 0" "0" "$result"
 echo "--- 6. 合规 SKIPPED 报告 → exit 0 ---"
 VALID_SKIPPED='## Code Review
 
-Code Review 判定: SKIPPED — output_type=documentation, 非代码产出'
+Code Review 判定: SKIPPED — 非代码产出'
 setup_env "REQ006" "cli-tool" "$VALID_SKIPPED"
 result=$(run_verify "REQ006")
 assert "合规 SKIPPED → exit 0" "0" "$result"

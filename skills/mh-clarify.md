@@ -22,10 +22,10 @@
 
 ## 环境预检
 
-**调用 `detectTechStack()`**（`workflows/lib/recommend-type-mode.js`）自动推断，或手动扫描配置文件：
+**调用 `detectTechStack()`**（`workflows/lib/recommend-test-strategy.js`）自动推断，或手动扫描配置文件：
 - 语言: pyproject.toml→Python, package.json→JS/TS, go.mod→Go, Cargo.toml→Rust, pom.xml→Java
 - 包管理器: poetry.lock→poetry, package-lock.json→npm, yarn.lock→yarn, pnpm-lock.yaml→pnpm
-- 浏览器检测（仅 UI 类型）: Playwright/Selenium/Cypress 可用性
+- 浏览器检测（仅 UI 类需求）: Playwright/Selenium/Cypress 可用性
 
 检测不完整时向用户确认。结果写入 `.state.md` tech_stack 和 env 字段。
 
@@ -41,20 +41,13 @@
 4. 生成 Proposal 草稿
 5. reference/ 含 ≥3 文件或 ≥1000 行时，附加参考摘要（标注 [HIGH]/[LOW] 精读优先级）
 
-## Step 3: 产出类型选择
+## Step 3: 验证策略确认
 
-**调用 `recommendTypeMode()`**（`workflows/lib/recommend-type-mode.js`），向用户呈现推荐结果并请求确认。
+**调用 `recommendTestStrategy()`**（`workflows/lib/recommend-test-strategy.js`），根据 tech_stack 和浏览器可用性推断 test_strategy。
 
-函数同时返回 `testStrategy`（含 browser_available 条件降级: web-app 无浏览器 → integration）。
+向用户呈现推荐结果并请求确认，确认后写入 test_strategy 到 `.state.md`。
 
-用户确认后写入 output_type + test_strategy 到 `.state.md`。
-
-## Step 4: 模式选择
-
-`recommendTypeMode()` 同时返回 `recommendedMode`，向用户呈现 fast/standard/full 三选一。用户选择后写入 mode。
-
-
-## Step 5: Proposal 定稿
+## Step 4: Proposal 定稿
 
 1. 写入 `deliverables/{REQ-ID}/proposal.md`
 2. 向用户呈现，请求确认

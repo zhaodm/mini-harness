@@ -11,7 +11,7 @@
  * @property {string[]} outputSpecFiles - output/docs/spec/ 目录下的文件名列表
  * @property {string[]} baselineFiles - deliverables/{REQ-ID}/baselines/ 下的文件名列表
  * @property {string} reqId - 需求编号
- * @property {string} mode - 执行模式 (fast/standard/full)
+ * @property {boolean} hasPptWireframes - 是否存在 ux/wireframes/ 目录
  */
 
 /**
@@ -19,7 +19,7 @@
  * @property {'first'|'change'} archiveMode - 归档模式
  * @property {string[]} existingFiles - output/spec/ 中已有的文件
  * @property {number} nextBaselineVersion - 下一个 baseline 版本号
- * @property {boolean} [skipSpec] - fast 模式下跳过 spec 归档
+ * @property {{source: string, target: string, description: string}[]} extraArchive - 额外归档规则
  */
 
 /**
@@ -29,13 +29,12 @@
  * - output/docs/spec/ 非空 → change 模式（需 merge）
  * - output/docs/spec/ 为空 → first 模式（直接复制）
  * - baseline 版本号从文件名 .v{N}. 中提取最大值 + 1
- * - fast 模式标记 skipSpec=true（无 requirement-spec/design 归档）
  *
  * @param {DetectArchiveModeInput} input
  * @returns {DetectArchiveModeResult}
  */
 export function detectArchiveMode(input) {
-  const { outputSpecFiles, baselineFiles, reqId, mode } = input;
+  const { outputSpecFiles, baselineFiles, reqId, hasPptWireframes } = input;
 
   // 判断归档模式
   const hasExistingSpec = outputSpecFiles && outputSpecFiles.length > 0;
@@ -55,40 +54,22 @@ export function detectArchiveMode(input) {
     }
   }
 
-  const result = {
+  // 额外归档规则（基于文件检测）
+  const extraArchive = [];
+  if (hasPptWireframes) {
+    extraArchive.push({ source: 'ux/wireframes/', target: 'output/assets/wireframes/', description: 'UX wireframe 归档' });
+  }
+
+  return {
     archiveMode,
     existingFiles: hasExistingSpec ? [...outputSpecFiles] : [],
     nextBaselineVersion: maxVersion + 1,
-    extraArchive: getExtraArchiveRules(input.outputType)
+    extraArchive
   };
-
-  // fast 模式标记
-  if (mode === 'fast') {
-    result.skipSpec = true;
-  }
-
-  return result;
 }
-
-// output_type → 额外归档规则
-const EXTRA_ARCHIVE_RULES = {
-  ppt: [{ source: 'ux/wireframes/', target: 'output/assets/wireframes/', description: 'UX wireframe 归档' }],
-  custom: [{ source: 'plan-action.md 指定', target: '由计划定义', description: '自定义归档路径' }]
-};
 
 // 归档排除规则
 export const ARCHIVE_EXCLUDES = [
   '.venv/', 'node_modules/', '__pycache__/', '.pytest_cache/', '.ruff_cache/',
   '.git/', '.DS_Store', '*.pyc', '*.pyo', '.env'
 ];
-
-/**
- * 获取 output_type 对应的额外归档规则
- *
- * @param {string} [outputType] - 产出类型
- * @returns {{source: string, target: string, description: string}[]}
- */
-function getExtraArchiveRules(outputType) {
-  if (!outputType) return [];
-  return EXTRA_ARCHIVE_RULES[outputType] || [];
-}
