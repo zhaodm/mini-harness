@@ -1,6 +1,7 @@
 # Web App 产出结构参考
 
 > 适用于 output_type=web-app。不绑定具体框架，描述通用 Web 应用的产出结构。
+> 目录规范见 `templates/output-structure.md`。
 
 ## 推荐目录结构
 
@@ -18,7 +19,9 @@ output/
 │   ├── unit/            # 单元测试（组件、工具函数）
 │   ├── integration/     # 集成测试（页面级、API 交互）
 │   └── e2e/             # E2E 测试（用户流程）
-├── public/              # 静态资源
+├── deploy/              # 部署相关（Dockerfile, CI/CD, nginx 配置等）
+├── assets/              # 静态设计资源（wireframes, 设计稿等，非 public/）
+├── public/              # 运行时静态资源
 ├── package.json         # 依赖和脚本
 ├── tsconfig.json        # TypeScript 配置（如适用）
 └── README.md            # 运行说明

@@ -1,6 +1,7 @@
 # CLI Tool 产出结构参考
 
 > 适用于 output_type=cli-tool。不绑定具体框架，描述通用命令行工具的产出结构。
+> 目录规范见 `templates/output-structure.md`。
 
 ## 推荐目录结构
 
@@ -16,6 +17,7 @@ output/
 ├── tests/
 │   ├── unit/            # 单元测试（core 逻辑）
 │   └── integration/     # 集成测试（完整命令执行）
+├── deploy/              # 部署相关（发布脚本, CI/CD）
 ├── package.json / pyproject.toml / go.mod  # 依赖管理
 └── README.md            # 使用说明 + 命令参考
 ```

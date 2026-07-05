@@ -8,7 +8,7 @@
 
 /**
  * @typedef {Object} DetectArchiveModeInput
- * @property {string[]} outputSpecFiles - output/spec/ 目录下的文件名列表
+ * @property {string[]} outputSpecFiles - output/docs/spec/ 目录下的文件名列表
  * @property {string[]} baselineFiles - deliverables/{REQ-ID}/baselines/ 下的文件名列表
  * @property {string} reqId - 需求编号
  * @property {string} mode - 执行模式 (fast/standard/full)
@@ -26,8 +26,8 @@
  * 检测归档模式
  *
  * 逻辑:
- * - output/spec/ 非空 → change 模式（需 merge）
- * - output/spec/ 为空 → first 模式（直接复制）
+ * - output/docs/spec/ 非空 → change 模式（需 merge）
+ * - output/docs/spec/ 为空 → first 模式（直接复制）
  * - baseline 版本号从文件名 .v{N}. 中提取最大值 + 1
  * - fast 模式标记 skipSpec=true（无 requirement-spec/design 归档）
  *
@@ -72,7 +72,7 @@ export function detectArchiveMode(input) {
 
 // output_type → 额外归档规则
 const EXTRA_ARCHIVE_RULES = {
-  ppt: [{ source: 'ux/wireframes/', target: 'output/wireframes/', description: 'UX wireframe 归档' }],
+  ppt: [{ source: 'ux/wireframes/', target: 'output/assets/wireframes/', description: 'UX wireframe 归档' }],
   custom: [{ source: 'plan-action.md 指定', target: '由计划定义', description: '自定义归档路径' }]
 };
 

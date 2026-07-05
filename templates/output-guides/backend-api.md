@@ -1,6 +1,7 @@
 # Backend API 产出结构参考
 
 > 适用于 output_type=backend-api。不绑定具体框架，描述通用后端 API 的产出结构。
+> 目录规范见 `templates/output-structure.md`。
 
 ## 推荐目录结构
 
@@ -20,8 +21,8 @@ output/
 ├── tests/
 │   ├── unit/            # 单元测试（service、validator）
 │   └── integration/     # 集成测试（API endpoint 级别）
+├── deploy/              # 部署相关（Dockerfile, docker-compose, k8s/）
 ├── package.json / pyproject.toml / go.mod  # 依赖管理
-├── Dockerfile           # 容器化（推荐）
 └── README.md            # API 文档 + 运行说明
 ```
 

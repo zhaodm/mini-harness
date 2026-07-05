@@ -38,3 +38,4 @@ node_modules/
 .vscode/
 !.vscode/settings.json
 .idea/
+metrics-analysis-REQ001-ppt.md
