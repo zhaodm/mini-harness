@@ -26,7 +26,7 @@ for role in pm ba sa de te ux; do
 done
 
 printf '\n--- Skill 与命令面 ---\n'
-for skill in mh-run mh-ppt mh-dev mh-retro mh-clarify mh-propose mh-apply mh-archive mh-apply-repair dev-test post-verify; do
+for skill in mh-run mh-ppt mh-dev mh-clarify mh-propose mh-apply mh-archive mh-apply-repair dev-test post-verify; do
   require_file "skills/$skill.md"
 done
 for command in mh-run mh-ppt mh-dev; do
@@ -58,7 +58,7 @@ else
 fi
 
 printf '\n--- 工作流与测试入口 ---\n'
-for file in workflows/propose-parallel.js workflows/apply-batch-dev.js workflows/apply-batch-test.js workflows/apply-final-audit.js tests/run-all-tests.sh tools/mh-dev/CLAUDE.md tools/mh-dev/start.sh tools/mh-dev/scripts/verify.sh tools/mh-dev/templates/dispatch-prompts.md tools/mh-dev/templates/audit-report.md tools/mh-dev/templates/retrospective-report.md; do
+for file in workflows/propose-parallel.js workflows/apply-batch-dev.js workflows/apply-batch-test.js workflows/apply-final-audit.js tests/run-all-tests.sh tools/mh-dev/CLAUDE.md tools/mh-dev/start.sh tools/mh-dev/scripts/verify.sh tools/mh-dev/templates/dispatch-prompts.md tools/mh-dev/templates/audit-report.md; do
   require_file "$file"
 done
 require_file tests/run-all-tests.sh

@@ -13,8 +13,7 @@ fail() { echo "FAIL: $*" >&2; FAILURES=$((FAILURES+1)); }
 echo "--- 1. 关键文件 ---"
 for f in .claude/commands/mh-dev.md skills/mh-dev.md tools/mh-dev/CLAUDE.md \
          tools/mh-dev/templates/semantic-verdict.json tools/mh-dev/templates/acceptance-criteria.json \
-         tools/mh-dev/templates/dispatch-prompts.md tools/mh-dev/templates/audit-report.md \
-         tools/mh-dev/templates/retrospective-report.md; do
+         tools/mh-dev/templates/dispatch-prompts.md tools/mh-dev/templates/audit-report.md; do
   [[ -s "$f" ]] && pass "$f" || fail "$f 缺失或为空"
 done
 
@@ -41,7 +40,7 @@ done
 
 # 5. 文档引用一致性（dispatch-prompts 引用的角色文件存在）
 echo "--- 5. 文档引用一致性 ---"
-for agent in developer tester auditor retrospector; do
+for agent in developer tester auditor; do
   [[ -s "tools/mh-dev/agents/$agent.md" ]] && pass "agents/$agent.md" || fail "agents/$agent.md 缺失"
 done
 

@@ -27,7 +27,6 @@
 | repair_snapshots schema | templates/state-template.md | skills/mh-apply-repair.md "修复派发"节 |
 | 硬校验规则 | scripts/*.sh | docs/design.md §7.4 |
 | PPT 补充规则 | skills/mh-ppt.md | docs/design.md §11 |
-| 复盘与变更请求流程 | skills/mh-retro.md | docs/retrospectives/, docs/requirements/ |
 | Mini-Harness 自身开发协议 | tools/mh-dev/CLAUDE.md | skills/mh-dev.md, tools/mh-dev/README.md |
 | mh-dev 自开发状态 schema | tools/mh-dev/templates/state.json.template | tools/mh-dev/.mh-dev/state.json |
 | mh-dev 转换、范围与发布硬门禁 | tools/mh-dev/scripts/*.sh | tools/mh-dev/CLAUDE.md |

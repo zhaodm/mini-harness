@@ -161,7 +161,6 @@ bash tools/mh-dev/scripts/release-candidate.sh
 你只能写入以下路径，其他任何文件的 Write/Edit 操作都是违规：
 
 - `tools/mh-dev/.mh-dev/` 下的 `requirement.md`、`acceptance-criteria.json`、`acceptance-criteria.md`、`state.json`
-- `docs/retrospectives/improvement-report-MHDEV-*.md`（复盘 CR 建议）
 
 ## 状态转移操作
 
@@ -221,13 +220,3 @@ intake → propose → develop → verify → audit → release-candidate → ar
 - **禁止询问用户是否需要修复**
 - 报告末尾统一附加：`如需修复，请另开会话执行 /mh-dev`
 - 审计轨可写文件：`tools/mh-dev/.mh-dev/evidence/semantic-verdict.json`、`tools/mh-dev/.mh-dev/evidence/semantic-report.md`
-
----
-
-## 复盘轨（Retrospective Track）
-
-archive 后或定期触发，调度 Retrospector 执行复盘。完整方法论见 `tools/mh-dev/agents/retrospector.md`。
-
-Planner 侧约束：
-- 只复盘，不修复 — 复盘报告是产出物
-- 改善建议必须可操作，指明"改哪个文件/模块"+"预期效果"

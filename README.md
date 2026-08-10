@@ -84,7 +84,6 @@ web-app / backend-api / cli-tool / data-pipeline / infrastructure / documentatio
 | `/mh-run` | 外部项目/功能的全流程自动推进（推荐） |
 | `/mh-dev` | Mini-Harness 自身的开发、治理、验证与候选发布 |
 | `/mh-ppt` | PPT 类 HTML 开发快捷入口 |
-| `/mh-retro` | 复盘 + 变更请求（为 mh-dev 提供改进输入） |
 
 ### 最终产出
 
