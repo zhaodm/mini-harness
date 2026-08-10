@@ -189,7 +189,7 @@ output_type 与 mode 正交：mode 控制流程严谨度，output_type 控制产
 | library | 单元测试 |
 | custom | 用户指定 |
 
-详见：CLAUDE.md §7 + skills/mh-clarify.md Step 3
+> ⚠️ mode/output_type 机制已废除（统一入口为 `/mh-run` + `/mh-ppt`），本表为历史参考。当前流程纪律见 skills/mh-run.md "工作流纪律"节；产出类型选择见 skills/mh-clarify.md Step 3
 
 ---
 

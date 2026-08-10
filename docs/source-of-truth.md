@@ -1,7 +1,7 @@
 # 权威源映射表（Source of Truth）
 
 > 本文件供人类维护者参考，AI Agent 运行时不读取。
-> 运行时冲突解决规则见 CLAUDE.md §2。
+> 运行时冲突解决规则见本文件"冲突解决规则"节。
 
 本文件定义每个设计概念的权威文件。当多个文件描述同一概念时，以权威源为准。
 
@@ -11,7 +11,8 @@
 
 | 设计概念 | 权威源 | 辅助参考 |
 |---------|--------|---------|
-| 全局纪律（流程/隔离/保护） | CLAUDE.md | docs/design.md §4.1 |
+| 全局工程纪律 | CLAUDE.md "工程准则"节 | — |
+| 工作流纪律（流程/隔离/保护） | skills/mh-run.md "工作流纪律"节 | docs/design.md §4.1 |
 | 角色职责与禁止事项 | agents/*.md | docs/design.md §3 |
 | 角色质量标准与思考框架 | agents/*.md | — |
 | 流程步骤与 mode 裁剪 | skills/mh-*.md | docs/design.md §4 |
@@ -25,7 +26,6 @@
 | repair_history schema | templates/state-template.md | skills/mh-apply-repair.md 示例 |
 | repair_snapshots schema | templates/state-template.md | skills/mh-apply-repair.md "修复派发"节 |
 | 硬校验规则 | scripts/*.sh | docs/design.md §7.4 |
-| output_type 体系 | CLAUDE.md §7 | docs/design.md §10 |
 | PPT 补充规则 | skills/mh-ppt.md | docs/design.md §11 |
 | 复盘与变更请求流程 | skills/mh-retro.md | docs/retrospectives/, docs/requirements/ |
 | 金标准示例 | templates/examples/*.md | — |

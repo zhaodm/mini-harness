@@ -180,7 +180,7 @@ init ──────> propose ──────> apply ──────> a
 
 ## 通用规则
 
-> 角色切换指令、Handoff 协议、心跳打印、过程日志、断点恢复、异常处理等通用规则见 CLAUDE.md + `templates/logging-standard.md`。各阶段执行细节见 skills/*.md。
+> 角色切换指令、Handoff 协议、心跳打印、过程日志、断点恢复、异常处理等通用规则见 skills/mh-run.md "工作流纪律"节 + `templates/logging-standard.md`。各阶段执行细节见 skills/*.md。
 
 ---
 

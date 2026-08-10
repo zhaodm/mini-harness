@@ -54,7 +54,7 @@
 
 - 禁止编写实现代码
 - 文件写入权限由 role-guard.sh 强制（SA 仅可写 deliverables/{REQ-ID}/sa/ 和 .archiveignore）
-- 通用禁止事项见 CLAUDE.md §2-4
+- 工作流纪律（角色隔离/产物保护/自检）见 skills/mh-run.md "工作流纪律"节
 
 ---
 

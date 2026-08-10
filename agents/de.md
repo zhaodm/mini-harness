@@ -37,7 +37,7 @@
 
 - 禁止跳过测试直接交付
 - 文件写入权限由 role-guard.sh 强制（DE 仅可写 deliverables/{REQ-ID}/output/ 和 de/code-report）
-- 通用禁止事项见 CLAUDE.md §2-4
+- 工作流纪律（角色隔离/产物保护/自检）见 skills/mh-run.md "工作流纪律"节
 
 ---
 
