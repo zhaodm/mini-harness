@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "role": "auditor",
+  "round": 0,
+  "verdict": "PASS",
+  "generated_at": "",
+  "tester_verdict_ref": "evidence/test-verdict.json",
+  "mechanical_preflight": {
+    "exit_code": 0,
+    "evidence": "evidence/audit-preflight.json"
+  },
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "status": "PASS",
+      "evidence": ["audit-01"],
+      "summary": "实现与验收一致"
+    },
+    {
+      "id": "AX-01",
+      "status": "PASS",
+      "evidence": ["audit-02"],
+      "summary": "不变量保持"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "audit-01",
+      "kind": "inspection",
+      "location": "",
+      "summary": ""
+    }
+  ],
+  "findings": [],
+  "disposition": "PASS",
+  "release_recommendation": "APPROVE"
+}

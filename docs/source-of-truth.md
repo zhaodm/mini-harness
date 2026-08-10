@@ -28,6 +28,9 @@
 | 硬校验规则 | scripts/*.sh | docs/design.md §7.4 |
 | PPT 补充规则 | skills/mh-ppt.md | docs/design.md §11 |
 | 复盘与变更请求流程 | skills/mh-retro.md | docs/retrospectives/, docs/requirements/ |
+| Mini-Harness 自身开发协议 | tools/mh-dev/CLAUDE.md | skills/mh-dev.md, tools/mh-dev/README.md |
+| mh-dev 自开发状态 schema | tools/mh-dev/templates/state.json.template | tools/mh-dev/.mh-dev/state.json |
+| mh-dev 转换、范围与发布硬门禁 | tools/mh-dev/scripts/*.sh | tools/mh-dev/CLAUDE.md |
 | 金标准示例 | templates/examples/*.md | — |
 | 产出结构参考 | templates/output-guides/*.md | — |
 | 执行指标模板 | templates/metrics-template.md | skills/mh-archive.md ARC-4 |

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "role": "tester",
+  "round": 0,
+  "verdict": "PASS",
+  "generated_at": "",
+  "delta_ref": "snapshots/developer.r0.after.json",
+  "commands": [
+    {
+      "id": "cmd-01",
+      "command": "bash tests/run-all-tests.sh",
+      "cwd": "/absolute/repository/root",
+      "started_at": "",
+      "ended_at": "",
+      "exit_code": 0,
+      "summary": "全部测试通过"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "status": "PASS",
+      "evidence": ["cmd-01"],
+      "summary": "功能验证通过"
+    },
+    {
+      "id": "AX-01",
+      "status": "PASS",
+      "evidence": ["cmd-01"],
+      "summary": "对抗性不变量成立"
+    }
+  ],
+  "failures": [],
+  "summary": "所有验收项通过。"
+}

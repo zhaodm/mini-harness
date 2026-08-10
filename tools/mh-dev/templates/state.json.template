@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "workflow": "mh-dev",
+  "revision": 0,
+  "phase": "intake",
+  "current_role": "planner",
+  "baseline": "",
+  "approved_scope": [],
+  "track": "formal",
+  "testcase_adding_required": false,
+  "track_assessment": {
+    "requested_track": "formal",
+    "required_track": "formal",
+    "reason_codes": [],
+    "paths": [],
+    "confirmed": false,
+    "assessed_at": ""
+  },
+  "track_escalations": [],
+  "approvals": {
+    "intake": "pending",
+    "design": "pending",
+    "delivery": "pending"
+  },
+  "mechanical_preflight": "pending",
+  "test_verdict": "pending",
+  "semantic_audit": "pending",
+  "repair": {
+    "round": 0,
+    "max_rounds": 3,
+    "status": "not_started",
+    "reason": "",
+    "source_verdict": ""
+  },
+  "snapshots": {},
+  "change_ownership": {},
+  "evidence": [],
+  "phase_timestamps": {},
+  "release_status": "not_requested",
+  "last_updated": ""
+}

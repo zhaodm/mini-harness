@@ -32,9 +32,13 @@
 
 ## 研发流程
 
+### 外部项目交付：/mh-run
+
+`/mh-run` 使用 Mini-Harness 为外部项目或功能交付产物：
+
 ```
-/mh-clarify  →  /mh-propose  →  /mh-apply  →  /mh-archive
-  需求澄清        分析+设计       开发+审计       归档+结项
+/mh-run: clarify  →  propose  →  apply  →  archive
+              需求澄清       分析+设计       开发+审计       归档+结项
 ```
 
 三档模式适配不同规模：
@@ -42,7 +46,11 @@
 - **standard** — 新功能（15-20分钟）
 - **full** — 大型需求（30+分钟）
 
-> 推荐直接输入 `/mh-run` 全流程自动推进，仅在人工审批节点暂停。
+### 框架自身开发：/mh-dev
+
+`/mh-dev` 专门开发、治理、验证和准备发布 **Mini-Harness 自身**。它直接修改本仓库的角色、技能、脚本、工作流、模板、文档与测试；运行态位于 `tools/mh-dev/.mh-dev/`，与 `/mh-run` 的外部项目产出隔离。
+
+mh-dev 使用 fast/light/formal 轨道、开发者变更快照、机械预检、独立 Tester/Auditor 结论和 release candidate。它不会自动 commit、tag、push 或发布；这些外发操作始终需要人工显式授权。
 
 ---
 
@@ -65,19 +73,18 @@ web-app / backend-api / cli-tool / data-pipeline / infrastructure / documentatio
 ### 前置准备
 
 1. 将需求相关参考资料放入 `reference/` 目录
-2. 在对话框输入 `/mh-run`（或分步执行 `/mh-clarify` → `/mh-propose` → `/mh-apply` → `/mh-archive`）
+2. 在对话框输入 `/mh-run`
+
+`/mh-run` 的对外项目生命周期是 `clarify → propose → apply → archive`。开发本框架自身时改用 `/mh-dev`，不要把框架变更作为外部项目产出。
 
 ### 命令一览
 
 | 命令 | 作用 |
 |------|------|
-| `/mh-run` | 全流程自动推进（推荐） |
-| `/mh-clarify` | 需求初始化与澄清 |
-| `/mh-propose` | 需求分析 + 架构设计 + 评审 |
-| `/mh-apply` | 开发 + 审计 + 人工审批 |
-| `/mh-archive` | 归档 + 经验沉淀 + 结项 |
+| `/mh-run` | 外部项目/功能的全流程自动推进（推荐） |
+| `/mh-dev` | Mini-Harness 自身的开发、治理、验证与候选发布 |
 | `/mh-ppt` | PPT 类 HTML 开发快捷入口 |
-| `/mh-retro` | 复盘 + 变更请求（框架自身改进） |
+| `/mh-retro` | 复盘 + 变更请求（为 mh-dev 提供改进输入） |
 
 ### 最终产出
 

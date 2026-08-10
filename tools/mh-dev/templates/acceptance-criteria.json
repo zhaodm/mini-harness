@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "id": "AC-01",
+      "kind": "AC",
+      "statement": "描述要验证的功能、步骤与期望结果。",
+      "required_evidence": ["command"]
+    },
+    {
+      "id": "AX-01",
+      "kind": "AX",
+      "statement": "描述要验证的不变量、负向步骤与期望结果。",
+      "required_evidence": ["command"]
+    }
+  ]
+}

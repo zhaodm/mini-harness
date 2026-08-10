@@ -18,6 +18,27 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 
 # 定位活跃需求的 .state.md
 STATE_FILE=$(find deliverables -maxdepth 2 -name ".state.md" -not -path "deliverables/.state.md" 2>/dev/null | head -1)
+
+# mh-dev 仅在没有外部项目流程时治理框架根目录写入。运行态文件始终允许；
+# 框架文件必须被 approved_scope 精确列出，且治理关键路径只允许 formal 轨道。
+MH_DEV_STATE="tools/mh-dev/.mh-dev/state.json"
+if [[ -z "$STATE_FILE" && -f "$MH_DEV_STATE" ]] && jq -e '.workflow == "mh-dev" and (.phase | test("^(intake|propose|develop|verify|audit|repair|release-candidate|archive)$"))' "$MH_DEV_STATE" >/dev/null 2>&1; then
+  [[ "$FILE_PATH" =~ ^tools/mh-dev/\.mh-dev/ ]] && exit 0
+
+  MH_TRACK=$(jq -r '.track // empty' "$MH_DEV_STATE")
+  if jq -e --arg path "$FILE_PATH" '.approved_scope | index($path) != null' "$MH_DEV_STATE" >/dev/null 2>&1; then
+    case "$FILE_PATH" in
+      CLAUDE.md|.claude/settings.json|scripts/role-guard.sh|templates/state-template.md)
+        [[ "$MH_TRACK" == "formal" ]] || { echo "BLOCKED: mh-dev 治理关键路径要求 formal 轨道: $FILE_PATH"; exit 2; }
+        ;;
+    esac
+    exit 0
+  fi
+
+  echo "BLOCKED: mh-dev 未批准写入路径 $FILE_PATH"
+  exit 2
+fi
+
 [[ -z "$STATE_FILE" ]] && exit 0  # 无活跃需求时不拦截
 
 CURRENT_ROLES=$(grep "^current_role:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')

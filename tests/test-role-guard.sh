@@ -168,7 +168,7 @@ echo ""
 echo "--- 3. 边界条件测试 ---"
 
 # 无活跃需求（应放行所有）
-rm -rf deliverables/TEST001 deliverables/.state.md
+rm -rf deliverables/TEST001 deliverables/.state.md tools/mh-dev/.mh-dev/state.json
 mkdir -p deliverables
 TOTAL=$((TOTAL + 1))
 output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"any/file.md"}}' | bash scripts/role-guard.sh 2>&1)
@@ -233,6 +233,55 @@ cleanup_state
 setup_state "PM" "apply"
 assert_block "PM apply 阶段写 output/docs/ (非 archive)" "Write" "output/docs/spec.md"
 cleanup_state
+
+# --- 5. mh-dev 状态隔离 ---
+echo ""
+echo "--- 5. mh-dev 状态隔离测试 ---"
+
+MH_DEV_RUNTIME="tools/mh-dev/.mh-dev"
+setup_mhdev_state() {
+  local phase=$1
+  mkdir -p "$MH_DEV_RUNTIME"
+  cat > "$MH_DEV_RUNTIME/state.json" << EOF
+{"workflow":"mh-dev","phase":"$phase","approved_scope":["README.md"],"track":"formal"}
+EOF
+}
+cleanup_mhdev_state() {
+  rm -rf "$MH_DEV_RUNTIME"
+}
+
+# mh-dev 活跃 phase、无外部 deliverable
+rm -rf deliverables/TEST001 deliverables/.state.md
+setup_mhdev_state "develop"
+TOTAL=$((TOTAL + 1))
+output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"README.md"}}' | bash scripts/role-guard.sh 2>&1)
+code=$?
+if [ $code -eq 0 ]; then echo -e "  ${GREEN}PASS${NC}: mh-dev 活跃时批准路径放行"; PASS=$((PASS + 1)); else echo -e "  ${RED}FAIL${NC}: mh-dev 活跃时批准路径应放行 (got exit=$code)"; FAIL=$((FAIL + 1)); fi
+TOTAL=$((TOTAL + 1))
+output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"scripts/foo.sh"}}' | bash scripts/role-guard.sh 2>&1)
+code=$?
+if [ $code -eq 2 ]; then echo -e "  ${GREEN}PASS${NC}: mh-dev 活跃时未批准路径阻断"; PASS=$((PASS + 1)); else echo -e "  ${RED}FAIL${NC}: mh-dev 活跃时未批准路径应阻断 (got exit=$code)"; FAIL=$((FAIL + 1)); fi
+TOTAL=$((TOTAL + 1))
+output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"tools/mh-dev/.mh-dev/foo"}}' | bash scripts/role-guard.sh 2>&1)
+code=$?
+if [ $code -eq 0 ]; then echo -e "  ${GREEN}PASS${NC}: mh-dev 活跃时运行态文件放行"; PASS=$((PASS + 1)); else echo -e "  ${RED}FAIL${NC}: mh-dev 活跃时运行态文件应放行 (got exit=$code)"; FAIL=$((FAIL + 1)); fi
+
+# mh-dev 终态残留不污染 /mh-run 无活跃需求行为
+setup_mhdev_state "done"
+TOTAL=$((TOTAL + 1))
+output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"any/file.md"}}' | bash scripts/role-guard.sh 2>&1)
+code=$?
+if [ $code -eq 0 ]; then echo -e "  ${GREEN}PASS${NC}: mh-dev 终态残留时无活跃需求放行"; PASS=$((PASS + 1)); else echo -e "  ${RED}FAIL${NC}: mh-dev 终态残留时应放行 (got exit=$code)"; FAIL=$((FAIL + 1)); fi
+
+# mh-dev 活跃但外部 deliverable 存在：按 deliverable 角色判定
+setup_mhdev_state "develop"
+setup_state "SA"
+TOTAL=$((TOTAL + 1))
+output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"deliverables/TEST001/sa/design.md"}}' | bash scripts/role-guard.sh 2>&1)
+code=$?
+if [ $code -eq 0 ]; then echo -e "  ${GREEN}PASS${NC}: 外部 deliverable 存在时按角色白名单放行"; PASS=$((PASS + 1)); else echo -e "  ${RED}FAIL${NC}: 外部 deliverable 存在时应按角色放行 (got exit=$code)"; FAIL=$((FAIL + 1)); fi
+cleanup_state
+cleanup_mhdev_state
 
 # === 结果汇总 ===
 echo ""

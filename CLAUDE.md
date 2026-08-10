@@ -72,7 +72,12 @@
 
 ## 6. 多角色工作流协议
 
-详见 `skills/mh-run.md`。仅在用户显式调用 `/mh-run` 或 `/mh-ppt` 后生效，默认会话不启动任何多角色流程。核心铁律：
+详见 `skills/mh-run.md`。仅在用户显式调用 `/mh-run`、`/mh-ppt` 或 `/mh-dev` 后生效，默认会话不启动任何多角色流程。核心铁律：
+
+- `.state.md` 是 `/mh-run` 外部项目流程的唯一真相源（schema 见 `templates/state-template.md`）
+- `tools/mh-dev/.mh-dev/state.json` 是 **mh-dev 自开发流程**的唯一真相源；它只治理本仓库自身变更，绝不替代或修改外部项目 `.state.md` 的权威性
+- PM 恢复 `/mh-run` 时仅依据 .state.md 和 handoff 文件状态，禁止依赖对话历史
+- 每次更新状态文件必须同步更新 last_updated 时间戳
 
 - PM 只做调度，不做专业判断
 - 角色切换必须通过 Handoff 文件

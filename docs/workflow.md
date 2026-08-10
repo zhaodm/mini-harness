@@ -42,6 +42,24 @@ PM 调度手册。PM 必须严格按此手册执行，不得跳步或自行决�
 
 ---
 
+## Mini-Harness 自身开发（/mh-dev）
+
+`/mh-dev` 不属于上方 `/mh-run` 的外部项目交付流程。它以 `tools/mh-dev/` 为独立控制面，直接变更本仓库的角色、技能、脚本、工作流、模板、命令、文档与测试。
+
+```
+intake → propose → develop → verify → audit / repair → release-candidate → archive
+```
+
+- 运行态与证据在 `tools/mh-dev/.mh-dev/`；其中 `state.json` 只对 mh-dev 自开发流程权威。
+- fast、light、formal 都需要人工确认；涉及规则、权限、状态、验证或发布契约的变更强制 formal。
+- Developer 以开发前后快照证明实际 diff 符合已批准范围；Tester 和 Auditor 分别给出结构化 verdict。
+- 机械预检的退出码优先于任何 Agent 结论；语义审计只在预检成功后运行。
+- release candidate 只产生 manifest、release notes 和人工下一步；不执行 commit、tag、push、publish 或远程发行。
+
+完整执行协议见 `tools/mh-dev/CLAUDE.md`，工具内验证入口为 `bash tools/mh-dev/scripts/verify.sh`。
+
+---
+
 ## 自动推进模式（/mh-run）
 
 用户可通过 `/mh-run` 启动全流程自动推进模式，等效于依次执行 clarify → propose → apply → archive，但无需在阶段间手动输入命令。
