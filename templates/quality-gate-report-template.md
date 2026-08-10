@@ -1,6 +1,6 @@
 <!-- 质量门禁失败报告模板
-  使用场景: PM 执行 test_strategy 门禁命令后发现错误，需归因并派发修复
-  使用方式: 复制到 deliverables/{REQ-ID}/de/quality-gate-report-b{N}.md 并填写
+  使用场景: Orchestrator 执行 test_strategy 门禁命令后发现错误，需归因并派发修复
+  使用方式: 复制到 deliverables/{REQ-ID}/worker/quality-gate-report-b{N}.md 并填写
 -->
 ---
 report_id: "QG-B{N}-001"
@@ -30,14 +30,14 @@ created_at: "{YYYY-MM-DDTHH:MM:SSZ}"
 
 ## 集成问题（跨 Task，无法归因到单一 Task）
 
-| # | 涉及 Task | 冲突描述 | 指定修复 DE |
+| # | 涉及 Task | 冲突描述 | 指定修复 Worker |
 |---|-----------|---------|------------|
 | 1 | | | |
 
 ## 根因分析
 
-{简要说明错误的系统性根因，帮助 DE 理解问题本质}
+{简要说明错误的系统性根因，帮助 Worker 理解问题本质}
 
 ## 影响范围
 
-{列出受影响的文件和模块，帮助 DE 评估修复边界}
+{列出受影响的文件和模块，帮助 Worker 评估修复边界}

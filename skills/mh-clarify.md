@@ -1,6 +1,6 @@
 # Skill: mh-clarify
 
-需求初始化与澄清。PM 主导，人机协作打磨 Proposal。
+需求初始化与澄清。Orchestrator 主导，人机协作打磨 Proposal。
 
 **日志规则：** 见 `templates/logging-standard.md`
 
@@ -13,25 +13,36 @@
 3. 如 `output/lessons-learned.md` 存在，加载历史经验
 4. **调用 `detectScenario()`**（`workflows/lib/detect-scenario.js`）判断场景
 5. RESUME → 提示用户继续或放弃；CHANGE → 增量开发模式；NEW → 全新项目
+6. **旧角色 schema 迁移**：如 .state.md 含旧 current_role（PM/BA/SA/DE/TE/UX），
+   提示"检测到旧角色 schema，将自动迁移"并映射：
+   - PM → ORCHESTRATOR
+   - BA/SA/UX → THINKER
+   - DE → WORKER
+   - TE → VERIFIER
 
 ### CHANGE 模式要点
 
 - Proposal 标注"增量开发，基于 output/ 已有代码"
-- BA/SA 仅产出增量文档，归档时 `archiveMerge()` 负责 merge 全量
-- DE handoff 白名单包含 `output/`；TE 回归覆盖全部已有功能
+- Thinker 仅产出增量文档，归档时 `archiveMerge()` 负责 merge 全量
+- Worker handoff 白名单包含 `output/`；Verifier 回归覆盖全部已有功能
 
 ## 环境预检
 
-**调用 `detectTechStack()`**（`workflows/lib/recommend-test-strategy.js`）自动推断，或手动扫描配置文件：
+**调用 `detectTechStack()`**（`workflows/lib/recommend-type-mode.js`）自动推断，或手动扫描配置文件：
 - 语言: pyproject.toml→Python, package.json→JS/TS, go.mod→Go, Cargo.toml→Rust, pom.xml→Java
 - 包管理器: poetry.lock→poetry, package-lock.json→npm, yarn.lock→yarn, pnpm-lock.yaml→pnpm
 - 浏览器检测（仅 UI 类需求）: Playwright/Selenium/Cypress 可用性
 
 检测不完整时向用户确认。结果写入 `.state.md` tech_stack 和 env 字段。
 
-## Step 1: 初始化任务目录
+## Step 1: 初始化任务目录 + Track 选择
 
-生成 REQ-ID → 创建 `deliverables/{REQ-ID}/` 目录结构 → 写入 `.state.md`（schema 见 `templates/state-template.md`）。
+1. 生成 REQ-ID → 创建 `deliverables/{REQ-ID}/` 目录结构
+2. **Track 选择**（由入口命令决定）：
+   - `/mh-run` → `track: code`
+   - `/mh-ppt` → `track: ppt`
+3. 写入 `.state.md`（schema 见 `templates/state-template.md`），含 track 字段
+4. track 写入后只读，切换需重新开需求
 
 ## Step 2: 需求澄清（人机协作）
 
@@ -43,7 +54,7 @@
 
 ## Step 3: 验证策略确认
 
-**调用 `recommendTestStrategy()`**（`workflows/lib/recommend-test-strategy.js`），根据 tech_stack 和浏览器可用性推断 test_strategy。
+**调用 `recommendTestStrategy()`**（`workflows/lib/recommend-type-mode.js`），根据 tech_stack 和浏览器可用性推断 test_strategy。
 
 向用户呈现推荐结果并请求确认，确认后写入 test_strategy 到 `.state.md`。
 

@@ -74,6 +74,8 @@
 
 详见 `skills/mh-run.md`。仅在用户显式调用 `/mh-run`、`/mh-ppt` 或 `/mh-dev` 后生效，默认会话不启动任何多角色流程。核心铁律：
 
-- PM 只做调度，不做专业判断
+- Orchestrator 只做调度，不做专业判断
+- 三角色（Thinker/Worker/Verifier）职责严格分离
 - 角色切换必须通过 Handoff 文件
 - SR 节点不可自主跨越
+- code track（/mh-run）与 ppt track（/mh-ppt）各自独立流水线，共享 3-role spine

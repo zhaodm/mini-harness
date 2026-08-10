@@ -151,6 +151,31 @@ const sr3Pending = autoAdvance({
 });
 assert('SR3 待审批 → pause', sr3Pending.action === 'pause');
 
+// --- 12. WIREFRAME-PENDING → pause (AX-03) ---
+console.log('\n--- 12. WIREFRAME-PENDING (ppt track) → pause ---');
+
+const wireframePending = autoAdvance({
+  phase: 'propose',
+  currentStep: 'WIREFRAME-PENDING',
+  srStatus: { SR1: 'pending', SR3: 'pending' },
+  repairRound: 0,
+  autoAdvance: true
+});
+assert('WIREFRAME-PENDING → pause', wireframePending.action === 'pause');
+assert('reason 含 WIREFRAME', wireframePending.reason.includes('WIREFRAME'));
+
+// --- 13. PROPOSAL-CONFIRM → pause ---
+console.log('\n--- 13. PROPOSAL-CONFIRM → pause ---');
+
+const proposalConfirm = autoAdvance({
+  phase: 'init',
+  currentStep: 'PROPOSAL-CONFIRM',
+  srStatus: { SR1: 'pending', SR3: 'pending' },
+  repairRound: 0,
+  autoAdvance: true
+});
+assert('PROPOSAL-CONFIRM → pause', proposalConfirm.action === 'pause');
+
 // === 结果 ===
 console.log('\n========================');
 console.log(`总计: ${pass + fail} | \x1b[32m通过: ${pass}\x1b[0m | \x1b[31m失败: ${fail}\x1b[0m`);

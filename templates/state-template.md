@@ -13,11 +13,16 @@ req_id: REQ{NNN}              # 需求编号，全局唯一递增
 
 # === 流程状态 ===
 phase: init                    # 当前阶段: init | propose | apply | archive | done
-current_step: INIT-1           # 当前步骤 ID（见下方步骤 ID 枚举）
-current_role: PM               # 当前执行角色: PM | BA | SA | DE | TE | UX
-current_handoff: ""            # 当前活跃 handoff 文件名（如 REQ001-REQ1-R1.md）
+current_step: THINK-NEEDS     # 当前步骤 ID（见下方步骤 ID 枚举）
+current_role: THINKER          # 当前执行角色: THINKER | WORKER | VERIFIER
+current_handoff: ""            # 当前活跃 handoff 文件名（如 REQ001-REQ2-R1.md）
 completed_steps: []            # 已完成步骤列表（字符串数组）
 auto_advance: true             # 始终自动推进（/mh-run 唯一入口）
+
+# === 轨道 ===
+track: code                    # code | ppt（入口确定，不可中途切换）
+thinker_phase: ""              # needs | design | visual（当前 Thinker 相位）
+ppt_design_mode: ""            # system | creative（ppt track 专用）
 
 # === 修复循环 ===
 repair_round: 0                # 当前修复轮次（0=未进入修复循环，1-5=修复中）
@@ -25,14 +30,14 @@ repair_task: ""                # 当前修复的任务标识（如 Task-1）
 repair_history: []             # 修复历史（每轮追加，通过后清空）
 # 格式: [{round: 1, error_type: "test_failure", failed_count: 3, summary: "API返回500", root_cause_hypothesis: "...", action_taken: "..."}]
 repair_snapshots: []           # 修复快照（每轮追加，通过后清空）
-# 格式: [{round: 1, output_hash: "md5", code_report: "de/code-report-r1.md"}]
+# 格式: [{round: 1, output_hash: "md5", code_report: "worker/code-report-r1.md"}]
 
 # === 任务计时 ===
-task_started_at: ""            # 当前任务开始时间（PM 派发时写入，完成后清空）
+task_started_at: ""            # 当前任务开始时间（Orchestrator 派发时写入，完成后清空）
 
 # === 审批状态 ===
 sr_status:
-  SR1: pending                 # pending | approved | rejected（方案确认）
+  SR1: pending                 # pending | approved | rejected（方案确认，含 wireframe 审批）
   SR3: pending                 # pending | approved | rejected（交付确认）
 
 # === 技术栈 ===
@@ -58,19 +63,21 @@ last_updated: ""               # ISO 8601 UTC 时间戳，每次更新必须同�
 
 ## 步骤 ID 枚举
 
+### 共通步骤
+
 | 阶段 | 步骤 ID | 说明 |
 |------|---------|------|
 | init | INIT-1 | 初始化任务目录 |
 | init | INIT-DONE | clarify 阶段完成 |
-| propose | REQ-1 | BA 需求分析 |
-| propose | REQ-2 | SA 架构设计 |
-| propose | REQ-3 | TE 测试用例设计 |
-| propose | REQ-4 | PM 计划编排 |
+| propose | THINK-NEEDS | Thinker needs 相位（所有 track） |
+| propose | PROPOSAL-CONFIRM | Proposal 确认（人机交互） |
 | propose | PROPOSE-DONE | propose 阶段完成 |
-| apply | DEV-1 | DE 批次开发 |
-| apply | TEST-1 | TE 审计 |
-| apply | TEST-2 | TE 最终审计 |
-| apply | SR3-DONE | SR3 交付确认通过 |
+| apply | SR1-PENDING | SR1 方案审批暂停 |
+| apply | SR1-DONE | SR1 通过 |
+| apply | VERIFY-1 | Verifier 验证 |
+| apply | SR3-PENDING | SR3 交付审批暂停 |
+| apply | SR3-DONE | SR3 通过 |
+| apply | BATCH-CONFIRM | 批次人工确认 |
 | archive | ARC-1 | 需求归档 |
 | archive | ARC-2 | 设计归档 |
 | archive | ARC-3 | 产出物归档 |
@@ -80,6 +87,19 @@ last_updated: ""               # ISO 8601 UTC 时间戳，每次更新必须同�
 | archive | ARC-7 | 经验沉淀 |
 | archive | ARC-8 | AI 项目上下文生成 |
 | archive | ARC-DONE | 归档完成 |
+
+### code track 专属
+
+| 阶段 | 步骤 ID | 说明 |
+|------|---------|------|
+| propose | THINK-DESIGN | Thinker design 相位（code track） |
+
+### ppt track 专属
+
+| 阶段 | 步骤 ID | 说明 |
+|------|---------|------|
+| propose | THINK-VISUAL | Thinker visual 相位（ppt track） |
+| propose | WIREFRAME-PENDING | Wireframe 审批暂停（ppt track） |
 
 ---
 
@@ -93,6 +113,21 @@ req_id: REQ{NNN}
 
 ---
 
+## 向后兼容（旧角色值映射）
+
+现有 .state.md 若含旧 current_role（PM/BA/SA/DE/TE/UX），状态机不直接崩溃——clarify 阶段重写时映射：
+
+| 旧值 | 新值 |
+|------|------|
+| PM | ORCHESTRATOR（主会话标记，不进 role-guard） |
+| BA/SA/UX | THINKER |
+| DE | WORKER |
+| TE | VERIFIER |
+
+映射在 mh-clarify Step 1（初始化任务目录时重写 .state.md）执行。若用户 RESUME 一个旧 .state.md，clarify 检测到旧枚举时提示"检测到旧角色 schema，将自动迁移"并映射。
+
+---
+
 ## 更新规则
 
 1. 每次更新任何字段时，必须同步更新 `last_updated`
@@ -101,3 +136,4 @@ req_id: REQ{NNN}
 4. `completed_steps` 仅追加，不删除（用于断点恢复跳过已完成步骤）
 5. `current_handoff` 在每次写入新 handoff 时更新，handoff 完成后清空
 6. `sr_status` 各字段在对应审批节点执行时更新
+7. `track` 写入后只读，切换需重新开需求

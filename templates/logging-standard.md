@@ -7,14 +7,14 @@
 **timestamp 获取方式：** 优先使用 `date -u +%Y-%m-%dT%H:%M:%SZ`；如 date 命令不可用，使用递增序号 `#NNN`。
 
 **强制落盘规则：**
-- PM 的每条心跳 `[PM] xxx` 必须同时执行: `echo "[{timestamp}] [PM] xxx" >> deliverables/{REQ-ID}/process.log`
+- Orchestrator 的每条心跳 `[ORCHESTRATOR] xxx` 必须同时执行: `echo "[{timestamp}] [ORCHESTRATOR] xxx" >> deliverables/{REQ-ID}/process.log`
 - SubAgent 完成时追加一条: `echo "[{timestamp}] [{角色}] 完成 {task_id}，产出: {file_list}" >> deliverables/{REQ-ID}/process.log`
 - 心跳仅打印到 stdout 而未写入 process.log 视为违规
 - SR Gate 审批结果必须追加一条（含通过/驳回 + 原因摘要）
 
 **写入时机：**
-- PM 每次调度前、验证后各追加一条
-- BA/SA/DE/TE/UX 完成任务后追加一条（含产物路径）
+- Orchestrator 每次调度前、验证后各追加一条
+- Thinker/Worker/Verifier 完成任务后追加一条（含产物路径）
 - 人工审批结果追加一条
 - 异常/失败追加一条（含原因摘要）
 

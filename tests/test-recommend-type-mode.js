@@ -1,8 +1,8 @@
-// test-recommend-type-mode.js — recommend-test-strategy 的单元测试
+// test-recommend-type-mode.js — recommend-test-strategy + deriveReviewScope 的单元测试
 // 用法: node tests/test-recommend-type-mode.js
 // 退出码: 0=全部通过, 1=有失败
 
-import { recommendTestStrategy, detectTechStack } from '../workflows/lib/recommend-type-mode.js';
+import { recommendTestStrategy, detectTechStack, deriveReviewScope } from '../workflows/lib/recommend-type-mode.js';
 
 let pass = 0;
 let fail = 0;
@@ -17,7 +17,7 @@ function assert(desc, condition, detail = '') {
   }
 }
 
-console.log('=== recommend-test-strategy 单元测试 ===\n');
+console.log('=== recommend-test-strategy + deriveReviewScope 单元测试 ===\n');
 
 // --- 1. React + browser → e2e ---
 console.log('--- 1. React + browser → e2e ---');
@@ -91,6 +91,20 @@ const ts3 = detectTechStack(['go.mod', 'go.sum', '.golangci.yml']);
 assert('go.mod → go', ts3.language === 'go');
 assert('go.sum → go modules', ts3.packageManager === 'go modules');
 assert('.golangci.yml → golangci-lint', ts3.lintTool === 'golangci-lint');
+
+// --- 7. deriveReviewScope — track-based ---
+console.log('\n--- 7. deriveReviewScope (track-based) ---');
+
+const codeScope = deriveReviewScope('web-app', 'code');
+assert('code track → 不跳过', codeScope.skip === false);
+assert('code track → 全量维度', codeScope.dimensions.length === 7);
+
+const pptScope = deriveReviewScope('ppt', 'ppt');
+assert('ppt track → 跳过', pptScope.skip === true);
+assert('ppt track → 空维度', pptScope.dimensions.length === 0);
+
+const codeScopeNoTrack = deriveReviewScope('web-app');
+assert('无 track 参数 → 不跳过（兼容）', codeScopeNoTrack.skip === false);
 
 // === 结果 ===
 console.log('\n========================');

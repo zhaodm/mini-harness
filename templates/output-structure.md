@@ -11,8 +11,8 @@
 output/
 ├── docs/                         # 文档类产出（框架归档生成）
 │   ├── spec/                    # 需求+设计规格
-│   │   ├── requirement-spec.md  # BA 需求规格
-│   │   └── design.md           # SA 技术设计
+│   │   ├── requirement-spec.md  # Thinker 需求规格
+│   │   └── design.md           # Thinker 技术设计
 │   ├── kb/                      # 分层知识库（AI 项目上下文）
 │   │   ├── system-map.md       # Layer 0: 全景入口（≤150行）
 │   │   ├── domains/            # Layer 1: 域指南（每份≤400行）
@@ -20,11 +20,11 @@ output/
 │   │   └── kb-verify.sh       # 新鲜度检查脚本
 │   ├── lessons-learned.md       # 经验沉淀（EXP-N）
 │   └── metrics.md               # 执行指标
-├── src/                          # 源代码产出（DE 交付）
+├── src/                          # 源代码产出（Worker 交付）
 │   └── {按 output-guide 组织}
 ├── tests/                        # 测试产出
 │   ├── regression-suite.md      # 回归套件（框架自动沉淀）
-│   └── {unit/, integration/, e2e/}  # 测试代码（DE 交付）
+│   └── {unit/, integration/, e2e/}  # 测试代码（Worker 交付）
 ├── deploy/                       # 部署/基础设施产出
 │   └── {Dockerfile, docker-compose.yml, k8s/, .github/, CI configs}
 ├── assets/                       # 静态资源/设计稿
@@ -41,11 +41,11 @@ output/
 |------|--------|--------|------|
 | docs/ | 供人/AI 阅读的文档 | 框架 ARC 步骤 | 不可执行，纯知识载体 |
 | docs/spec/ | 需求规格 + 技术设计 | ARC-1, ARC-2 | change 模式走 merge 流程 |
-| src/ | 可执行的项目源代码 | DE | 按 output-guide 组织 |
-| tests/ | 测试代码 + 回归套件 | DE + 框架 | regression-suite.md 由 ARC-5 生成 |
-| deploy/ | 部署、CI/CD、基础设施 | DE | Dockerfile, k8s, GitHub Actions 等 |
-| assets/ | 非代码静态文件 | UX / DE | 设计稿、图片、字体 |
-| reference/ | 外部参考资料 | PM (ARC-4) | 不修改，仅归档保存 |
+| src/ | 可执行的项目源代码 | Worker | 按 output-guide 组织 |
+| tests/ | 测试代码 + 回归套件 | Worker + 框架 | regression-suite.md 由 ARC-5 生成 |
+| deploy/ | 部署、CI/CD、基础设施 | Worker | Dockerfile, k8s, GitHub Actions 等 |
+| assets/ | 非代码静态文件 | Thinker / Worker | 设计稿、图片、字体 |
+| reference/ | 外部参考资料 | Orchestrator (ARC-4) | 不修改，仅归档保存 |
 
 ---
 
@@ -81,7 +81,7 @@ output/ 根目录只允许以下文件（非目录）：
 
 ## ARC-3 分流规则
 
-DE 交付的 `deliverables/{REQ-ID}/output/` 内容按以下规则分流：
+Worker 交付的 `deliverables/{REQ-ID}/output/` 内容按以下规则分流：
 
 | 文件模式 | 目标目录 |
 |---------|---------|
@@ -92,7 +92,7 @@ DE 交付的 `deliverables/{REQ-ID}/output/` 内容按以下规则分流：
 | `package.json`, `*.toml`, `*.mod`, `Makefile`, `README.md`, `tsconfig*`, `.*rc`, `.env*`, `.gitignore` | `output/`（根目录） |
 | 其他 `*.md`（非上述匹配） | `output/docs/` |
 
-如果 DE 的 output/ 已经有 `src/`, `tests/` 等目录结构，则保持原结构直接对应复制。
+如果 Worker 的 output/ 已经有 `src/`, `tests/` 等目录结构，则保持原结构直接对应复制。
 
 ---
 

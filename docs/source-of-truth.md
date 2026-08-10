@@ -15,10 +15,10 @@
 | 工作流纪律（流程/隔离/保护） | skills/mh-run.md "工作流纪律"节 | docs/design.md §4.1 |
 | 角色职责与禁止事项 | agents/*.md | docs/design.md §3 |
 | 角色质量标准与思考框架 | agents/*.md | — |
-| 流程步骤与 mode 裁剪 | skills/mh-*.md | docs/design.md §4 |
-| PM 调度协议 | agents/pm.md "调度协议"节 | docs/design.md §4.1 |
-| PM 质量门禁清单 | agents/pm.md "质量门禁"节 | skills 中引用 |
-| SR Gate 通过标准 | skills/mh-propose.md, mh-apply.md, mh-archive.md | docs/design.md §4.5 |
+| 流程步骤与 track 裁剪 | skills/mh-*.md | docs/design.md §4 |
+| Orchestrator 调度协议 | agents/orchestrator.md "调度协议"节 | docs/design.md §3 |
+| Orchestrator 质量门禁清单 | agents/orchestrator.md "质量门禁"节 | skills 中引用 |
+| SR Gate 通过标准 | skills/mh-propose.md, mh-apply.md, mh-archive.md | docs/design.md §4 |
 | 状态 schema | templates/state-template.md | docs/design.md §4.4 |
 | Handoff 协议与格式 | templates/handoff-template.md | docs/design.md §5.3 |
 | 日志格式 | templates/logging-standard.md | — |
@@ -26,7 +26,7 @@
 | repair_history schema | templates/state-template.md | skills/mh-apply-repair.md 示例 |
 | repair_snapshots schema | templates/state-template.md | skills/mh-apply-repair.md "修复派发"节 |
 | 硬校验规则 | scripts/*.sh | docs/design.md §7.4 |
-| PPT 补充规则 | skills/mh-ppt.md | docs/design.md §11 |
+| PPT track 补充规则 | skills/mh-ppt.md | docs/design.md §6 |
 | Mini-Harness 自身开发协议 | tools/mh-dev/CLAUDE.md | skills/mh-dev.md, tools/mh-dev/README.md |
 | mh-dev 自开发状态 schema | tools/mh-dev/templates/state.json.template | tools/mh-dev/.mh-dev/state.json |
 | mh-dev 转换、范围与发布硬门禁 | tools/mh-dev/scripts/*.sh | tools/mh-dev/CLAUDE.md |
@@ -43,7 +43,7 @@
   ├─ check-harness.sh — 框架文件完整性自检
   ├─ Handoff 协议 — 角色间信息传递必须结构化
   ├─ 模板约束 — 产出物必须按模板格式
-  └─ PM 调度协议 — 标准化调度行为
+  └─ Orchestrator 调度协议 — 标准化调度行为
 
 第二层：自动检测（发现）
   ├─ verify.sh A/B/C/D — 产出物校验（退出码驱动）
@@ -52,7 +52,7 @@
 
 第三层：人工评审（兜底）
   ├─ SR1-4 审批节点（决策上下文卡辅助判断）
-  ├─ PM 质量门禁（内容级验收）
+  ├─ Orchestrator 质量门禁（内容级验收）
   └─ 用户最终确认
 ```
 
@@ -81,7 +81,8 @@
 
 每次重大变更后执行：
 
-- [ ] `grep -r "见 agents/pm.md" skills/` → 确认引用描述与 pm.md 实际内容一致
+- [ ] `grep -r "见 agents/orchestrator.md" skills/` → 确认引用描述与 orchestrator.md 实际内容一致
+- [ ] `grep -r "见 agents/pm.md\|见 agents/ba.md\|见 agents/sa.md\|见 agents/de.md\|见 agents/te.md\|见 agents/ux.md" skills/ docs/` → 确认无旧角色文件引用残留
 - [ ] `grep -r "A/B/C/D" .` → 确认所有引用已更新为 A/B/C/D/E（如适用）
 - [ ] `wc -l skills/mh-*.md` → 确认无文件超过 350 行（超过则规划拆分）
 - [ ] `bash scripts/check-harness.sh` → 框架完整性通过

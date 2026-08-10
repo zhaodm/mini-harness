@@ -1,6 +1,6 @@
 # Mini-Harness Workflow
 
-PM 调度手册。PM 必须严格按此手册执行，不得跳步或自行决策技术问题。
+Orchestrator 调度手册。Orchestrator 必须严格按此手册执行，不得跳步或自行决策技术问题。
 
 ---
 
@@ -12,19 +12,19 @@ PM 调度手册。PM 必须严格按此手册执行，不得跳步或自行决�
                                                                                      
 [人机协作]         [自动化 + 人工审批]              [自动化 + 多轮修复 + 人工审批]     [归档 + 结项]
                                                                                      
- PM                PM→(SA∥TE)→PM                   PM→DE(并行)→TE(并行)→PM (批次)    PM
+ Orchestrator      Orchestrator→Thinker            Orchestrator→Worker→Verifier       Orchestrator
  │                 │                                │                                 │
  ▼                 ▼                                ▼                                 ▼
- 场景检测           REQ-1 需求分析(full)             Batch-1: 并行开发                  ARC-1 需求归档
+ 场景检测           THINK-NEEDS 需求规格             Batch-1: Worker 并行开发           ARC-1 需求归档
  │                 │                                │                                 │
  ▼                 ▼                                ▼                                 ▼
- 需求澄清          REQ-2∥REQ-3 架构+用例(并行)     Batch-1: 并行审计                  ARC-2 设计归档
+ 需求澄清          THINK-DESIGN/VISUAL 设计/视觉    Batch-1: Verifier 并行审计         ARC-2 设计归档
  │                 │                                │                                 │
  ▼                 ▼                                ├─FAIL→ 并行修复(≤5轮)            ▼
- Proposal定稿      REQ-4 计划编排                   │                                 ARC-3 代码归档
+ Proposal定稿      Orchestrator 计划编排             │                                 ARC-3 代码归档
                    │                                ▼                                 │
                    ▼                                人工批量确认                       ▼
-                  ★SR1 需求评审                     │                                ★SR4 结项确认
+                  ★SR1 方案确认                    │                                ★SR4 结项确认
                                                     ▼                                 
                                                     Batch-2: ... (如有)               
                                                     │                                 
@@ -32,7 +32,7 @@ PM 调度手册。PM 必须严格按此手册执行，不得跳步或自行决�
                                                    ★SR2 功能评审                     
                                                     │                                 
                                                     ▼                                 
-                                                    TEST-2 最终审计                   
+                                                    VERIFY-2 最终审计                 
                                                     │                                 
                                                     ▼                                 
                                                    ★SR3 最终评审                     
@@ -62,12 +62,12 @@ intake → propose → develop → verify → audit / repair → release-candida
 
 ## 自动推进模式（/mh-run）
 
-用户可通过 `/mh-run` 启动全流程自动推进模式，等效于依次执行 clarify → propose → apply → archive，但无需在阶段间手动输入命令。
+用户可通过 `/mh-run` 启动 code track 全流程自动推进模式，等效于依次执行 clarify → propose → apply → archive，但无需在阶段间手动输入命令。
 
-- 阶段间自动衔接，消除手动触发等待（实测节省约 5 分钟）
+- 阶段间自动衔接，消除手动触发等待
 - 阶段内所有人工审批节点（★标记）照常暂停
 - 支持断点恢复（.state.md 中 `auto_advance: true`）
-- 各阶段独立命令（/mh-clarify、/mh-propose、/mh-apply、/mh-archive）仍可单独使用
+- `/mh-ppt` 启动 ppt track，同样支持自动推进和断点恢复（含 WIREFRAME-PENDING 暂停点）
 
 推进触发条件：
 
@@ -82,14 +82,14 @@ intake → propose → develop → verify → audit / repair → release-candida
 
 ## 详细时序
 
-> **CR-004 架构变更：** propose 阶段的 SA∥TE 并行和 apply 阶段的批量 DE∥TE 并行，
-> 通过 JS Workflow 脚本（`workflows/`）确定性执行，不再依赖 PM 解读自然语言指令。
-> PM 主会话保持人机交互和质量门禁职责。详见 `docs/designs/CR-004-hybrid-workflow-design.md`。
+> **架构变更：** propose 阶段的 Thinker 相位和 apply 阶段的批量 Worker∥Verifier 并行，
+> 通过 JS Workflow 脚本（`workflows/`）确定性执行，不再依赖 Orchestrator 解读自然语言指令。
+> Orchestrator 主会话保持人机交互和质量门禁职责。
 
 ```
-┌──────┐     ┌──────┐     ┌──────┐     ┌──────┐     ┌──────┐     ┌──────┐
-│ User │     │  PM  │     │  BA  │     │  SA  │     │  DE  │     │  TE  │
-└──┬───┘     └──┬───┘     └──┬───┘     └──┬───┘     └──┬───┘     └──┬───┘
+┌──────┐     ┌────────────┐     ┌─────────┐     ┌────────┐     ┌──────────┐
+│ User │     │Orchestrator │     │ Thinker │     │ Worker │     │ Verifier │
+└──┬───┘     └─────┬──────┘     └────┬────┘     └────┬───┘     └────┬─────┘
    │            │            │            │            │            │
    │ /mh-clarify  │            │            │            │            │
    │───────────>│            │            │            │            │
@@ -102,30 +102,24 @@ intake → propose → develop → verify → audit / repair → release-candida
    │            │            │            │            │            │
    │ /mh-propose            │            │            │            │
    │───────────>│            │            │            │            │
-   │            │──handoff──>│ (full only) │            │            │
+   │            │──handoff──>│ (needs)    │            │            │
    │            │<──回报─────│            │            │            │
    │            │            │            │            │            │
-   │            │──handoff(并行)─────────>│            │            │
-   │            │──handoff(并行)────────────────────────────────── >│
-   │            │<──回报─────────────────-│            │            │
-   │            │<──回报────────────────────────────────────────── │
+   │            │──handoff──>│ (design/visual)        │            │
+   │            │<──回报─────│            │            │            │
    │            │            │            │            │            │
    │            │──编排计划──>│            │            │            │
-   │<──SR1审批──│ (full only) │            │            │            │
+   │<──SR1审批──│            │            │            │            │
    │──通过─────>│            │            │            │            │
    │            │            │            │            │            │
    │ /mh-apply │            │            │            │            │
    │───────────>│            │            │            │            │
    │            │──handoff(Batch并行)────────────────>│            │
-   │            │──handoff(Batch并行)────────────────>│            │
-   │            │<──回报─────────────────────────────-│            │
-   │            │<──回报─────────────────────────────-│            │
    │            │──handoff(Batch并行)──────────────────────────── >│
-   │            │──handoff(Batch并行)──────────────────────────── >│
-   │            │<──回报────────────────────────────────────────── │
+   │            │<──回报─────────────────────────────-│            │
    │            │<──回报────────────────────────────────────────── │
    │            │            │            │            │            │
-   │            │ (失败则并行修复 DE→TE，最多5轮)      │            │
+   │            │ (失败则并行修复 Worker→Verifier，最多5轮)      │            │
    │            │            │            │            │            │
    │<──SR2审批──│            │            │            │            │
    │──通过─────>│            │            │            │            │
@@ -148,15 +142,15 @@ intake → propose → develop → verify → audit / repair → release-candida
 ## Handoff 流转
 
 ```
-PM 写入 handoff          角色执行              角色回报
+Orchestrator 写入 handoff    角色执行              角色回报
 ┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
-│ status: pending │────>│ 读取白名单    │────>│ status: done    │
-│ to: {role}      │     │ 执行任务      │     │ output_files: []│
-│ input_files: [] │     │ 写入产出物    │     │ summary: ""     │
+│ status: pending  │────>│ 读取白名单    │────>│ status: done    │
+│ to: {role}       │     │ 执行任务      │     │ output_files: []│
+│ input_files: []  │     │ 写入产出物    │     │ summary: ""     │
 └─────────────────┘     └──────────────┘     └─────────────────┘
                                                       │
                                                       ▼
-                                              PM 校验产出物
+                                              Orchestrator 校验产出物
                                               更新 .state.md
                                               启动下一步
 ```
@@ -169,13 +163,13 @@ PM 写入 handoff          角色执行              角色回报
         ┌─────────────────────────────────────┐
         │                                     │
         ▼                                     │
-  DE 编码(R{N}) ──> TE 审计 ──> PASS ──> 下一步
+  Worker 编码(R{N}) ──> Verifier 审计 ──> PASS ──> 下一步
                         │
                         ▼
                       FAIL
                         │
                         ▼
-                   N < 5 ? ──YES──> PM 写新 handoff(R{N+1}) ─┘
+                   N < 5 ? ──YES──> Orchestrator 写新 handoff(R{N+1}) ─┘
                         │
                         NO
                         │
@@ -208,23 +202,23 @@ init ──────> propose ──────> apply ──────> a
 
 | 阶段 | 执行权威文件 | 概要 |
 |------|------------|------|
-| clarify | skills/mh-clarify.md | 场景检测 + 环境预检 + 需求澄清 + 产出类型选择 + 模式选择 + Proposal 定稿 |
-| propose | skills/mh-propose.md | BA需求 → SA设计 → TE用例 → PM编排 → SR1（按 mode 裁剪） |
-| apply | skills/mh-apply.md | DE开发 → TE审计（test_strategy 驱动）→ 修复循环 → SR2 → SR3（按 mode 裁剪） |
-| archive | skills/mh-archive.md | 需求归档 → 设计归档 → 产出物归档（output_type 感知）→ SR4（含 merge 策略） |
-| run | skills/mh-run.md | 全流程自动推进（含 fast 连续流） |
-| ppt | skills/mh-ppt.md | output_type=ppt 补充规则（UX wireframe + verify-ppt.sh） |
+| clarify | skills/mh-clarify.md | 场景检测 + 环境预检 + track 选择 + 需求澄清 + Proposal 定稿 |
+| propose | skills/mh-propose.md | Thinker needs → design/visual → Orchestrator 编排 → SR1 |
+| apply | skills/mh-apply.md | Worker 开发 → Verifier 审计（test_strategy 驱动）→ 修复循环 → SR2 → SR3 |
+| archive | skills/mh-archive.md | 需求归档 → 设计归档 → 产出物归档（track 感知）→ SR4（含 merge 策略） |
+| run | skills/mh-run.md | code track 全流程自动推进 |
+| ppt | skills/mh-ppt.md | ppt track 全流程（Thinker wireframe + verify-ppt.sh） |
 
-**Workflow 脚本（CR-004 并行编排层）：**
+**Workflow 脚本（并行编排层）：**
 
 | 脚本 | 调用时机 | 并行内容 |
 |------|---------|---------|
-| workflows/propose-parallel.js | propose Step SA∥TE | SA 架构设计 ∥ TE 测试用例设计 |
-| workflows/apply-batch-dev.js | apply 每个 Batch 开发 | Batch 内多 Task DE 并行 |
-| workflows/apply-batch-test.js | apply 每个 Batch 审计 | Batch 内多 Task TE 并行 |
-| workflows/apply-final-audit.js | apply SR2 后最终审计 | TE 全量审计 |
+| workflows/thinker-design.js | propose Thinker 相位 | Thinker needs/design/visual 相位执行 |
+| workflows/apply-batch-dev.js | apply 每个 Batch 开发 | Batch 内多 Task Worker 并行 |
+| workflows/apply-batch-test.js | apply 每个 Batch 审计 | Batch 内多 Task Verifier 并行 |
+| workflows/apply-final-audit.js | apply SR2 后最终审计 | Verifier 全量审计 |
 
-**决策逻辑库（CR-005 脚本化层）：**
+**决策逻辑库（脚本化层）：**
 
 | 脚本 | 替代的 NL 约束 | 功能 |
 |------|--------------|------|
@@ -232,10 +226,11 @@ init ──────> propose ──────> apply ──────> a
 | workflows/lib/calculate-batches.js | mh-apply 批次计算 | 拓扑排序 + 贪心合并 |
 | workflows/lib/decide-repair.js | mh-apply-repair 收敛追踪 | 发散/抖动/停滞/耗尽检测 → retry/escalate |
 | workflows/lib/detect-archive-mode.js | mh-archive 模式检测 | 首次/变更归档 + baseline 版本管理 |
-| workflows/lib/recommend-type-mode.js | mh-clarify Step 3-4 | tech_stack → output_type + mode 推荐 |
+| workflows/lib/recommend-type-mode.js | mh-clarify Step 3-4 | tech_stack → test_strategy 推荐 + deriveReviewScope(track) |
 | workflows/lib/archive-merge.js | mh-archive merge 策略 | REQ-ID 标签定位 + 追加/替换/废弃 |
-| workflows/lib/auto-advance.js | mh-run 状态机 | phase/step/mode → advance/pause/end |
+| workflows/lib/auto-advance.js | mh-run/mh-ppt 状态机 | phase/step → advance/pause/end |
 
 > Skills 文件是 Agent 的唯一执行依据。本文档仅作为人类阅读的流程参考。
 
 ---
+

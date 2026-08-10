@@ -1,6 +1,6 @@
 # Mini-Harness - AI Agent 驱动的研发流程框架
 
-从需求到高质量交付的自动化生产。六个 AI Agent 角色协作，四层递进防线保障质量。
+从需求到高质量交付的自动化生产。三个 AI Agent 角色 + 一个编排器协作，四层递进防线保障质量。
 
 ---
 
@@ -17,34 +17,25 @@
 
 ---
 
-## 六个 Agent 角色
+## 三角色 + 编排器
 
 | 角色 | 职责 |
 |------|------|
-| PM | 流程调度 + 质量门禁 + 人机交互 + 经验采集 |
-| BA | 模糊需求 → 结构化需求规格（SHALL + GWT） |
-| SA | 需求 → 技术方案 → Tasks 清单 |
-| DE | TDD 编码 + 精装交付 |
-| TE | 独立验证 + 缺陷报告 |
-| UX | 视觉/结构设计 + 视觉叙事 |
+| Orchestrator | 流程调度 + 质量门禁 + 人机交互 + 经验采集（主会话，不计被派发角色） |
+| Thinker | 需求规格 → 技术设计/视觉设计（track 激活相位） |
+| Worker | TDD 编码 + 精装交付 |
+| Verifier | 独立验证 + 缺陷报告（不产验收标准） |
 
 ---
 
 ## 研发流程
 
-### 外部项目交付：/mh-run
+### 外部项目交付：双 Track
 
-`/mh-run` 使用 Mini-Harness 为外部项目或功能交付产物：
-
-```
-/mh-run: clarify  →  propose  →  apply  →  archive
-              需求澄清       分析+设计       开发+审计       归档+结项
-```
-
-三档模式适配不同规模：
-- **fast** — 小调整（5-10分钟）
-- **standard** — 新功能（15-20分钟）
-- **full** — 大型需求（30+分钟）
+| Track | 命令 | 流水线 |
+|-------|------|--------|
+| code | `/mh-run` | clarify → Thinker[needs→design] → SR1 → Worker → Verifier → SR3 → archive |
+| ppt | `/mh-ppt` | clarify → Thinker[needs→visual] → SR1(wireframe) → Worker → Verifier[verify-ppt.sh] → SR3 → archive |
 
 ### 框架自身开发：/mh-dev
 
@@ -56,9 +47,9 @@ mh-dev 使用 fast/light/formal 轨道、开发者变更快照、机械预检、
 
 ## 产出类型
 
-框架支持任意类型开发，在 clarify 阶段通过 output_type 指定：
-
-web-app / backend-api / cli-tool / data-pipeline / infrastructure / documentation / ppt / library / custom
+框架支持任意类型开发，在 clarify 阶段通过 track 选择确定流水线：
+- `/mh-run` → code track（代码交付）
+- `/mh-ppt` → ppt track（PPT 类 HTML 页面）
 
 ---
 
@@ -115,7 +106,7 @@ output/
 
 框架内置经验沉淀机制——每次执行中的调教和纠正自动采集，跨需求累积：
 
-- 执行过程中 PM 自动采集（SR驳回、用户纠正、修复根因）
+- 执行过程中 Orchestrator 自动采集（SR驳回、用户纠正、修复根因）
 - 归档时用户补充改进建议
 - 下次执行自动加载历史经验
 - 框架开发者可将共性经验固化为规则
@@ -127,12 +118,12 @@ output/
 | 文档 | 说明 |
 |------|------|
 | CLAUDE.md | 全局规则（最高约束） |
-| docs/design.md | 架构设计文档（10章） |
+| docs/design.md | 架构设计文档 |
 | docs/workflow.md | 流程总览 + 状态机 |
 | docs/source-of-truth.md | 权威源映射 |
 | docs/retrospectives/ | 复盘报告（执行数据 + 问题分析） |
 | docs/requirements/ | 变更请求（框架改进方案） |
-| agents/*.md | 角色契约定义 |
+| agents/*.md | 角色契约定义（thinker/worker/verifier/orchestrator） |
 | skills/*.md | 执行规程 |
 
 ---

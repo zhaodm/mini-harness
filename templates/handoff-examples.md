@@ -8,7 +8,7 @@
 
 ```
 - status: done
-- output_files: ["deliverables/REQ001/sa/design.md"]
+- output_files: ["deliverables/REQ001/thinker/design.md"]
 - read_files: ["deliverables/REQ001/proposal.md"]
 - summary: "架构设计完成，含 3 个 Task 和需求映射表"
 - issues: "N/A"
@@ -19,7 +19,7 @@
 ```
 - status: failed
 - output_files: []
-- read_files: ["deliverables/REQ001/sa/design.md", "deliverables/REQ001/output/src/api.ts"]
+- read_files: ["deliverables/REQ001/thinker/design.md", "deliverables/REQ001/output/src/api.ts"]
 - summary: "lint 检查失败，3 次自修未能解决"
 - issues: "ESLint error: no-unused-vars in src/utils.ts:42, 自动修复引入新错误"
 ```

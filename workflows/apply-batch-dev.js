@@ -1,18 +1,18 @@
 /**
- * apply-batch-dev.js — Apply 阶段 Batch 内 DE 并行开发
+ * apply-batch-dev.js — Apply 阶段 Batch 内 Worker 并行开发
  *
- * 触发时机: PM 计算出 Batch 后，为 Batch 内所有 Task 并行派发 DE 开发。
- * 调用方: PM 主会话通过 Workflow 工具调用。
+ * 触发时机: Orchestrator 计算出 Batch 后，为 Batch 内所有 Task 并行派发 Worker 开发。
+ * 调用方: Orchestrator 主会话通过 Workflow 工具调用。
  *
  * args:
  *   reqId   — 需求编号 (e.g., "REQ003")
  *   batchId — 批次编号 (e.g., 1)
  *   tasks   — Task 列表，每项包含:
  *     taskId  — Task 编号 (e.g., "1")
- *     prompt  — DE SubAgent 的完整 prompt（角色契约 + handoff 内容）
+ *     prompt  — Worker SubAgent 的完整 prompt（角色契约 + handoff 内容）
  *   merged  — (可选) 合并派发列表，每项包含:
  *     taskIds — 合并的 Task 编号数组 (e.g., ["2", "3"])
- *     prompt  — 合并后的 DE SubAgent prompt
+ *     prompt  — 合并后的 Worker SubAgent prompt
  *
  * 支持两种派发模式:
  *   1. 标准模式: 每个 Task 独立一个 agent()
@@ -20,11 +20,11 @@
  *
  * 返回:
  *   { batchId, tasks: [{ taskId, result }] }
- *   PM 根据返回结果逐 Task 执行质量门禁。
+ *   Orchestrator 根据返回结果逐 Task 执行质量门禁。
  */
 export const meta = {
   name: "apply-batch-dev",
-  description: "Apply 阶段 Batch 内 DE 并行开发",
+  description: "Apply 阶段 Batch 内 Worker 并行开发",
   phases: ["batch-dev"]
 };
 
@@ -35,7 +35,7 @@ if (args.tasks && args.tasks.length > 0) {
   for (const task of args.tasks) {
     agentCalls.push({
       taskIds: [task.taskId],
-      call: agent(`[DE] Task-${task.taskId} (${args.reqId} Batch-${args.batchId})`, {
+      call: agent(`[WORKER] Task-${task.taskId} (${args.reqId} Batch-${args.batchId})`, {
         prompt: task.prompt,
         model: "sonnet"
       })
@@ -49,7 +49,7 @@ if (args.merged && args.merged.length > 0) {
     const label = group.taskIds.join(',');
     agentCalls.push({
       taskIds: group.taskIds,
-      call: agent(`[DE] Task-${label} (${args.reqId} Batch-${args.batchId})`, {
+      call: agent(`[WORKER] Task-${label} (${args.reqId} Batch-${args.batchId})`, {
         prompt: group.prompt,
         model: "sonnet"
       })

@@ -1,8 +1,12 @@
 /**
  * auto-advance.js — 状态机推进引擎
  *
- * 根据当前 phase/step 判断下一步动作: advance(自动推进) / pause(等待人工) / end(结束)。
- * 将 mh-run.md 中的状态转移表编码为确定性逻辑。
+ * 根据当前 phase/step/track 判断下一步动作: advance(自动推进) / pause(等待人工) / end(结束)。
+ * 将 mh-run.md / mh-ppt.md 中的状态转移表编码为确定性逻辑。
+ *
+ * 不变量：auto-advance.js 不写 if(track) 分支。track 通过 clarify 阶段写入不同的
+ * 步骤序列来分流，状态机本身按 current_step 决策。WIREFRAME-PENDING 只出现在 ppt track
+ * 的 .state.md 中，状态机只需识别该步骤 ID。
  *
  * @module workflows/lib/auto-advance
  */
@@ -30,7 +34,8 @@ const PAUSE_STEPS = new Set([
   'SR1-PENDING',
   'SR3-PENDING',
   'BATCH-CONFIRM',
-  'PROPOSAL-CONFIRM'
+  'PROPOSAL-CONFIRM',
+  'WIREFRAME-PENDING'  // PPT track wireframe 审批
 ]);
 
 /**

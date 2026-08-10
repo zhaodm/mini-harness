@@ -1,6 +1,6 @@
 # Skill: dev-test
 
-DE 开发自测标准操作规程。编码完成后、提交回报前必须执行。
+Worker 开发自测标准操作规程。编码完成后、提交回报前必须执行。
 
 **日志规则：** 见 `templates/logging-standard.md`
 
@@ -8,8 +8,7 @@ DE 开发自测标准操作规程。编码完成后、提交回报前必须执�
 
 ## 触发时机
 
-DE 完成编码实现后，在填写 code-report.md 之前执行。
-
+Worker 完成编码实现后，在填写 code-report.md 之前执行。
 ## 前置: 读取技术栈信息
 
 1. 读取 `deliverables/{REQ-ID}/.state.md` 中 tech_stack、test_strategy 字段
@@ -79,7 +78,7 @@ DE 完成编码实现后，在填写 code-report.md 之前执行。
 
 ## 输出
 
-将结果记录到 deliverables/de/code-report.md 的"测试结果"和"自检结果"部分：
+将结果记录到 deliverables/worker/code-report.md 的"测试结果"和"自检结果"部分：
 
 ```
 ## 测试结果
@@ -95,5 +94,5 @@ DE 完成编码实现后，在填写 code-report.md 之前执行。
 ## 失败处理
 
 - 任何一步失败：修复后从该步重新执行
-- DE 内部自修最多 3 次（子循环）：超出后在 handoff 回报中标记 status=failed，附带错误日志
-- PM 层面的修复循环最多 5 轮（见 mh-apply.md）
+- Worker 内部自修最多 3 次（子循环）：超出后在 handoff 回报中标记 status=failed，附带错误日志
+- Orchestrator 层面的修复循环最多 5 轮（见 mh-apply.md）

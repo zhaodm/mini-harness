@@ -2,7 +2,7 @@
  * code-review-rules.js — Code Review 规则引擎（纯函数）
  *
  * 定义评审维度、严重程度阈值、类型路由。
- * 供 TE SubAgent prompt 注入 + verify-code-review.sh 格式校验共同引用。
+ * 供 Verifier SubAgent prompt 注入 + verify-code-review.sh 格式校验共同引用。
  *
  * @module workflows/lib/code-review-rules
  */
@@ -111,7 +111,7 @@ export function shouldSkipReview(hasSourceCode) {
  * 校验 Code Review 报告结构完整性
  * 供 verify-code-review.sh 的 JS 等价逻辑 或 result-parser 使用
  *
- * @param {string} reportContent - TE 报告全文
+ * @param {string} reportContent - Verifier 报告全文
  * @returns {{ valid: boolean, errors: string[] }}
  */
 export function validateReviewReport(reportContent) {

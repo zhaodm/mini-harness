@@ -168,13 +168,14 @@ const FULL_DIMENSIONS = ['naming', 'error-handling', 'security', 'complexity', '
 /**
  * 返回 Code Review 执行范围（始终全量审查）
  *
- * @param {string} outputType - 从文件检测推断的产出类型标识
+ * @param {string} outputType - 从文件检测推断的产出类型标识（保留兼容）
+ * @param {string} [track] - 轨道: code | ppt（用于判断是否跳过 Code Review）
  * @returns {{ skip: boolean, dimensions: string[], depth: string, reason?: string }}
  */
-export function deriveReviewScope(outputType) {
-  const skipTypes = ['documentation', 'ppt'];
-  if (skipTypes.includes(outputType)) {
-    return { skip: true, dimensions: [], depth: 'none', reason: `${outputType}, 非代码产出` };
+export function deriveReviewScope(outputType, track) {
+  // ppt track → 跳过 Code Review
+  if (track === 'ppt') {
+    return { skip: true, dimensions: [], depth: 'none', reason: 'track=ppt, 非代码产出' };
   }
 
   return { skip: false, dimensions: FULL_DIMENSIONS, depth: 'standard' };

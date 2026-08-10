@@ -86,23 +86,23 @@ check_b() {
 
     # propose 阶段产物检查（propose/apply/archive 都需要）
     if [ "$phase" = "propose" ] || [ "$phase" = "apply" ] || [ "$phase" = "archive" ]; then
-        # SA design.md（支持单文件或多文件模式）
-        if [ -s "$REQ_DIR/sa/design.md" ]; then
-            echo "PASS: $REQ_DIR/sa/design.md（单文件模式）"
-        elif [ -s "$REQ_DIR/sa/overview.md" ]; then
-            echo "PASS: $REQ_DIR/sa/overview.md（多文件模式）"
+        # Thinker design.md（支持单文件或多文件模式）
+        if [ -s "$REQ_DIR/thinker/design.md" ]; then
+            echo "PASS: $REQ_DIR/thinker/design.md（单文件模式）"
+        elif [ -s "$REQ_DIR/thinker/overview.md" ]; then
+            echo "PASS: $REQ_DIR/thinker/overview.md（多文件模式）"
         else
-            echo "FAIL: $REQ_DIR/sa/ 缺少 design.md 或 overview.md"
+            echo "FAIL: $REQ_DIR/thinker/ 缺少 design.md 或 overview.md"
             ERRORS=$((ERRORS + 1))
         fi
 
-        # TE testcases.md - skip for manual/none test_strategy
+        # Thinker requirement-spec.md - skip for manual/none test_strategy
         if [ "$test_strategy" != "manual" ] && [ "$test_strategy" != "none" ]; then
-            if [ ! -s "$REQ_DIR/te/testcases.md" ]; then
-                echo "FAIL: $REQ_DIR/te/testcases.md 缺失或为空"
+            if [ ! -s "$REQ_DIR/thinker/requirement-spec.md" ]; then
+                echo "FAIL: $REQ_DIR/thinker/requirement-spec.md 缺失或为空"
                 ERRORS=$((ERRORS + 1))
             else
-                echo "PASS: $REQ_DIR/te/testcases.md"
+                echo "PASS: $REQ_DIR/thinker/requirement-spec.md"
             fi
         else
             echo "INFO: test_strategy=$test_strategy, testcases.md 非必需"
@@ -428,21 +428,21 @@ check_e() {
         fi
     fi
 
-    # 上下游白名单对齐：TE handoff 应包含上游关键产出的引用
+    # 上下游白名单对齐：Verifier handoff 应包含上游关键产出的引用
     if [ -d "$handoff_dir" ]; then
         local alignment_warns=0
         for handoff in "$handoff_dir"/*.md; do
             [ -f "$handoff" ] || continue
-            if echo "$(basename "$handoff")" | grep -q "TEST"; then
+            if echo "$(basename "$handoff")" | grep -q "TEST\|VERIFY"; then
                 # 检查是否在 propose 之后的审计（有 design.md 可参考）
-                if [ -f "$REQ_DIR/sa/design.md" ]; then
+                if [ -f "$REQ_DIR/thinker/design.md" ]; then
                     if ! grep -q "design.md" "$handoff" 2>/dev/null; then
-                        echo "WARN: $(basename "$handoff") (TE) 白名单未包含 design.md"
+                        echo "WARN: $(basename "$handoff") (Verifier) 白名单未包含 design.md"
                         alignment_warns=$((alignment_warns + 1))
                     fi
                 fi
                 if ! grep -q "output/" "$handoff" 2>/dev/null; then
-                    echo "WARN: $(basename "$handoff") (TE) 白名单未包含 output/（可能无法验证产出物）"
+                    echo "WARN: $(basename "$handoff") (Verifier) 白名单未包含 output/（可能无法验证产出物）"
                     alignment_warns=$((alignment_warns + 1))
                 fi
             fi

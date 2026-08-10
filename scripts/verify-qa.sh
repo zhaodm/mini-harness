@@ -34,10 +34,10 @@ echo "=== 内容质量检查: $req_id ==="
 echo ""
 
 # ─────────────────────────────────────────────
-# QA-1: BA 需求文档 — 禁止模糊词
+# QA-1: Thinker 需求文档 — 禁止模糊词
 # ─────────────────────────────────────────────
-check_ba_ambiguity() {
-    local file="$REQ_DIR/ba/requirement-spec.md"
+check_thinker_ambiguity() {
+    local file="$REQ_DIR/thinker/requirement-spec.md"
     if [ ! -f "$file" ]; then return; fi
 
     echo "--- QA-1: 需求文档模糊词检查 ---"
@@ -55,13 +55,13 @@ check_ba_ambiguity() {
 }
 
 # ─────────────────────────────────────────────
-# QA-2: DE code-report — 必须含测试结果
+# QA-2: Worker code-report — 必须含测试结果
 # ─────────────────────────────────────────────
-check_de_report() {
-    local file="$REQ_DIR/de/code-report.md"
+check_worker_report() {
+    local file="$REQ_DIR/worker/code-report.md"
     if [ ! -f "$file" ]; then return; fi
 
-    echo "--- QA-2: DE code-report 测试结果检查 ---"
+    echo "--- QA-2: Worker code-report 测试结果检查 ---"
     if ! grep -qi "dev-test.*PASS\|测试.*通过\|tests.*pass" "$file" 2>/dev/null; then
         echo "FAIL: code-report.md 未包含 dev-test PASS 记录"
         ERRORS=$((ERRORS + 1))
@@ -72,13 +72,13 @@ check_de_report() {
 }
 
 # ─────────────────────────────────────────────
-# QA-3: TE 报告 — 必须有明确结论
+# QA-3: Verifier 报告 — 必须有明确结论
 # ─────────────────────────────────────────────
-check_te_conclusion() {
-    echo "--- QA-3: TE 测试报告结论检查 ---"
+check_verifier_conclusion() {
+    echo "--- QA-3: Verifier 测试报告结论检查 ---"
     local found=0
 
-    for report in "$REQ_DIR"/te/*test-report*.md "$REQ_DIR"/te/*report*.md; do
+    for report in "$REQ_DIR"/verifier/*test-report*.md "$REQ_DIR"/verifier/*report*.md; do
         [ -f "$report" ] || continue
         if grep -qi "结论.*PASS\|结论.*FAIL\|PASS\|FAIL\|通过\|不通过" "$report" 2>/dev/null; then
             echo "PASS: $(basename "$report") 含明确结论"
@@ -134,7 +134,7 @@ check_handoff_completion() {
 # ─────────────────────────────────────────────
 check_slidespec_quality() {
     if ! is_ppt_project; then return; fi
-    local file="$REQ_DIR/ux/slide-spec.md"
+    local file="$REQ_DIR/thinker/slide-spec.md"
     if [ ! -f "$file" ]; then return; fi
 
     echo "--- QA-5: slide-spec 视觉设计完整性 ---"
@@ -282,8 +282,8 @@ check_repair_reports() {
 
     local missing=0
     for i in $(seq 2 $((repair_round + 1))); do
-        if ! ls "$REQ_DIR"/de/code-report-r${i}*.md >/dev/null 2>&1; then
-            echo "FAIL: repair_round=$repair_round 但缺少 de/code-report-r${i}*.md"
+        if ! ls "$REQ_DIR"/worker/code-report-r${i}*.md >/dev/null 2>&1; then
+            echo "FAIL: repair_round=$repair_round 但缺少 worker/code-report-r${i}*.md"
             missing=$((missing + 1))
         fi
     done
@@ -342,7 +342,7 @@ check_handoff_linecount() {
 }
 
 # ─────────────────────────────────────────────
-# QA-12: 回归套件覆盖校验（TE 报告必须含回归结果）
+# QA-12: 回归套件覆盖校验（Verifier 报告必须含回归结果）
 # ─────────────────────────────────────────────
 check_regression_coverage() {
     echo "--- QA-12: 回归套件覆盖校验 ---"
@@ -364,15 +364,15 @@ check_regression_coverage() {
     fi
 
     local report=""
-    for r in "$REQ_DIR"/te/final-test-report.md "$REQ_DIR"/te/temp-test-report.md; do
+    for r in "$REQ_DIR"/verifier/final-test-report.md "$REQ_DIR"/verifier/temp-test-report.md; do
         [ -f "$r" ] && report="$r" && break
     done
 
     if [ -z "$report" ]; then
-        echo "WARN: regression-suite.md 存在但无 TE 测试报告"
+        echo "WARN: regression-suite.md 存在但无 Verifier 测试报告"
         WARNS=$((WARNS + 1))
     elif ! grep -qi "回归\|regression" "$report" 2>/dev/null; then
-        echo "FAIL: regression-suite.md 存在但 TE 报告未包含回归测试结果"
+        echo "FAIL: regression-suite.md 存在但 Verifier 报告未包含回归测试结果"
         ERRORS=$((ERRORS + 1))
     else
         # 进一步检查: 回归结论必须明确
@@ -380,7 +380,7 @@ check_regression_coverage() {
             echo "WARN: 回归章节存在但缺少明确判定（回归判定: PASS/FAIL）"
             WARNS=$((WARNS + 1))
         else
-            echo "PASS: TE 报告包含回归测试结果及判定"
+            echo "PASS: Verifier 报告包含回归测试结果及判定"
         fi
     fi
     echo ""
@@ -400,7 +400,7 @@ check_testcase_sedimentation() {
         return
     fi
 
-    local testcases="$REQ_DIR/te/testcases.md"
+    local testcases="$REQ_DIR/thinker/requirement-spec.md"
     local suite="output/tests/regression-suite.md"
 
     if [ ! -f "$testcases" ]; then
@@ -429,9 +429,9 @@ check_testcase_sedimentation() {
 # ─────────────────────────────────────────────
 # 执行所有检查
 # ─────────────────────────────────────────────
-check_ba_ambiguity
-check_de_report
-check_te_conclusion
+check_thinker_ambiguity
+check_worker_report
+check_verifier_conclusion
 check_handoff_completion
 check_lessons_after_rejection
 check_handoff_feedback

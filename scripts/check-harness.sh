@@ -21,7 +21,7 @@ for file in CLAUDE.md .clinerules .mcp.json README.md CHANGELOG.md package.json;
 done
 
 printf '\n--- Agent 定义 ---\n'
-for role in pm ba sa de te ux; do
+for role in thinker worker verifier orchestrator; do
   require_file "agents/$role.md"
 done
 
@@ -58,7 +58,7 @@ else
 fi
 
 printf '\n--- 工作流与测试入口 ---\n'
-for file in workflows/propose-parallel.js workflows/apply-batch-dev.js workflows/apply-batch-test.js workflows/apply-final-audit.js tests/run-all-tests.sh tools/mh-dev/CLAUDE.md tools/mh-dev/start.sh tools/mh-dev/scripts/verify.sh tools/mh-dev/templates/dispatch-prompts.md tools/mh-dev/templates/audit-report.md; do
+for file in workflows/thinker-design.js workflows/apply-batch-dev.js workflows/apply-batch-test.js workflows/apply-final-audit.js tests/run-all-tests.sh tools/mh-dev/CLAUDE.md tools/mh-dev/start.sh tools/mh-dev/scripts/verify.sh tools/mh-dev/templates/dispatch-prompts.md tools/mh-dev/templates/audit-report.md; do
   require_file "$file"
 done
 require_file tests/run-all-tests.sh

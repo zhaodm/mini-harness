@@ -23,7 +23,7 @@ STATE_FILE=$(find deliverables -maxdepth 2 -name ".state.md" -not -path "deliver
 # 框架文件必须被 approved_scope 精确列出，且治理关键路径只允许 formal 轨道。
 MH_DEV_STATE="tools/mh-dev/.mh-dev/state.json"
 if [[ -z "$STATE_FILE" && -f "$MH_DEV_STATE" ]] && jq -e '.workflow == "mh-dev" and (.phase | test("^(intake|propose|develop|verify|audit|repair|release-candidate|archive)$"))' "$MH_DEV_STATE" >/dev/null 2>&1; then
-  [[ "$FILE_PATH" =~ ^tools/mh-dev/\.mh-dev/ ]] && exit 0
+  [[ "$FILE_PATH" =~ tools/mh-dev/\.mh-dev/ ]] && exit 0
 
   MH_TRACK=$(jq -r '.track // empty' "$MH_DEV_STATE")
   if jq -e --arg path "$FILE_PATH" '.approved_scope | index($path) != null' "$MH_DEV_STATE" >/dev/null 2>&1; then
@@ -50,43 +50,41 @@ check_permission() {
   local role=$1 file=$2 req=$3
 
   case "$role" in
-    PM)
+    ORCHESTRATOR)
       [[ "$file" =~ deliverables/${req}/\.state\.md ]] && return 0
       [[ "$file" =~ deliverables/${req}/handoffs/.*\.md ]] && return 0
       [[ "$file" =~ deliverables/${req}/plan-action\.md ]] && return 0
       [[ "$file" =~ deliverables/${req}/SR.*-record\.md ]] && return 0
       [[ "$file" =~ deliverables/${req}/lessons\.md ]] && return 0
-      [[ "$file" =~ deliverables/${req}/de/quality-gate-report.*\.md ]] && return 0
+      [[ "$file" =~ deliverables/${req}/worker/quality-gate-report.*\.md ]] && return 0
       [[ "$file" =~ deliverables/${req}/archive-manifest\.md ]] && return 0
       [[ "$file" =~ deliverables/\.state\.md ]] && return 0
       [[ "$file" =~ deliverables/${req}/process\.log ]] && return 0
-      # ARC 阶段 PM 可写归档目标（通过 archive-manifest 约束具体路径）
+      # ARC 阶段 Orchestrator 可写归档目标（通过 archive-manifest 约束具体路径）
       local phase
       phase=$(grep "^phase:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')
       [[ "$phase" == "archive" && "$file" =~ ^output/docs/ ]] && return 0
       ;;
-    DE)
-      [[ "$file" =~ deliverables/${req}/output/ ]] && return 0
-      [[ "$file" =~ deliverables/${req}/de/code-report.*\.md ]] && return 0
-      ;;
-    SA)
-      [[ "$file" =~ deliverables/${req}/sa/ ]] && return 0
+    THINKER)
+      [[ "$file" =~ deliverables/${req}/thinker/ ]] && return 0
       [[ "$file" =~ deliverables/${req}/\.archiveignore ]] && return 0
       ;;
-    BA)
-      [[ "$file" =~ deliverables/${req}/ba/ ]] && return 0
+    WORKER)
+      [[ "$file" =~ deliverables/${req}/output/ ]] && return 0
+      [[ "$file" =~ deliverables/${req}/worker/code-report.*\.md ]] && return 0
       ;;
-    TE)
-      [[ "$file" =~ deliverables/${req}/te/ ]] && return 0
+    VERIFIER)
+      [[ "$file" =~ deliverables/${req}/verifier/ ]] && return 0
       ;;
-    UX)
-      [[ "$file" =~ deliverables/${req}/ux/ ]] && return 0
+    *)
+      echo "BLOCKED: 未知角色 ${role}，请检查 .state.md schema 版本" >&2
+      return 1
       ;;
   esac
   return 1
 }
 
-# 支持逗号分隔多角色并行（如 current_role: SA,TE）
+# 支持逗号分隔多角色并行（如 current_role: THINKER,VERIFIER）
 IFS=',' read -ra ROLES <<< "$CURRENT_ROLES"
 ALLOWED=false
 for ROLE in "${ROLES[@]}"; do

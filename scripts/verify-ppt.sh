@@ -32,25 +32,25 @@ check_a() {
     fi
 
     # slide-spec.md
-    if [ ! -s "$REQ_DIR/ux/slide-spec.md" ]; then
-        echo "FAIL: $REQ_DIR/ux/slide-spec.md 缺失或为空"
+    if [ ! -s "$REQ_DIR/thinker/slide-spec.md" ]; then
+        echo "FAIL: $REQ_DIR/thinker/slide-spec.md 缺失或为空"
         ERRORS=$((ERRORS + 1))
     else
-        echo "PASS: $REQ_DIR/ux/slide-spec.md"
+        echo "PASS: $REQ_DIR/thinker/slide-spec.md"
     fi
 
     # wireframes 目录
-    if [ ! -d "$REQ_DIR/ux/wireframes" ]; then
-        echo "FAIL: $REQ_DIR/ux/wireframes/ 目录不存在"
+    if [ ! -d "$REQ_DIR/thinker/wireframes" ]; then
+        echo "FAIL: $REQ_DIR/thinker/wireframes/ 目录不存在"
         ERRORS=$((ERRORS + 1))
     else
         local wf_count
-        wf_count=$(find "$REQ_DIR/ux/wireframes" -name "*.html" | wc -l | tr -d ' ')
+        wf_count=$(find "$REQ_DIR/thinker/wireframes" -name "*.html" | wc -l | tr -d ' ')
         if [ "$wf_count" -eq 0 ]; then
-            echo "FAIL: $REQ_DIR/ux/wireframes/ 无 HTML 文件"
+            echo "FAIL: $REQ_DIR/thinker/wireframes/ 无 HTML 文件"
             ERRORS=$((ERRORS + 1))
         else
-            echo "PASS: $REQ_DIR/ux/wireframes/ ($wf_count 个文件)"
+            echo "PASS: $REQ_DIR/thinker/wireframes/ ($wf_count 个文件)"
         fi
     fi
 
@@ -59,7 +59,7 @@ check_a() {
         local out_count
         out_count=$(find "$REQ_DIR/output" -name "*.html" | wc -l | tr -d ' ')
         if [ "$out_count" -eq 0 ]; then
-            echo "INFO: $REQ_DIR/output/ 无 HTML 文件（DE 尚未实现）"
+            echo "INFO: $REQ_DIR/output/ 无 HTML 文件（Worker 尚未实现）"
         else
             echo "PASS: $REQ_DIR/output/ ($out_count 个文件)"
         fi
@@ -81,11 +81,11 @@ check_b() {
         fi
     fi
 
-    if [ -z "$target_dir" ] && [ -n "$req_id" ] && [ -d "$REQ_DIR/ux/wireframes" ]; then
+    if [ -z "$target_dir" ] && [ -n "$req_id" ] && [ -d "$REQ_DIR/thinker/wireframes" ]; then
         local wf_count
-        wf_count=$(find "$REQ_DIR/ux/wireframes" -name "*.html" 2>/dev/null | wc -l | tr -d ' ')
+        wf_count=$(find "$REQ_DIR/thinker/wireframes" -name "*.html" 2>/dev/null | wc -l | tr -d ' ')
         if [ "$wf_count" -gt 0 ]; then
-            target_dir="$REQ_DIR/ux/wireframes"
+            target_dir="$REQ_DIR/thinker/wireframes"
         fi
     fi
 
@@ -165,7 +165,7 @@ check_c() {
 
     local target_dir="$REQ_DIR/output"
     if [ ! -d "$target_dir" ]; then
-        target_dir="$REQ_DIR/ux/wireframes"
+        target_dir="$REQ_DIR/thinker/wireframes"
     fi
 
     if [ ! -d "$target_dir" ]; then
@@ -199,9 +199,9 @@ check_c() {
     done <<< "$html_files"
 
     # 页数一致性检查
-    if [ -f "$REQ_DIR/ux/slide-spec.md" ]; then
+    if [ -f "$REQ_DIR/thinker/slide-spec.md" ]; then
         local spec_pages
-        spec_pages=$(grep -c "^## Slide" "$REQ_DIR/ux/slide-spec.md" 2>/dev/null || echo "0")
+        spec_pages=$(grep -c "^## Slide" "$REQ_DIR/thinker/slide-spec.md" 2>/dev/null || echo "0")
         local html_pages
         html_pages=$(find "$target_dir" -name "*.html" | wc -l | tr -d ' ')
 

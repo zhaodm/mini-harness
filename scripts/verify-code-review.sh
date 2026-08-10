@@ -7,7 +7,7 @@
 # CR-1: 报告包含 "## Code Review" 章节
 # CR-2: 报告包含 "Code Review 判定: PASS/FAIL/SKIPPED"
 # CR-3: FAIL 时必须有 Critical 发现行
-# CR-4: SKIPPED 时必须有理由（output_type 非代码类）
+# CR-4: SKIPPED 时必须有理由（track 非代码类）
 # CR-5: 非 SKIPPED 时须有发现表格或无发现声明
 
 set -euo pipefail
@@ -32,24 +32,24 @@ if [ ! -f "$REQ_DIR/.state.md" ]; then
     exit 0
 fi
 
-output_type=$(grep "^output_type:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+track=$(grep "^track:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 
-# 非代码产出类型，Code Review 可跳过
-if [[ "$output_type" == "documentation" || "$output_type" == "ppt" ]]; then
-    echo "INFO: output_type=$output_type, Code Review 非必需"
+# ppt track 非代码产出，Code Review 可跳过
+if [[ "$track" == "ppt" ]]; then
+    echo "INFO: track=ppt, Code Review 非必需"
     exit 0
 fi
 
 echo "=== Code Review 报告校验: $req_id ==="
 
-# 查找 TE 报告
+# 查找 Verifier 报告
 REPORT=""
-for r in "$REQ_DIR"/te/final-test-report.md "$REQ_DIR"/te/temp-test-report.md; do
+for r in "$REQ_DIR"/verifier/final-test-report.md "$REQ_DIR"/verifier/temp-test-report.md; do
     [ -f "$r" ] && REPORT="$r" && break
 done
 
 if [ -z "$REPORT" ]; then
-    echo "SKIP: 无 TE 报告文件"
+    echo "SKIP: 无 Verifier 报告文件"
     exit 0
 fi
 
@@ -77,7 +77,7 @@ fi
 
 # CR-4: SKIPPED 时必须有理由
 if grep -qi "Code Review 判定:.*SKIPPED" "$REPORT" 2>/dev/null; then
-    if ! grep -qiE "非代码产出|output_type=|跳过.*理由" "$REPORT" 2>/dev/null; then
+    if ! grep -qiE "非代码产出|track=|跳过.*理由" "$REPORT" 2>/dev/null; then
         echo "FAIL [CR-4]: Code Review SKIPPED 但未标注理由"
         ERRORS=$((ERRORS + 1))
     else

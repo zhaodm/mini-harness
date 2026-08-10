@@ -57,7 +57,7 @@ export function detectArchiveMode(input) {
   // 额外归档规则（基于文件检测）
   const extraArchive = [];
   if (hasPptWireframes) {
-    extraArchive.push({ source: 'ux/wireframes/', target: 'output/assets/wireframes/', description: 'UX wireframe 归档' });
+    extraArchive.push({ source: 'ux/wireframes/', target: 'output/assets/wireframes/', description: 'Thinker wireframe 归档' });
   }
 
   return {

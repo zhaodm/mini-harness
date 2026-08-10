@@ -1,6 +1,6 @@
 # Skill: post-verify
 
-DE 交付前校验标准操作规程。dev-test 通过后、填写回报前执行。
+Worker 交付前校验标准操作规程。dev-test 通过后、填写回报前执行。
 
 **日志规则：** 见 `templates/logging-standard.md`
 
@@ -8,7 +8,7 @@ DE 交付前校验标准操作规程。dev-test 通过后、填写回报前执�
 
 ## 触发时机
 
-dev-test skill 全部通过后执行。这是 DE 交付前的最后一道自检。
+dev-test skill 全部通过后执行。这是 Worker 交付前的最后一道自检。
 
 ## Step 1: 运行 verify.sh
 

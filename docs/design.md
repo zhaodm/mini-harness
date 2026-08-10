@@ -42,8 +42,8 @@ Scripts + 人工 (SR1-4)   → 硬校验（强：退出码为唯一判据）
 | 模块 | 权威源 | 一句话 |
 |------|--------|--------|
 | 全局规则 | CLAUDE.md | 最高约束，精简纪律 |
-| 角色契约 | agents/*.md | 6 角色身份+质量标准+思考框架+调度协议(PM) |
-| 执行规程 | skills/mh-*.md | 各阶段 SOP，mode 感知裁剪 |
+| 角色契约 | agents/*.md | 3 被派发角色(thinker/worker/verifier)+orchestrator 编排器 |
+| 执行规程 | skills/mh-*.md | 各阶段 SOP，track 感知裁剪 |
 | 硬校验 | scripts/*.sh | 三层校验体系，退出码驱动 |
 | 模板体系 | templates/ | handoff/state/日志/示例/结构参考/设计指南 |
 | 文档 | docs/ | 本文件(地图) + source-of-truth(映射) |
@@ -53,14 +53,18 @@ Scripts + 人工 (SR1-4)   → 硬校验（强：退出码为唯一判据）
 ```
 mini-harness/
 ├── CLAUDE.md                    全局规则
-├── agents/                      6 角色契约
+├── agents/                      3 被派发角色 + orchestrator 编排器
+│   ├── thinker.md               需求+设计+视觉（三相位）
+│   ├── worker.md                编码实现
+│   ├── verifier.md              独立验证
+│   └── orchestrator.md          主会话编排器（不计被派发角色）
 ├── skills/                      执行规程（含子文件按需加载）
 ├── scripts/                     硬校验脚本 + 工具脚本
-├── workflows/                   JS Workflow 并行编排层（CR-004）
-│   ├── propose-parallel.js      SA∥TE 并行设计
-│   ├── apply-batch-dev.js       Batch DE 并行开发
-│   ├── apply-batch-test.js      Batch TE 并行审计
-│   ├── apply-final-audit.js     TE 最终审计
+├── workflows/                   JS Workflow 并行编排层
+│   ├── thinker-design.js      Thinker 相位执行
+│   ├── apply-batch-dev.js       Batch Worker 并行开发
+│   ├── apply-batch-test.js      Batch Verifier 并行审计
+│   ├── apply-final-audit.js     Verifier 最终审计
 │   └── lib/                     工具函数（prompt-assembler, result-parser）
 ├── tests/                       自动化测试套件
 ├── templates/
@@ -74,7 +78,7 @@ mini-harness/
 │   ├── ppt-base.css             PPT 设计系统
 │   ├── examples/                金标准产出示例
 │   └── output-guides/           产出结构参考
-├── docs/                        设计参考（人工阅读，PM 运行时不读）
+├── docs/                        设计参考（人工阅读，Orchestrator 运行时不读）
 ├── deliverables/                运行时产物（按 REQ-ID 隔离，git忽略）
 ├── reference/                   用户参考资料输入
 └── output/                      最终交付
@@ -88,16 +92,28 @@ mini-harness/
 
 ## §3 SubAgent 设计
 
-### 六角色体系
+### 三角色体系 + Orchestrator 编排器
 
 | 角色 | 核心职责 | 权威源 |
 |------|----------|--------|
-| PM | 调度 + 质量门禁 + 人机交互 + 经验采集 | agents/pm.md |
-| BA | 模糊需求 → SHALL+GWT 规格 | agents/ba.md |
-| SA | 需求 → 技术方案 → Tasks | agents/sa.md |
-| DE | TDD 编码 + 自测 + 精装交付 | agents/de.md |
-| TE | 独立验证 + 覆盖分析 + 缺陷报告 | agents/te.md |
-| UX | 视觉/结构设计 + 视觉叙事 | agents/ux.md |
+| Orchestrator | 调度 + 质量门禁 + 人机交互 + 经验采集 | agents/orchestrator.md |
+| Thinker | 需求规格 → 技术设计/视觉设计（track 激活相位） | agents/thinker.md |
+| Worker | TDD 编码 + 自测 + 精装交付 | agents/worker.md |
+| Verifier | 独立验证 + 覆盖分析 + 缺陷报告 | agents/verifier.md |
+
+> Orchestrator 不计入"被派发角色"——它是主会话行为契约，不通过 Agent tool spawn。
+
+### Thinker 三相位设计
+
+| 相位 | 产出 | 激活条件 |
+|------|------|---------|
+| needs | requirement-spec.md（SHALL+GWT） | 所有 track |
+| design | design.md + verify-strategy.md | code track |
+| visual | slide-spec.md + wireframes/ | ppt track |
+
+### 自验证消除
+
+验收标准由 Thinker 产出，Verifier 只执行验证——标准不由验证者自写。
 
 ### 隔离方式
 
@@ -115,34 +131,33 @@ mini-harness/
      → 思考框架 → 质量标准 → 反模式 → 交付自检 → 模型建议
 ```
 
-### PM 调度循环
+### Orchestrator 调度循环
 
 ```
 读取 .state.md → 确定下一步 → 写 handoff → 派发 SubAgent
 → 接收回报 → 质量门禁 → 更新 .state.md → 循环
 ```
 
-详见：agents/pm.md "调度协议"节
+详见：agents/orchestrator.md "调度协议"节
 
-### 并行编排层（CR-004 Workflow）
+### 并行编排层（Workflow）
 
-并行扇出（SA∥TE、批量 DE、批量 TE）通过 JS Workflow 脚本确定性执行：
+并行扇出（Thinker 相位、批量 Worker、批量 Verifier）通过 JS Workflow 脚本确定性执行：
 
 ```
-PM 主会话（人机交互 + 质量门禁）
+Orchestrator 主会话（人机交互 + 质量门禁）
     │
     ├── 生成 handoff 内容
-    ├── 更新 .state.md: current_role={并行角色}
-    ├── 调用 Workflow 工具 ──→ parallel([agent(SA), agent(TE)])
+    ├── 更新 .state.md: current_role={被派发角色}
+    ├── 调用 Workflow 工具 ──→ agent(THINKER/WORKER/VERIFIER)
     ├── 接收结构化返回
     ├── 执行质量门禁
-    └── 更新 .state.md: current_role=PM
+    └── 更新 .state.md: current_role=ORCHESTRATOR
 ```
 
 - Workflow SubAgent 继承 PreToolUse Hook（role-guard.sh 权限控制仍生效）
-- 支持逗号分隔多角色（`current_role: SA,TE`），任一角色有权即放行
+- 支持逗号分隔多角色，任一角色有权即放行
 - 工具函数: `workflows/lib/prompt-assembler.js` + `result-parser.js`
-- 详见: `docs/designs/CR-004-hybrid-workflow-design.md`
 
 ---
 
@@ -156,40 +171,34 @@ clarify → propose → apply → archive → DONE
  RESUME    SR1驳回   SR2/3驳回  SR4驳回
 ```
 
-### 三档 Mode
+### 轨道分离
 
-| Mode | 场景 | 裁剪 |
-|------|------|------|
-| fast | ≤5 文件小调整 | 跳过 BA/SA/TE propose，合并审批 |
-| standard | 单模块新功能 | 跳过 BA，SA∥TE 并行 |
-| full | 跨模块大需求 | 完整流程 |
+两个 track 各自独立精简流水线，共享 3-role spine + 状态机：
+
+**code track（/mh-run）：**
+```
+clarify(track=code) → Thinker[needs→design] → SR1 → Worker[implement] → Verifier[test+codereview] → SR3 → archive
+```
+
+**PPT track（/mh-ppt）：**
+```
+clarify(track=ppt) → Thinker[needs→visual] → SR1(wireframe审批) → Worker[implement] → Verifier[verify-ppt.sh] → SR3 → archive
+```
 
 ### SR Gate 通过标准
 
 | Gate | 通过标准 | 详见 |
 |------|----------|------|
 | SR1 | 需求覆盖完整 + 设计覆盖所有需求 + 计划可执行 | skills/mh-propose.md |
-| SR2 | 所有 Task 通过审计 + verify-qa.sh PASS | skills/mh-apply-standard.md |
-| SR3 | 全量测试通过 + 覆盖无遗漏 + 无 Critical/Major | skills/mh-apply-standard.md |
-| SR4 | 归档完整 + 产出物可用 + 文档一致 | skills/mh-archive.md |
+| SR3 | 全量测试通过 + 覆盖无遗漏 + 无 Critical/Major | skills/mh-apply.md |
 
-### 产出类型体系（output_type）
+> WIREFRAME-PENDING 是 SR1 在 ppt track 的具体形态（wireframe 审批）。
 
-output_type 与 mode 正交：mode 控制流程严谨度，output_type 控制产出物和验证方式。
+### Track 机制
 
-| output_type | 默认验证策略 |
-|-------------|-------------|
-| web-app | E2E / 集成测试 |
-| backend-api | 集成测试 |
-| cli-tool | 集成测试 |
-| data-pipeline | 冒烟测试 |
-| infrastructure | 冒烟测试 |
-| documentation | 人工审阅 |
-| ppt | 人工 + verify-ppt.sh |
-| library | 单元测试 |
-| custom | 用户指定 |
-
-> ⚠️ mode/output_type 机制已废除（统一入口为 `/mh-run` + `/mh-ppt`），本表为历史参考。当前流程纪律见 skills/mh-run.md "工作流纪律"节；产出类型选择见 skills/mh-clarify.md Step 3
+- Track 在 clarify 阶段由入口命令确定：`/mh-run` → code，`/mh-ppt` → ppt
+- Track 写入 .state.md 后只读，切换需重新开需求
+- auto-advance.js 不写 if(track) 分支——步骤 ID 编码 track 归属（WIREFRAME-PENDING 只出现在 ppt track）
 
 ---
 
@@ -202,22 +211,23 @@ output_type 与 mode 正交：mode 控制流程严谨度，output_type 控制产
 | 约束 | 实现 |
 |------|------|
 | 不读对话历史 | SubAgent 独立子会话 |
-| 不改上游 | agents 禁止事项 + PM 验收 |
+| 不改上游 | agents 禁止事项 + Orchestrator 验收 |
 | 不引用他人推理 | prompt 仅含 handoff + 本角色契约 |
 | 白名单隔离 | handoff 精确列出可读文件 |
-| 白名单验证 | 回报中 read_files 字段 + PM 校验 |
+| 白名单验证 | 回报中 read_files 字段 + Orchestrator 校验 |
 
 ### Handoff 协议
 
-PM 与各角色间信息传递的唯一通道。结构化文件，包含：
-- 派发对象、白名单文件列表、期望输出、约束条件
+Orchestrator 与各角色间信息传递的唯一通道。结构化文件，包含：
+- 派发对象（THINKER/WORKER/VERIFIER）、白名单文件列表、期望输出、约束条件
+- track 和 thinker_phase 字段
 - 完成报告：status、output_files、summary、issues
 
 详见：templates/handoff-template.md
 
-### PM 运行时上下文负载
+### Orchestrator 运行时上下文负载
 
-PM 启动时读取：本文件(pm.md) + 当前 skill + .state.md + handoff。
+Orchestrator 启动时读取：本文件(orchestrator.md) + 当前 skill + .state.md + handoff。
 不需要读取 design.md、source-of-truth.md（人工维护参考）。
 
 ---
@@ -226,42 +236,25 @@ PM 启动时读取：本文件(pm.md) + 当前 skill + .state.md + handoff。
 
 ### Skill 体系
 
-| 命令 | 职责 | 权威源 |
-|------|------|--------|
-| /mh-clarify | 需求初始化与澄清 | skills/mh-clarify.md |
-| /mh-propose | 分析→设计→用例→评审 | skills/mh-propose.md |
-| /mh-apply | 开发→审计→人工审批 | skills/mh-apply.md（路由到子文件） |
-| /mh-archive | 归档+经验沉淀+结项 | skills/mh-archive.md |
-| /mh-run | 全流程自动推进 | skills/mh-run.md |
-| /mh-ppt | PPT 类 HTML 开发 | skills/mh-ppt.md |
-
-### 按需加载设计
-
-当单个 skill 文件 > 350 行时，拆分为 main.md + 子文件：
-
-```
-skills/mh-apply.md          ← 路由入口（45行）
-skills/mh-apply-fast.md     ← fast 模式专用
-skills/mh-apply-standard.md ← standard/full 模式
-skills/mh-apply-repair.md   ← 修复循环（按需加载）
-```
-
-PM 仅加载路由文件 + 当前 mode 对应的子文件，减少上下文压力。
+| 命令 | 职责 | Track | 权威源 |
+|------|------|-------|--------|
+| /mh-clarify | 需求初始化与澄清 | 共享 | skills/mh-clarify.md |
+| /mh-propose | Thinker 设计相位 | 共享 | skills/mh-propose.md |
+| /mh-apply | Worker 开发→Verifier 审计→审批 | 共享 | skills/mh-apply.md |
+| /mh-archive | 归档+经验沉淀+结项 | 共享 | skills/mh-archive.md |
+| /mh-run | code track 全流程自动推进 | code | skills/mh-run.md |
+| /mh-ppt | ppt track 全流程 | ppt | skills/mh-ppt.md |
 
 ### PPT 双轨设计方案
 
-output_type=ppt 时，用户可选择设计路径：
+ppt track 的 ppt_design_mode 在 clarify 阶段选择：
 
 | 路径 | 约束 | 适用场景 |
 |------|------|---------|
 | system（ppt-base.css） | 严格设计系统，统一风格 | 企业汇报、品牌一致性 |
 | creative（frontend-design） | 仅结构约束，视觉自由 | 创意提案、视觉冲击力 |
 
-两条路径互相吸收不冲突的优点：
-- system 可借鉴 frontend-design 的动效、空间构图
-- creative 可借鉴设计系统的 CSS 变量管理、信息层次原则
-
-详见：skills/mh-ppt.md "设计方案选择"节
+详见：skills/mh-ppt.md
 
 ---
 
@@ -271,9 +264,9 @@ output_type=ppt 时，用户可选择设计路径：
 
 每个 Agent 定义中内含：思考框架 + 反模式 + 交付自检。
 
-### PM 质量门禁（流程层）
+### Orchestrator 质量门禁（流程层）
 
-PM 接收回报后逐项核对对应角色验收清单。详见 agents/pm.md "质量门禁"节。
+Orchestrator 接收回报后逐项核对对应角色验收清单。详见 agents/orchestrator.md "质量门禁"节。
 
 ### 修复收敛（机制层）
 
@@ -300,7 +293,7 @@ PM 接收回报后逐项核对对应角色验收清单。详见 agents/pm.md "�
 
 ### 执行度量（metrics）
 
-每次 REQ 完成后，PM 在 ARC-5 步骤自动生成执行指标：
+每次 REQ 完成后，Orchestrator 在 ARC-5 步骤自动生成执行指标：
 - 总耗时、角色派发/驳回次数、修复轮次与收敛性、SR审批结果、断点异常
 
 模板：templates/metrics-template.md
@@ -316,10 +309,10 @@ PM 接收回报后逐项核对对应角色验收清单。详见 agents/pm.md "�
 
 | 采集点 | 触发时机 | 采集者 | 内容 |
 |--------|---------|--------|------|
-| CP-1 | SR 审批被用户驳回 | PM 自动 | 驳回原因 + 修正方向 |
-| CP-2 | 用户主动纠正 Agent 行为 | PM 自动 | 纠正内容 + 原因 |
-| CP-3 | 修复循环 ≥2 轮 | PM 自动 | 系统性根因分析 |
-| CP-4 | ARC-6 结项前 | PM 主动询问用户 | 用户总结评价和改进建议 |
+| CP-1 | SR 审批被用户驳回 | Orchestrator 自动 | 驳回原因 + 修正方向 |
+| CP-2 | 用户主动纠正 Agent 行为 | Orchestrator 自动 | 纠正内容 + 原因 |
+| CP-3 | 修复循环 ≥2 轮 | Orchestrator 自动 | 系统性根因分析 |
+| CP-4 | ARC-6 结项前 | Orchestrator 主动询问用户 | 用户总结评价和改进建议 |
 
 #### 存储架构
 
@@ -334,8 +327,8 @@ output/lessons-learned.md           ← 全量累积（跨 REQ 持久化）
 
 | 消费者 | 时机 | 方式 |
 |--------|------|------|
-| PM | mh-clarify 前置检查 | 读取历史经验，传达给各角色 |
-| 各 Agent | handoff 白名单 | PM 将相关经验条目附在约束中 |
+| Orchestrator | mh-clarify 前置检查 | 读取历史经验，传达给各角色 |
+| 各 Agent | handoff 白名单 | Orchestrator 将相关经验条目附在约束中 |
 | 框架开发者 | 定期 review | 反复出现的经验固化为框架规则 |
 
 #### 经验固化路径
@@ -348,7 +341,7 @@ output/lessons-learned.md           ← 全量累积（跨 REQ 持久化）
 └── 模板类 → templates/ 新增/改进
 ```
 
-详见：skills/mh-archive.md ARC-6 + agents/pm.md "经验采集规则"
+详见：skills/mh-archive.md ARC-6 + agents/orchestrator.md "经验采集规则"
 
 ---
 
@@ -358,11 +351,11 @@ output/lessons-learned.md           ← 全量累积（跨 REQ 持久化）
 
 | 脚本 | 用途 | 调用时机 |
 |------|------|---------|
-| scripts/verify.sh | 结构校验（A/B/C/D/E 类） | TE 审计、SR 审批前 |
+| scripts/verify.sh | 结构校验（A/B/C/D/E 类） | Verifier 审计、SR 审批前 |
 | scripts/verify-qa.sh | 内容质量校验（QA-1~13） | SR2 审批前 |
-| scripts/verify-ppt.sh | PPT 专项校验 | PPT 类 TE 审计 |
+| scripts/verify-ppt.sh | PPT 专项校验 | PPT 类 Verifier 审计 |
 | scripts/verify-archive.sh | 归档完整性校验 | SR4 归档审批前 |
-| scripts/verify-code-review.sh | Code Review 格式与维度校验（CR-1~5） | TE Code Review 后 |
+| scripts/verify-code-review.sh | Code Review 格式与维度校验（CR-1~5） | Verifier Code Review 后 |
 | scripts/role-guard.sh | 角色文件写入权限拦截（PreToolUse Hook） | 每次文件写入时 |
 | scripts/baseline.sh | 基线对比 | 检测非流程修改 |
 | scripts/check-harness.sh | 框架自检 | 框架维护时 |
@@ -377,7 +370,7 @@ output/lessons-learned.md           ← 全量累积（跨 REQ 持久化）
 
 | 工具 | 用途 | 调用时机 |
 |------|------|---------|
-| WebSearch | 联网搜索 | SA 研究阶段 |
+| WebSearch | 联网搜索 | Thinker design 相位 |
 | WebFetch | 网页抓取 | 用户提供参考链接 |
 | Read | 图片识别 | reference/ 含图片时 |
 
@@ -395,19 +388,19 @@ output/lessons-learned.md           ← 全量累积（跨 REQ 持久化）
 
 | 模板 | 用途 | 消费者 |
 |------|------|--------|
-| handoff-template.md | 任务派发格式 | PM |
-| state-template.md | .state.md 完整 schema | PM |
-| state-pointer-template.md | 全局指针（首次运行自动拷贝） | PM |
+| handoff-template.md | 任务派发格式 | Orchestrator |
+| state-template.md | .state.md 完整 schema | Orchestrator |
+| state-pointer-template.md | 全局指针（首次运行自动拷贝） | Orchestrator |
 | logging-standard.md | 日志格式规范 | 全角色 |
-| metrics-template.md | 执行指标格式 | PM（ARC-5） |
-| lessons-template.md | 经验沉淀文档格式 | PM（ARC-6） |
-| frontend-design-skill.md | 前端设计指南（Anthropic官方） | UX/DE（PPT creative模式） |
-| ppt-base.css | PPT 设计系统 | UX/DE（PPT system模式） |
-| ppt-base.html | PPT HTML骨架 | DE |
-| ppt-light.css | PPT 浅色主题 | UX/DE |
-| examples/*.md | 金标准产出示例（BA/SA/DE/TE/修复） | 各角色参考 |
-| output-guides/*.md | 产出结构参考 | DE |
-| ppt-templates/layouts/ | PPT 布局模板 | UX |
+| metrics-template.md | 执行指标格式 | Orchestrator（ARC-5） |
+| lessons-template.md | 经验沉淀文档格式 | Orchestrator（ARC-6） |
+| frontend-design-skill.md | 前端设计指南（Anthropic官方） | Thinker/Worker（PPT creative模式） |
+| ppt-base.css | PPT 设计系统 | Thinker/Worker（PPT system模式） |
+| ppt-base.html | PPT HTML骨架 | Worker |
+| ppt-light.css | PPT 浅色主题 | Thinker/Worker |
+| examples/*.md | 金标准产出示例（Thinker/Worker/Verifier/修复） | 各角色参考 |
+| output-guides/*.md | 产出结构参考 | Worker |
+| ppt-templates/layouts/ | PPT 布局模板 | Thinker |
 
 ### 模板使用原则
 

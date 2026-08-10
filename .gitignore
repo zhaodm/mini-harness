@@ -15,7 +15,9 @@ reference/
 
 # mh-dev 自开发工具运行态（模板与工具代码受版本控制）
 tools/mh-dev/.mh-dev/*
-!tools/mh-dev/.mh-dev/.gitkeep
+
+# mh-dev session 归档（reset-session 生成，运行时残留）
+tools/mh-dev/.mh-dev-archive/
 
 # MCP 服务器自动生成目录（zai-mcp-server）
 android-*/

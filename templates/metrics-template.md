@@ -1,6 +1,6 @@
 # {REQ-ID} 执行指标
 
-> PM 在流程结束时（archive 阶段）自动生成本文件，存放于 deliverables/{REQ-ID}/metrics.md
+> Orchestrator 在流程结束时（archive 阶段）自动生成本文件，存放于 deliverables/{REQ-ID}/metrics.md
 
 - 总耗时: {从 INIT-1 到 SR4-DONE 的时间}
 - 执行模式: {fast/standard/full}
@@ -10,11 +10,9 @@
 
 | 角色 | 派发次数 | 驳回次数 | 驳回原因摘要 |
 |------|---------|---------|-------------|
-| BA   | {N}     | {N}     | {简述}      |
-| SA   | {N}     | {N}     | {简述}      |
-| DE   | {N}     | {N}     | {简述}      |
-| TE   | {N}     | {N}     | {简述}      |
-| UX   | {N}     | {N}     | {简述}      |
+| Thinker   | {N}     | {N}     | {简述}      |
+| Worker    | {N}     | {N}     | {简述}      |
+| Verifier  | {N}     | {N}     | {简述}      |
 
 ## 修复循环
 

@@ -7,11 +7,12 @@
 -->
 ---
 handoff_id: "{REQ-ID}-{STEP-ID}-R{N}"
-from: PM
-to: "{BA|SA|DE|TE|UX}"
+from: ORCHESTRATOR
+to: "{THINKER|WORKER|VERIFIER}"
 status: pending
-task_type: "{需求分析|架构设计|编码实现|审计验证|测试用例设计|设计}"
-output_type: "{output_type}"
+track: "{code|ppt}"
+thinker_phase: "{needs|design|visual}"
+task_type: "{需求分析|架构设计|视觉设计|编码实现|审计验证}"
 tech_stack: "{language}/{package_manager}"
 created_at: "{YYYY-MM-DDTHH:MM:SSZ}"
 completed_at: ""
@@ -23,8 +24,8 @@ completed_at: ""
 
 ## 环境限制
 
-<!-- PM 必填。标注 SubAgent 环境的关键限制，避免 Agent 无效尝试 -->
-- Bash 权限: {有 | 无（仅代码实现，验证由 PM 外部执行）}
+<!-- Orchestrator 必填。标注 SubAgent 环境的关键限制，避免 Agent 无效尝试 -->
+- Bash 权限: {有 | 无（仅代码实现，验证由 Orchestrator 外部执行）}
 - 网络访问: {有 | 无}
 - 可用工具: {Read, Write, Edit | 全部}
 
@@ -39,12 +40,12 @@ completed_at: ""
 - 预期复杂度: {极简<10k | 小<20k | 中<50k | 大<80k}
 - 超出预算行为: 停止执行，在回报中标注 issues="token budget exceeded"
 
-## 产出规格（大型产出或返工时 PM 填写，简单任务可删除本节）
+## 产出规格（大型产出或返工时 Orchestrator 填写，简单任务可删除本节）
 
 - depth_level: {checklist | summary | full-architecture | code-level}
 - quality_anchor: {标杆文件路径 | N/A}
 - structure_skeleton: |
-    {预期的文件/章节结构 — SA/UX 任务必填，PM 须在派发前与用户协商确定}
+    {预期的文件/章节结构 — Thinker design/visual 任务必填，Orchestrator 须在派发前与用户协商确定}
 
 ## 输入文件（白名单）
 
@@ -53,7 +54,7 @@ completed_at: ""
 
 ## 期望输出
 
-<!-- ⚠️ PM 自检: DE 任务的输出路径必须以 deliverables/{REQ-ID}/output/ 开头，禁止直接指向根目录 output/ -->
+<!-- ⚠️ Orchestrator 自检: Worker 任务的输出路径必须以 deliverables/{REQ-ID}/output/ 开头，禁止直接指向根目录 output/ -->
 - `{output_path}`
 
 ## 约束
@@ -73,12 +74,12 @@ completed_at: ""
 
 ## 用户反馈原文（R2+ 轮次必填，R1 时删除本节）
 
-<!-- PM 禁止摘要/裁剪用户反馈，原文粘贴于此。超过 500 行时写入独立文件并在白名单中引用 -->
+<!-- Orchestrator 禁止摘要/裁剪用户反馈，原文粘贴于此。超过 500 行时写入独立文件并在白名单中引用 -->
 {用户反馈原文}
 
-## 设计对标清单（DE 编码任务时 PM 填写，其他角色删除本节）
+## 设计对标清单（Worker 编码任务时 Orchestrator 填写，其他角色删除本节）
 
-<!-- PM 从设计文档中摘录 DE 必须实现的关键项，DE 完成后逐项 ✓ -->
+<!-- Orchestrator 从设计文档中摘录 Worker 必须实现的关键项，Worker 完成后逐项 ✓ -->
 
 ### 必须实现的接口/方法
 - [ ] {从设计文档摘录}
@@ -89,22 +90,22 @@ completed_at: ""
 ### 关键约束
 - [ ] {从设计文档摘录的常量/配置/安全要求}
 
-## 上下文裁剪指示（DE 任务白名单文件较大时 PM 填写，可选）
+## 上下文裁剪指示（Worker 任务白名单文件较大时 Orchestrator 填写，可选）
 
-<!-- PM 标注白名单文件中执行角色需要精读的段落范围，减少无关上下文 -->
+<!-- Orchestrator 标注白名单文件中执行角色需要精读的段落范围，减少无关上下文 -->
 - {file_path}: 精读 `## {section_name}`（其余跳过）
 - {file_path}: 仅读取 Task-{N} 相关段落
 
 ## 修复上下文（仅修复轮次填写，R1 时删除本节）
 
 - 失败特征: {错误类型 + 关键错误信息}
-- 根因假设: {PM 基于 TE 报告的分析}
+- 根因假设: {Orchestrator 基于 Verifier 报告的分析}
 - 建议修复方向: {具体指导}
 - 历史尝试: {前几轮尝试了什么，为什么没成功}
 
 ## 完成回报（执行角色必填 — 未填写则任务视为未完成）
 
-<!-- ⚠️ SubAgent 必须在结束前填写本节，否则 PM 将驳回 -->
+<!-- ⚠️ SubAgent 必须在结束前填写本节，否则 Orchestrator 将驳回 -->
 - status: {done | failed}
 - output_files: ["{file_path}"]
 - read_files: ["{实际读取的文件路径}"]
@@ -112,4 +113,4 @@ completed_at: ""
 - issues: "{错误信息或 N/A}"
 
 > 回报格式示例见 `templates/handoff-examples.md`
-> PM 验收时将 read_files 与白名单对比，不匹配则驳回。
+> Orchestrator 验收时将 read_files 与白名单对比，不匹配则驳回。

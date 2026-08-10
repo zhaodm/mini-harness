@@ -1,7 +1,7 @@
 /**
  * result-parser.js — 解析 SubAgent 返回结果，提取结构化信息
  *
- * 用于 Workflow 返回后，PM 会话层解析 SubAgent 输出进行质量门禁判断。
+ * 用于 Workflow 返回后，Orchestrator 会话层解析 SubAgent 输出进行质量门禁判断。
  */
 
 /**
@@ -36,25 +36,25 @@ export function parseReport(agentOutput) {
 }
 
 /**
- * 判断 TE 审计是否通过
- * @param {string} teOutput - TE SubAgent 输出
+ * 判断 Verifier 审计是否通过
+ * @param {string} verifierOutput - Verifier SubAgent 输出
  * @returns {boolean}
  */
-export function isAuditPassed(teOutput) {
+export function isAuditPassed(verifierOutput) {
   // 优先看明确结论（结论行权威性最高）
   const conclusionPattern = /(?:结论|conclusion):\s*(PASS|FAIL)/;
-  const conclusionMatch = teOutput.match(conclusionPattern);
+  const conclusionMatch = verifierOutput.match(conclusionPattern);
   if (conclusionMatch) {
     return conclusionMatch[1] === 'PASS';
   }
 
   // 兜底：无明确结论时，检查是否包含 FAIL 关键字
-  return !teOutput.includes('FAIL');
+  return !verifierOutput.includes('FAIL');
 }
 
 /**
- * 从 TE SubAgent 输出中提取 Code Review 判定
- * CR-006: 供 PM 质量门禁和 Workflow 结果判定使用
+ * 从 Verifier SubAgent 输出中提取 Code Review 判定
+ * CR-006: 供 Orchestrator 质量门禁和 Workflow 结果判定使用
  *
  * @param {string} rawOutput - SubAgent 原始输出
  * @returns {{ reviewVerdict: 'PASS'|'FAIL'|'SKIPPED'|'MISSING', criticalCount: number, majorCount: number, minorCount: number }}
@@ -80,8 +80,8 @@ export function extractReviewVerdict(rawOutput) {
 }
 
 /**
- * 从 TE SubAgent 输出中提取回归测试判定
- * CR-006: 供 PM 质量门禁和 Workflow 结果判定使用
+ * 从 Verifier SubAgent 输出中提取回归测试判定
+ * CR-006: 供 Orchestrator 质量门禁和 Workflow 结果判定使用
  *
  * @param {string} rawOutput - SubAgent 原始输出
  * @returns {{ regressionVerdict: 'PASS'|'FAIL'|'MISSING'|'NO_SUITE', totalCases: number, failedCases: number }}
