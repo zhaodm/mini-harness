@@ -4,7 +4,7 @@
 # 输出: stdout 匹配文件列表 + 行号 + 上下文；同时写入 .mh-dev/scope-result.md
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
-RUNTIME="$ROOT_DIR/tools/mh-dev/.mh-dev"
+RUNTIME="${MH_DEV_RUNTIME:-$ROOT_DIR/tools/mh-dev/.mh-dev}"
 cd "$ROOT_DIR"
 
 [[ $# -gt 0 ]] || { echo "Usage: $0 <keyword1> [keyword2...]" >&2; exit 2; }

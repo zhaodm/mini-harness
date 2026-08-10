@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
-RUNTIME="$ROOT_DIR/tools/mh-dev/.mh-dev"
+RUNTIME="${MH_DEV_RUNTIME:-$ROOT_DIR/tools/mh-dev/.mh-dev}"
 ROLE="" ROUND="" KIND="" OUT=""
 if [[ $# -eq 1 && "$1" != --* ]]; then OUT="$1"; ROLE="legacy"; ROUND=0; KIND="capture"
 else
@@ -27,8 +27,9 @@ while i < len(parts)-1:
   old_path=parts[i].decode('utf-8','surrogateescape'); i+=1
  digest=None
  try:
-  with open(path,'rb') as f: digest=hashlib.sha256(f.read()).hexdigest()
- except FileNotFoundError: pass
+  if os.path.isfile(path):
+   with open(path,'rb') as f: digest=hashlib.sha256(f.read()).hexdigest()
+ except (FileNotFoundError,IsADirectoryError): pass
  entries.append({'path':path,'old_path':old_path,'porcelain_status':status,'sha256':digest,'tracked':status!='??'})
 data={'schema_version':1,'workflow':'mh-dev','role':role,'round':int(round_),'point':kind,'captured_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'repo_head':head,'entries':entries}
 with open(out,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2);f.write('\n')

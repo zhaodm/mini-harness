@@ -20,9 +20,10 @@ FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 STATE_FILE=$(find deliverables -maxdepth 2 -name ".state.md" -not -path "deliverables/.state.md" 2>/dev/null | head -1)
 
 # mh-dev 仅在没有外部项目流程时治理框架根目录写入。运行态文件始终允许；
+# phase 正则仅匹配活跃开发阶段；done/blocked 为终态，不激活治理（避免残留状态污染 /mh-run）：
 # 框架文件必须被 approved_scope 精确列出，且治理关键路径只允许 formal 轨道。
-MH_DEV_STATE="tools/mh-dev/.mh-dev/state.json"
-if [[ -z "$STATE_FILE" && -f "$MH_DEV_STATE" ]] && jq -e '.workflow == "mh-dev" and (.phase | test("^(intake|propose|develop|verify|audit|repair|release-candidate|archive)$"))' "$MH_DEV_STATE" >/dev/null 2>&1; then
+MH_DEV_STATE="${MH_DEV_RUNTIME:-tools/mh-dev/.mh-dev}/state.json"
+if [[ -z "$STATE_FILE" && -f "$MH_DEV_STATE" ]] && jq -e '.workflow == "mh-dev" and (.phase | test("^(intake|propose|develop|verify|repair)$"))' "$MH_DEV_STATE" >/dev/null 2>&1; then
   [[ "$FILE_PATH" =~ tools/mh-dev/\.mh-dev/ ]] && exit 0
 
   MH_TRACK=$(jq -r '.track // empty' "$MH_DEV_STATE")

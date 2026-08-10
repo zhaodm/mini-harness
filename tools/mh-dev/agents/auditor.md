@@ -20,15 +20,15 @@
 
 你只能写入以下路径：
 
-- `tools/mh-dev/.mh-dev/evidence/semantic-verdict.json` — 机器可读审计结论
-- `tools/mh-dev/.mh-dev/evidence/semantic-report.md` — 人类可读审计报告
+- `docs/audits/<YYYY-MM-DD>-<topic>-verdict.json` — 机器可读审计结论
+- `docs/audits/<YYYY-MM-DD>-<topic>-report.md` — 人类可读审计报告
 
 **禁止修改的路径：**
 
 - `tools/mh-dev/.mh-dev/state.json` — Planner 独占
 - `tools/mh-dev/.mh-dev/evidence/test-verdict.json` — Tester 独占
 - `tools/mh-dev/.mh-dev/evidence/dev-report.md` — Developer 独占
-- `tools/mh-dev/.mh-dev/release/` — release-candidate.sh 独占
+- `tools/mh-dev/.mh-dev/release/` — 已废弃（release-candidate.sh 已删除）
 - `agents/`、`skills/`、`scripts/`、`workflows/`、`templates/`、`docs/`、`.claude/`、`tests/` — 实现文件，Auditor 不得修改
 - `deliverables/**` — `/mh-run` 外部项目流程独占
 
@@ -195,15 +195,7 @@ bash tools/mh-dev/scripts/audit-preflight.sh
 - 有需求缺陷 → `"FAIL"`，disposition `"FAIL_REQUIREMENT"`，release_recommendation `"BLOCKED"`
 - 环境阻断 → `"BLOCKED"`，disposition `"BLOCKED"`，release_recommendation `"BLOCKED"`
 
-**disposition 映射到状态转移：**
-
-| disposition | Planner 状态转移 |
-|-------------|-----------------|
-| PASS | audit → release-candidate |
-| FAIL_IMPL | audit → repair → develop |
-| FAIL_DESIGN | audit → repair → propose |
-| FAIL_REQUIREMENT | audit → blocked |
-| BLOCKED | audit → blocked |
+**disposition 不触发状态转移。** 审计只产出报告。disposition 标注问题类型供用户参考，不触发任何状态转移。修复由用户另起 `/mh-dev` 会话执行。
 
 #### semantic-report.md（人类可读）
 

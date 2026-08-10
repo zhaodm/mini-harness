@@ -3,7 +3,7 @@
 # 6 节验证：预检、框架自检、shell 语法、测试覆盖、全量回归、结构化报告
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
-RUNTIME="$ROOT_DIR/tools/mh-dev/.mh-dev"
+RUNTIME="${MH_DEV_RUNTIME:-$ROOT_DIR/tools/mh-dev/.mh-dev}"
 REPORT="$RUNTIME/evidence/verify-result.md"
 cd "$ROOT_DIR"
 

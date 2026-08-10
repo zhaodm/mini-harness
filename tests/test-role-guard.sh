@@ -8,6 +8,11 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$SCRIPT_DIR"
 
+# Use temp dir for all mh-dev state to avoid wiping real .mh-dev/
+MH_DEV_RUNTIME="$(mktemp -d)"
+export MH_DEV_RUNTIME
+trap 'rm -rf "$MH_DEV_RUNTIME"' EXIT
+
 PASS=0
 FAIL=0
 TOTAL=0
@@ -154,7 +159,7 @@ echo ""
 echo "--- 3. 边界条件测试 ---"
 
 # 无活跃需求（应放行所有）
-rm -rf deliverables/TEST001 deliverables/.state.md tools/mh-dev/.mh-dev/state.json
+rm -rf deliverables/TEST001 deliverables/.state.md
 mkdir -p deliverables
 TOTAL=$((TOTAL + 1))
 output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"any/file.md"}}' | bash scripts/role-guard.sh 2>&1)
@@ -252,7 +257,6 @@ cleanup_state
 echo ""
 echo "--- 6. mh-dev 状态隔离测试 ---"
 
-MH_DEV_RUNTIME="tools/mh-dev/.mh-dev"
 setup_mhdev_state() {
   local phase=$1
   mkdir -p "$MH_DEV_RUNTIME"
@@ -262,6 +266,7 @@ EOF
 }
 cleanup_mhdev_state() {
   rm -rf "$MH_DEV_RUNTIME"
+  mkdir -p "$MH_DEV_RUNTIME"
 }
 
 # mh-dev 活跃 phase、无外部 deliverable

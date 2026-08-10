@@ -1,11 +1,23 @@
-# 变更需求
+---
+id: CR-xxx-<slug>
+title: <一句话标题>
+status: draft
+design_doc: docs/designs/CR-xxx-<slug>-design.md
+created: YYYY-MM-DD
+---
 
-> 只写意图，不写方案。方案归设计文档。
-> 判据：该条目会因方案调整而需要改写吗？会 → 是方案，下沉。
+# CR-xxx: <标题>
 
-## 目标
+> 归档路径: docs/requirements/CR-xxx-<slug>.md
+> 运行态精简: tools/mh-dev/.mh-dev/requirement.md（基于本单精简为 Developer 可执行指令）
 
-<!-- 用一句话描述要做什么 -->
+## 背景
+
+<!-- 为什么要做这个改动 -->
+
+## 需求
+
+<!-- 要做什么（只写意图，不写方案） -->
 
 ## 非目标
 

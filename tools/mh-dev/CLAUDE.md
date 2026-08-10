@@ -23,7 +23,7 @@
 |------|---------------------|------|
 | fast | 配置/文档/明显 bug 修正 + 无接口变更 + 无设计决策 + 用户确认 | develop → verify（精简模式） |
 | light | 存在行为变化或轻微接线选择 + 无状态机/角色边界/发布契约变化 + 可局部回滚 + 用户确认 | propose（精简）→ develop → verify |
-| formal | 其他 | propose（完整）→ develop → verify → audit |
+| formal | 其他 | propose（完整）→ develop → verify → done |
 
 轨道判定是**判定表**，不做风险评分模型：逐条对照上表条件，任一条不满足即降级到下一档（更重的轨道）。
 
@@ -41,7 +41,8 @@
 
 需求澄清后，**必须**创建工作文件：
 
-- 需求文档：`tools/mh-dev/.mh-dev/requirement.md`
+- CR 需求单（版本控制归档）：`docs/requirements/CR-xxx-<slug>.md`（编号递增，查目录确认下一个）
+- 运行态精简需求（基于需求单精简为 Developer 可执行指令）：`tools/mh-dev/.mh-dev/requirement.md`
 - 验收说明（人类可读）：`tools/mh-dev/.mh-dev/acceptance-criteria.md`
 
 ⛔ **需求文档只写意图，不写方案。** 需求条目回答「要什么」，方案（怎么做）归设计。
@@ -64,7 +65,9 @@
 
 ---
 
-### 阶段三：影响分析
+### 阶段三：设计文档 + 影响分析
+
+formal 轨需产出设计文档（版本控制归档）：`docs/designs/CR-xxx-<slug>-design.md`。
 
 ```bash
 bash tools/mh-dev/scripts/scope-scan.sh "关键词1" "关键词2" ...
@@ -108,7 +111,7 @@ for round in 1..max_rounds:
   6. validate-changes.sh --role tester --round N        FAIL → 重新 spawn 要求撤回越权
   7. validate-outputs.sh verify                         FAIL → 重新 spawn 要求补齐产出
   8. verdict 分派：
-       PASS             → transition-state.sh audit → ...
+       PASS             → transition-state.sh done → 收尾
        FAIL_IMPL        → transition-state.sh repair → 下一轮
        FAIL_DESIGN      → transition-state.sh repair → 回阶段二
        FAIL_REQUIREMENT → transition-state.sh blocked
@@ -121,38 +124,28 @@ for round in 1..max_rounds:
 
 ---
 
-### 阶段五：审计
+### 阶段五：收尾
 
-Tester PASS 后，调度 Auditor 执行语义审计。
+Tester PASS 后，转移到 done 终态。done 门禁仅要求 `mechanical_preflight==pass` 且 `test_verdict==PASS`，不要求 `semantic_audit`。
 
 ```bash
-bash tools/mh-dev/scripts/audit-preflight.sh
-bash tools/mh-dev/scripts/validate-outputs.sh audit
+bash tools/mh-dev/scripts/transition-state.sh done --actor planner --expected-revision N
 ```
 
-Auditor 输出 `semantic-verdict.json`。disposition 映射：
-
-| disposition | Planner 状态转移 |
-|-------------|-----------------|
-| PASS | audit → release-candidate |
-| FAIL_IMPL | audit → repair → develop |
-| FAIL_DESIGN | audit → repair → propose |
-| FAIL_REQUIREMENT | audit → blocked |
-| BLOCKED | audit → blocked |
+**向用户报告变更摘要，等待用户明确确认后再提交和推送代码。**
 
 ---
 
-### 阶段六：收尾
+### 审计轨（独立流程）
 
-**收尾门禁：** `bash tools/mh-dev/scripts/validate-outputs.sh release-candidate` 必须 PASS 才能生成候选发布。
+用户通过 `/mh-dev audit` 触发审计轨。审计轨不修改开发轨 state.json 的 phase，流程：
 
-```bash
-bash tools/mh-dev/scripts/release-candidate.sh
-```
+1. 前置检查：`bash tools/mh-dev/scripts/validate-outputs.sh audit`（校验 test-verdict.json 存在且 PASS）
+2. 通过 Agent tool 调度 Auditor SubAgent
+3. Auditor 产出 `docs/audits/<YYYY-MM-DD>-<topic>-verdict.json` + `docs/audits/<YYYY-MM-DD>-<topic>-report.md`
+4. Planner 报告摘要 + "如需修复，请另开会话执行 /mh-dev"
 
-生成 release manifest 和 release notes。
-
-**向用户报告变更摘要，等待用户明确确认后再提交和推送代码。**
+审计轨不触发 repair 循环，不修改开发轨 phase。
 
 ---
 
@@ -161,6 +154,8 @@ bash tools/mh-dev/scripts/release-candidate.sh
 你只能写入以下路径，其他任何文件的 Write/Edit 操作都是违规：
 
 - `tools/mh-dev/.mh-dev/` 下的 `requirement.md`、`acceptance-criteria.json`、`acceptance-criteria.md`、`state.json`
+- `docs/requirements/CR-*.md` — CR 需求单（版本控制归档）
+- `docs/designs/CR-*-design.md` — 设计文档（版本控制归档）
 
 ## 状态转移操作
 
@@ -183,12 +178,11 @@ bash tools/mh-dev/scripts/release-candidate.sh
 - `validate-outputs.sh <phase>` — 阶段输出校验
 - `audit-preflight.sh` — 机械预检
 - `verify.sh` — 工具内总门禁
-- `release-candidate.sh` — 候选发布
 
 ## 生命周期
 
 ```
-intake → propose → develop → verify → audit → release-candidate → archive
+intake → propose → develop → verify → done
                     │          │
                     └──────────┴── FAIL / BLOCKED → repair → develop
                                                    └→ blocked（达到上限或治理阻断）
@@ -209,14 +203,3 @@ intake → propose → develop → verify → audit → release-candidate → ar
 11. **调度 prompt 必须注入中文输出要求** — 见 `dispatch-prompts.md`
 
 ---
-
-## 审计轨（Audit Track）
-
-审计轨由用户请求触发，通过 Agent tool 调度 Auditor SubAgent 执行。完整方法论见 `tools/mh-dev/agents/auditor.md`。
-
-**Planner 侧约束：**
-- 只审计，不修复 — 审计完成后直接输出报告摘要
-- 调度 Auditor 时仅提供审计范围、变更集和业务上下文；不得逐条指定验证深度
-- **禁止询问用户是否需要修复**
-- 报告末尾统一附加：`如需修复，请另开会话执行 /mh-dev`
-- 审计轨可写文件：`tools/mh-dev/.mh-dev/evidence/semantic-verdict.json`、`tools/mh-dev/.mh-dev/evidence/semantic-report.md`

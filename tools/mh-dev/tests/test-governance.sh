@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"; RUNTIME="$ROOT_DIR/tools/mh-dev/.mh-dev"
+ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"; RUNTIME="$(mktemp -d)"
+export MH_DEV_RUNTIME="$RUNTIME"
 trap 'rm -rf "$RUNTIME"' EXIT
 pass=0; fail=0
 ok(){ pass=$((pass+1)); }; bad(){ echo "FAIL: $*" >&2; fail=$((fail+1)); }
@@ -31,7 +32,7 @@ setup_state(){
   cp "$ROOT_DIR/tools/mh-dev/templates/acceptance-criteria.md" "$RUNTIME/acceptance-criteria.md"
   write_evidence
   cat > "$RUNTIME/state.json" <<EOF
-{"schema_version":2,"workflow":"mh-dev","revision":0,"phase":"$1","current_role":"planner","baseline":"HEAD","approved_scope":$2,"track":"$3","track_assessment":{"requested_track":"$3","required_track":"$3","reason_codes":[],"paths":[],"confirmed":true,"assessed_at":"t"},"track_escalations":[],"approvals":{"intake":"$4","design":"$5","delivery":"$6"},"mechanical_preflight":"$7","test_verdict":"$8","semantic_audit":"$9","repair":{"round":0,"max_rounds":3,"status":"not_started","reason":"","source_verdict":""},"snapshots":{},"change_ownership":{},"evidence":[],"phase_timestamps":{},"release_status":"not_requested","last_updated":"t"}
+{"schema_version":2,"workflow":"mh-dev","revision":0,"phase":"$1","current_role":"planner","baseline":"HEAD","approved_scope":$2,"track":"$3","track_assessment":{"requested_track":"$3","required_track":"$3","reason_codes":[],"paths":[],"confirmed":true,"assessed_at":"t"},"track_escalations":[],"approvals":{"intake":"$4","design":"$5","delivery":"$6"},"mechanical_preflight":"$7","test_verdict":"$8","semantic_audit":"$9","repair":{"round":0,"max_rounds":3,"status":"not_started","reason":"","source_verdict":""},"snapshots":{},"change_ownership":{},"evidence":[],"phase_timestamps":{},"last_updated":"t"}
 EOF
 }
 
@@ -43,10 +44,15 @@ setup_state propose '["README.md"]' formal approved approved pending pending pen
 expect_pass bash "$ROOT_DIR/tools/mh-dev/scripts/transition-state.sh" develop --actor planner --expected-revision 0
 expect_fail bash "$ROOT_DIR/tools/mh-dev/scripts/transition-state.sh" verify --actor planner --expected-revision 0
 
+# verify→done transition and verify→audit rejection.
+setup_state verify '["README.md"]' formal approved approved pending pass PASS pending
+expect_pass bash "$ROOT_DIR/tools/mh-dev/scripts/check-transition.sh" done
+expect_fail bash "$ROOT_DIR/tools/mh-dev/scripts/check-transition.sh" audit
+# done does not require semantic_audit
+setup_state verify '["README.md"]' formal approved approved pending pass PASS FAIL
+expect_pass bash "$ROOT_DIR/tools/mh-dev/scripts/check-transition.sh" done
 # Repair route and bounded retries.
 setup_state verify '["README.md"]' formal approved approved pending pass FAIL pending
-expect_pass bash "$ROOT_DIR/tools/mh-dev/scripts/check-transition.sh" repair
-setup_state audit '["README.md"]' formal approved approved pending pass PASS FAIL
 expect_pass bash "$ROOT_DIR/tools/mh-dev/scripts/check-transition.sh" repair
 python3 - "$RUNTIME/state.json" <<'PY'
 import json,sys
@@ -65,13 +71,6 @@ import json,sys
 p=sys.argv[1];v=json.load(open(p));v['commands']=[];json.dump(v,open(p,'w'))
 PY
 expect_fail bash "$ROOT_DIR/tools/mh-dev/scripts/validate-outputs.sh" verify
-
-# Release requires all gates and verified ownership.
-setup_state release-candidate '["README.md"]' formal approved approved approved pass PASS PASS
-expect_pass bash "$ROOT_DIR/tools/mh-dev/scripts/validate-outputs.sh" release-candidate
-expect_fail bash "$ROOT_DIR/tools/mh-dev/scripts/release-candidate.sh"
-setup_state release-candidate '["README.md"]' formal approved approved pending pass PASS PASS
-expect_fail bash "$ROOT_DIR/tools/mh-dev/scripts/validate-outputs.sh" release-candidate
 
 # Rename attribution: porcelain -z order is new-path then old-path.
 setup_state develop '["old.txt"]' formal approved approved pending pending pending pending

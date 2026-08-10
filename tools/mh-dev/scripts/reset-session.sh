@@ -2,7 +2,7 @@
 # reset-session.sh — 会话重置：归档上一轮运行态，从模板重新初始化 state.json
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
-RUNTIME="$ROOT_DIR/tools/mh-dev/.mh-dev"
+RUNTIME="${MH_DEV_RUNTIME:-$ROOT_DIR/tools/mh-dev/.mh-dev}"
 TEMPLATE="$ROOT_DIR/tools/mh-dev/templates/state.json.template"
 cd "$ROOT_DIR"
 
@@ -20,7 +20,7 @@ fi
 
 # 清空运行态
 rm -rf "$RUNTIME"
-mkdir -p "$RUNTIME/evidence" "$RUNTIME/snapshots" "$RUNTIME/release"
+mkdir -p "$RUNTIME/evidence" "$RUNTIME/snapshots"
 touch "$RUNTIME/.gitkeep"
 
 # 从模板重新生成 state.json

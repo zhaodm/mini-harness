@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"; RUNTIME="$ROOT_DIR/tools/mh-dev/.mh-dev"; STATE="$RUNTIME/state.json"; PHASE="${1:-}"
-[[ -n "$PHASE" && -f "$STATE" ]] || { echo "Usage: $0 <propose|develop|verify|audit|release-candidate>" >&2; exit 2; }
+ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"; RUNTIME="${MH_DEV_RUNTIME:-$ROOT_DIR/tools/mh-dev/.mh-dev}"; STATE="$RUNTIME/state.json"; PHASE="${1:-}"
+[[ -n "$PHASE" && -f "$STATE" ]] || { echo "Usage: $0 <propose|develop|verify|audit>" >&2; exit 2; }
 python3 - "$ROOT_DIR" "$RUNTIME" "$STATE" "$PHASE" <<'PY'
 import json,os,re,sys
 root,runtime,state_path,phase=sys.argv[1:]
@@ -23,18 +23,11 @@ if phase=='propose':
   if re.search(r'\b(TBD|TODO|待补充|请补充)\b',x.get('statement',''),re.I): fail(f'placeholder in acceptance item {x.get("id")}')
  md=open(os.path.join(runtime,'acceptance-criteria.md'),encoding='utf-8').read()
  if set(re.findall(r'\bA[CX]-[0-9]+\b',md)) != set(ids): fail('Markdown and JSON acceptance IDs differ')
- # testcase_adding_required 验证
- tc_required=s.get('testcase_adding_required',False)
- if tc_required:
-  import subprocess
-  changed=subprocess.check_output(['git','-C',root,'diff','--name-only','HEAD'],text=True).splitlines()+subprocess.check_output(['git','-C',root,'ls-files','--others','--exclude-standard'],text=True).splitlines()
-  has_test=any('test' in p for p in changed if p)
-  if not has_test: fail('testcase_adding_required=true but no test file changes detected')
  print('PASS: proposal criteria complete');raise SystemExit(0)
 if phase=='develop':
  if str(round_) not in s.get('change_ownership',{}).get('developer',{}): fail('developer attribution missing')
  print('PASS: developer attribution complete');raise SystemExit(0)
-if phase not in {'verify','audit','release-candidate'}: fail('unsupported phase')
+if phase not in {'verify','audit'}: fail('unsupported phase')
 c=load('acceptance-criteria.json'); required={x['id'] for x in c['items']}
 def validate_verdict(name,role):
  v=load(name)
@@ -42,7 +35,7 @@ def validate_verdict(name,role):
  actual={x.get('id') for x in v.get('acceptance',[])}
  if actual!=required or len(actual)!=len(v.get('acceptance',[])): fail(f'{role} acceptance coverage incomplete')
  return v
-if phase in {'verify','audit','release-candidate'}:
+if phase in {'verify','audit'}:
  v=validate_verdict('evidence/test-verdict.json','tester'); commands={x.get('id'):x for x in v.get('commands',[])}
  if not commands: fail('tester command evidence missing')
  for cmd in commands.values():
@@ -61,8 +54,15 @@ if phase in {'verify','audit','release-candidate'}:
   fd,tmp=tempfile.mkstemp(dir=os.path.dirname(state_path),prefix='.state.',text=True)
   with os.fdopen(fd,'w',encoding='utf-8') as f: json.dump(s,f,ensure_ascii=False,indent=2); f.write('\n')
   os.replace(tmp,state_path)
+  # testcase_adding_required 验证（从 propose 移到 verify）
+  tc_required=s.get('testcase_adding_required',False)
+  if tc_required:
+   import subprocess
+   changed=subprocess.check_output(['git','-C',root,'diff','--name-only','HEAD'],text=True).splitlines()+subprocess.check_output(['git','-C',root,'ls-files','--others','--exclude-standard'],text=True).splitlines()
+   has_test=any('test' in p for p in changed if p)
+   if not has_test: fail('testcase_adding_required=true but no test file changes detected')
   print('PASS: tester verdict complete');raise SystemExit(0)
-if phase in {'audit','release-candidate'}:
+if phase=='audit':
  a=validate_verdict('evidence/semantic-verdict.json','auditor')
  if a.get('tester_verdict_ref')!='evidence/test-verdict.json' or a.get('mechanical_preflight',{}).get('exit_code')!=0: fail('auditor prerequisites invalid')
  evidence={x.get('id') for x in a.get('evidence',[]) if nonempty(x.get('id',''))}
@@ -71,7 +71,5 @@ if phase in {'audit','release-candidate'}:
  if a['verdict']=='PASS' and (any(x['status']!='PASS' for x in a['acceptance']) or a.get('findings') or a.get('release_recommendation')!='APPROVE'): fail('auditor PASS conflicts with evidence')
  if a['verdict']!='PASS' and not (a.get('findings') or any(x['status']!='PASS' for x in a['acceptance'])): fail('non-PASS auditor verdict lacks findings')
  if phase=='audit': print('PASS: semantic verdict complete');raise SystemExit(0)
-if s.get('mechanical_preflight')!='pass' or s.get('test_verdict')!='PASS' or s.get('semantic_audit')!='PASS': fail('state verdict gate not passed')
-if s.get('approvals',{}).get('delivery')!='approved': fail('delivery approval missing')
-print('PASS: release evidence complete')
+
 PY

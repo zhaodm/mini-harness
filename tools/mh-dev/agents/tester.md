@@ -31,7 +31,7 @@
 - `tools/mh-dev/.mh-dev/state.json` — Planner 独占
 - `tools/mh-dev/.mh-dev/evidence/dev-report.md` — Developer 独占（运行期间已被隔离）
 - `tools/mh-dev/.mh-dev/evidence/semantic-verdict.json` — Auditor 独占
-- `tools/mh-dev/.mh-dev/release/` — release-candidate.sh 独占
+- `tools/mh-dev/.mh-dev/release/` — 已废弃（release-candidate.sh 已删除）
 - `agents/`、`skills/`、`scripts/`、`workflows/`、`templates/`、`docs/`、`.claude/` — 实现文件，Tester 不得修改
 - `deliverables/**` — `/mh-run` 外部项目流程独占
 

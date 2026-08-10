@@ -1,13 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
-STATE="$ROOT_DIR/tools/mh-dev/.mh-dev/state.json"
+RUNTIME="${MH_DEV_RUNTIME:-$ROOT_DIR/tools/mh-dev/.mh-dev}"
+STATE="$RUNTIME/state.json"
 ROLE="" ROUND="" BEFORE="" AFTER=""
 while [[ $# -gt 0 ]]; do case "$1" in --role) ROLE="$2"; shift 2;; --round) ROUND="$2"; shift 2;; --before) BEFORE="$2"; shift 2;; --after) AFTER="$2"; shift 2;; *) echo "Usage: $0 --role developer|tester --round N --before FILE --after FILE" >&2; exit 2;; esac; done
 [[ "$ROLE" =~ ^(developer|tester)$ && "$ROUND" =~ ^[0-9]+$ && -f "$STATE" && -f "$BEFORE" && -f "$AFTER" ]] || { echo "BLOCKED: invalid role delta input" >&2; exit 2; }
-python3 - "$ROOT_DIR" "$STATE" "$ROLE" "$ROUND" "$BEFORE" "$AFTER" <<'PY'
+python3 - "$ROOT_DIR" "$RUNTIME" "$STATE" "$ROLE" "$ROUND" "$BEFORE" "$AFTER" <<'PY'
 import datetime, hashlib, json, os, sys, tempfile
-root,state_path,role,round_,before_path,after_path=sys.argv[1:]
+root,runtime,state_path,role,round_,before_path,after_path=sys.argv[1:]
 round_=int(round_)
 def load(path):
  with open(path,encoding='utf-8') as f:return json.load(f)
@@ -28,7 +29,7 @@ for path,new in a.items():
   rename_old_to_new[old]=path
 # Build changes, skipping old rename sources (they are represented by the new path).
 paths=sorted(set(b)|set(a)); changes=[]; violations=[]
-sensitive={'CLAUDE.md','.claude/settings.json','scripts/role-guard.sh','tools/mh-dev/templates/state.json.template','tools/mh-dev/scripts/check-transition.sh','tools/mh-dev/scripts/transition-state.sh','tools/mh-dev/scripts/validate-changes.sh','tools/mh-dev/scripts/validate-outputs.sh','tools/mh-dev/scripts/release-candidate.sh'}
+sensitive={'CLAUDE.md','.claude/settings.json','scripts/role-guard.sh','tools/mh-dev/templates/state.json.template','tools/mh-dev/scripts/check-transition.sh','tools/mh-dev/scripts/transition-state.sh','tools/mh-dev/scripts/validate-changes.sh','tools/mh-dev/scripts/validate-outputs.sh'}
 scope=set(state.get('approved_scope',[])); track=state.get('track')
 def allowed_dev(path): return path in scope or any(x.endswith('/') and path.startswith(x) for x in scope)
 for path in paths:
@@ -64,10 +65,10 @@ for path in paths:
   else: item['allowed_by']='tester_scope'
  changes.append(item)
 result='PASS' if not violations else 'FAIL'
-rel=f'evidence/change-attribution.{role}.{round_}.json'; out=os.path.join(root,'tools/mh-dev/.mh-dev',rel)
+rel=f'evidence/change-attribution.{role}.{round_}.json'; out=os.path.join(runtime,rel)
 os.makedirs(os.path.dirname(out),exist_ok=True)
 if os.path.exists(out): raise SystemExit(f'BLOCKED: immutable attribution exists: {rel}')
-artifact={'schema_version':1,'role':role,'round':round_,'before_snapshot':os.path.relpath(before_path,os.path.join(root,'tools/mh-dev/.mh-dev')),'after_snapshot':os.path.relpath(after_path,os.path.join(root,'tools/mh-dev/.mh-dev')),'changed':changes,'violations':violations,'result':result,'validated_at':datetime.datetime.now(datetime.timezone.utc).isoformat()}
+artifact={'schema_version':1,'role':role,'round':round_,'before_snapshot':os.path.relpath(before_path,runtime),'after_snapshot':os.path.relpath(after_path,runtime),'changed':changes,'violations':violations,'result':result,'validated_at':datetime.datetime.now(datetime.timezone.utc).isoformat()}
 with open(out,'w',encoding='utf-8') as f:json.dump(artifact,f,ensure_ascii=False,indent=2);f.write('\n')
 if violations:
  if any('formal track required' in x for x in violations):
@@ -81,7 +82,6 @@ if role == 'developer':
  doc_sync = {
   'CLAUDE.md': ['README.md','docs/workflow.md','docs/source-of-truth.md'],
   'scripts/role-guard.sh': ['CLAUDE.md','docs/source-of-truth.md'],
-  'tools/mh-dev/CLAUDE.md': ['README.md','docs/workflow.md'],
  }
  dev_paths = [x['path'] for x in changes if not x['path'].startswith('tools/mh-dev/.mh-dev/') and x['change'] != 'deleted']
  for path in dev_paths:

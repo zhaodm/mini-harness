@@ -19,6 +19,8 @@ tools/mh-dev/.mh-dev/*
 # mh-dev session 归档（reset-session 生成，运行时残留）
 tools/mh-dev/.mh-dev-archive/
 
+# mh-dev 自开发工具归档目录（运行时，不入库）
+
 # MCP 服务器自动生成目录（zai-mcp-server）
 android-*/
 analytics/
@@ -45,3 +47,6 @@ node_modules/
 !.vscode/settings.json
 .idea/
 metrics-analysis-REQ001-ppt.md
+
+# mh-dev 审计轨产物（临时，不入库）
+docs/audits/

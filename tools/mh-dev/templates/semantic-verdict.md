@@ -4,4 +4,4 @@
 - Mechanical evidence:
 - AC/AX 覆盖:
 - Findings:
-- Release recommendation: no-release | release-candidate | blocked
+- Release recommendation: APPROVE | BLOCKED

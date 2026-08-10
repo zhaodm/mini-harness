@@ -65,7 +65,7 @@ fi
 echo "--- 8. CLAUDE.md 引用脚本存在性 ---"
 for script in reset-session.sh scope-scan.sh capture-snapshot.sh validate-changes.sh \
   validate-dev-completion.sh check-transition.sh transition-state.sh precondition-check.sh \
-  validate-outputs.sh audit-preflight.sh verify.sh release-candidate.sh; do
+  validate-outputs.sh audit-preflight.sh verify.sh; do
   [[ -f "tools/mh-dev/scripts/$script" ]] && pass "scripts/$script" || fail "scripts/$script 缺失"
 done
 

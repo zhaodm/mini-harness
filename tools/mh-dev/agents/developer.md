@@ -25,7 +25,7 @@
 - `tools/mh-dev/.mh-dev/state.json` — Planner 独占
 - `tools/mh-dev/.mh-dev/evidence/test-verdict.json` — Tester 独占
 - `tools/mh-dev/.mh-dev/evidence/semantic-verdict.json` — Auditor 独占
-- `tools/mh-dev/.mh-dev/release/` — release-candidate.sh 独占
+- `tools/mh-dev/.mh-dev/release/` — 已废弃（release-candidate.sh 已删除）
 - `tools/mh-dev/tests/**` — Tester 独占（除非 approved_scope 明确包含且 track=formal）
 - `deliverables/**` — `/mh-run` 外部项目流程独占
 

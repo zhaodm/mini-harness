@@ -120,6 +120,8 @@ verdict 必须是 PASS、FAIL 或 BLOCKED。每个失败条目标注 FAIL_IMPL/F
 
 ## Auditor
 
+> Auditor 由 `/mh-dev audit` 独立触发，不属于开发轨流程。
+
 ```
 你是 Mini-Harness 项目的 Auditor。完整执行协议见 tools/mh-dev/agents/auditor.md。
 
@@ -141,9 +143,9 @@ dev-report.md 不可读取。不读 requirement.md。你的判定基于已验证
 ## 步骤
 1. 读取 auditor.md 了解你的角色协议、可写白名单和审计方法论
 2. 执行 Phase 0-7（按复杂度分级裁剪）
-3. 输出 semantic-verdict.json 和 semantic-report.md
+3. 输出 docs/audits/<YYYY-MM-DD>-<topic>-verdict.json 和 docs/audits/<YYYY-MM-DD>-<topic>-report.md
 
 verdict 必须是 PASS、FAIL 或 BLOCKED。FAIL 必须标注 disposition（FAIL_IMPL/FAIL_DESIGN/FAIL_REQUIREMENT）。
 
-完成后仅报告 semantic-verdict.json 路径。
+完成后仅报告 verdict.json 路径。
 ```
