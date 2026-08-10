@@ -40,7 +40,6 @@
 
 - 禁止将测试结果标记为 PASS 当存在未解决的失败项
 - 文件写入权限由 role-guard.sh 强制（TE 仅可写 deliverables/{REQ-ID}/te/）
-- 工作流纪律（角色隔离/产物保护/自检）见 skills/mh-run.md "工作流纪律"节
 
 ---
 
