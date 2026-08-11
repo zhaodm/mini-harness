@@ -63,7 +63,12 @@ if phase in {'verify','audit'}:
    if not has_test: fail('testcase_adding_required=true but no test file changes detected')
   print('PASS: tester verdict complete');raise SystemExit(0)
 if phase=='audit':
- a=validate_verdict('evidence/semantic-verdict.json','auditor')
+ # Auditor writes to docs/audits/<date>-<topic>-verdict.json, not evidence/semantic-verdict.json
+ import glob
+ audit_files=sorted(glob.glob(os.path.join(root,'docs/audits','*-verdict.json')))
+ if not audit_files: fail('no audit verdict found in docs/audits/')
+ with open(audit_files[-1],encoding='utf-8') as f:a=json.load(f)
+ if a.get('role')!='auditor' or a.get('verdict') not in {'PASS','FAIL','BLOCKED'} or not nonempty(a.get('generated_at','')): fail('invalid auditor verdict header')
  if a.get('tester_verdict_ref')!='evidence/test-verdict.json' or a.get('mechanical_preflight',{}).get('exit_code')!=0: fail('auditor prerequisites invalid')
  evidence={x.get('id') for x in a.get('evidence',[]) if nonempty(x.get('id',''))}
  for item in a['acceptance']:
