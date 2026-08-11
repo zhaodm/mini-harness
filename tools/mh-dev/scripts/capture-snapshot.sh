@@ -2,6 +2,7 @@
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
 RUNTIME="${MH_DEV_RUNTIME:-$ROOT_DIR/tools/mh-dev/.mh-dev}"
+STATE="$RUNTIME/state.json"
 ROLE="" ROUND="" KIND="" OUT=""
 if [[ $# -eq 1 && "$1" != --* ]]; then OUT="$1"; ROLE="legacy"; ROUND=0; KIND="capture"
 else
@@ -12,9 +13,14 @@ fi
 [[ ! -e "$OUT" ]] || { echo "BLOCKED: snapshot already exists: $OUT" >&2; exit 1; }
 mkdir -p "$(dirname "$OUT")"
 cd "$ROOT_DIR"
-python3 - "$OUT" "$ROLE" "$ROUND" "$KIND" <<'PY'
+python3 - "$OUT" "$ROLE" "$ROUND" "$KIND" "$STATE" <<'PY'
 import hashlib,json,os,subprocess,sys,datetime
-out,role,round_,kind=sys.argv[1:]
+out,role,round_,kind,state_path=sys.argv[1:]
+# R4: repair.round 是 round 口径单一真相源，命令行 --round 必须与之一致
+if role!='legacy':
+ state=json.load(open(state_path))
+ state_round=state.get('repair',{}).get('round',0)
+ if int(round_)!=state_round: raise SystemExit(f'BLOCKED: --round {round_} != state.json repair.round {state_round}')
 def run(*args): return subprocess.check_output(args).decode()
 head=run('git','rev-parse','HEAD').strip()
 raw=subprocess.check_output(['git','status','--porcelain=v1','-z'])

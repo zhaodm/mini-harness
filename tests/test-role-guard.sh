@@ -305,6 +305,231 @@ if [ $code -eq 0 ]; then echo -e "  ${GREEN}PASS${NC}: 外部 deliverable 存在
 cleanup_state
 cleanup_mhdev_state
 
+# --- 7. mh-dev 绝对路径归一化（CR-011 验收） ---
+echo ""
+echo "--- 7. mh-dev 绝对路径归一化测试 (CR-011) ---"
+
+# 扩展辅助函数：支持自定义 scope 和 track
+setup_mhdev_state_full() {
+  local phase=$1 scope=$2 track=${3:-formal}
+  mkdir -p "$MH_DEV_RUNTIME"
+  cat > "$MH_DEV_RUNTIME/state.json" << EOF
+{"workflow":"mh-dev","phase":"$phase","approved_scope":$scope,"track":"$track"}
+EOF
+}
+
+# 带消息匹配的断言拦截
+assert_block_msg() {
+  local desc=$1 tool=$2 file=$3 pattern=$4
+  TOTAL=$((TOTAL + 1))
+  local output
+  output=$(run_hook "$tool" "$file")
+  local code=$?
+  if [ $code -eq 2 ] && echo "$output" | grep -qF "$pattern"; then
+    echo -e "  ${GREEN}PASS${NC}: $desc"
+    PASS=$((PASS + 1))
+  else
+    echo -e "  ${RED}FAIL${NC}: $desc (expected exit=2 and message containing '$pattern', got exit=$code)"
+    echo "        output: $output"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+ROOT_PREFIX="$(pwd)"
+
+# 确保无 deliverable 状态干扰 mh-dev 测试
+rm -rf deliverables/TEST001 deliverables/.state.md
+
+# AC-01: formal 轨，scope 含相对路径 scripts/role-guard.sh，Write 传绝对路径 → 放行
+setup_mhdev_state_full "develop" '["scripts/role-guard.sh"]' "formal"
+assert_allow "AC-01: formal 轨绝对路径在 scope 内放行" "Write" "${ROOT_PREFIX}/scripts/role-guard.sh"
+cleanup_mhdev_state
+
+# AC-02: formal 轨，scope 不含目标，Write 传绝对路径 → 拦截
+setup_mhdev_state_full "develop" '["README.md"]' "formal"
+assert_block "AC-02: formal 轨绝对路径不在 scope 内拦截" "Write" "${ROOT_PREFIX}/scripts/foo.sh"
+cleanup_mhdev_state
+
+# AC-03: formal 轨，scope 含 scripts/role-guard.sh (sensitive)，Write 传绝对路径 → 放行
+setup_mhdev_state_full "develop" '["scripts/role-guard.sh"]' "formal"
+assert_allow "AC-03: formal 轨 sensitive 路径放行" "Write" "${ROOT_PREFIX}/scripts/role-guard.sh"
+cleanup_mhdev_state
+
+# AC-04: light 轨，scope 含 scripts/role-guard.sh (sensitive)，Write 传绝对路径 → 拦截 formal required
+setup_mhdev_state_full "develop" '["scripts/role-guard.sh"]' "light"
+assert_block_msg "AC-04: light 轨 sensitive 路径拦截 (formal required)" "Write" "${ROOT_PREFIX}/scripts/role-guard.sh" "formal"
+cleanup_mhdev_state
+
+# AC-05: Write 传相对路径，scope 含同名相对路径 → 放行（不回归）
+setup_mhdev_state_full "develop" '["README.md"]' "formal"
+assert_allow "AC-05: 相对路径场景不回归" "Write" "README.md"
+cleanup_mhdev_state
+
+# AX-01: Write 传含 .. 的绝对路径 → 穿越检测先行拦截
+setup_mhdev_state_full "develop" '["scripts/role-guard.sh"]' "formal"
+assert_block_msg "AX-01: 含 .. 的绝对路径穿越检测先行拦截" "Write" "${ROOT_PREFIX}/../evil.sh" "穿越"
+cleanup_mhdev_state
+
+# AX-02: Write 传仓库外绝对路径 /tmp/evil.sh → 拦截
+setup_mhdev_state_full "develop" '["README.md"]' "formal"
+assert_block "AX-02: 仓库外绝对路径拦截" "Write" "/tmp/evil.sh"
+cleanup_mhdev_state
+
+# AX-04: Write 传前缀伪造路径 → 拦截（精确匹配）
+setup_mhdev_state_full "develop" '["scripts/role-guard.sh"]' "formal"
+assert_block "AX-04: 前缀伪造路径精确匹配拦截" "Write" "${ROOT_PREFIX}/scripts/role-guard.sh.evil"
+cleanup_mhdev_state
+
+# AX-03: deliverables 分支无回归：WORKER 写绝对路径到 deliverables/TEST001/WORKER-foo.md → 放行
+cleanup_mhdev_state
+setup_state "WORKER"
+assert_allow "AX-03: deliverables 分支绝对路径正则命中放行" "Write" "${ROOT_PREFIX}/deliverables/TEST001/WORKER-foo.md"
+cleanup_state
+
+# --- 8. R4/R5 round 口径与门禁回填测试 (CR-011) ---
+echo ""
+echo "--- 8. R4/R5 round 口径与门禁回填测试 (CR-011) ---"
+
+# 辅助函数：创建带 repair.round 的 mock state
+setup_mhdev_state_r45() {
+  local round=$1 phase=${2:-verify}
+  rm -rf "$MH_DEV_RUNTIME"
+  mkdir -p "$MH_DEV_RUNTIME/evidence" "$MH_DEV_RUNTIME/snapshots"
+  cat > "$MH_DEV_RUNTIME/state.json" << EOF
+{"workflow":"mh-dev","phase":"$phase","revision":1,"approved_scope":["scripts/role-guard.sh"],"track":"formal","testcase_adding_required":false,"mechanical_preflight":"pending","test_verdict":"pending","repair":{"round":$round,"max_rounds":3,"status":"active","reason":"","source_verdict":""},"snapshots":{},"change_ownership":{},"approvals":{"intake":"approved","design":"approved","delivery":"pending"}}
+EOF
+}
+
+# 确保无 deliverable 状态干扰
+rm -rf deliverables/TEST001 deliverables/.state.md
+
+# AC-06: round 口径统一 — capture-snapshot.sh --round 与 repair.round 不一致 → BLOCKED
+setup_mhdev_state_r45 1
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/capture-snapshot.sh --role tester --round 0 --kind before 2>&1)
+code=$?
+if [ $code -ne 0 ]; then
+  echo -e "  ${GREEN}PASS${NC}: AC-06: capture-snapshot --round 0 vs repair.round=1 → BLOCKED"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-06: capture-snapshot --round 0 vs repair.round=1 应 BLOCKED (got exit=$code)"
+  FAIL=$((FAIL + 1))
+fi
+
+setup_mhdev_state_r45 1
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/capture-snapshot.sh --role tester --round 2 --kind before 2>&1)
+code=$?
+if [ $code -ne 0 ]; then
+  echo -e "  ${GREEN}PASS${NC}: AC-06: capture-snapshot --round 2 vs repair.round=1 → BLOCKED"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-06: capture-snapshot --round 2 vs repair.round=1 应 BLOCKED (got exit=$code)"
+  FAIL=$((FAIL + 1))
+fi
+
+# AC-06: validate-changes.sh --round 与 repair.round 不一致 → BLOCKED
+setup_mhdev_state_r45 1
+echo '{"schema_version":1,"role":"tester","round":1,"point":"before","entries":[]}' > "$MH_DEV_RUNTIME/snapshots/mock.before.json"
+echo '{"schema_version":1,"role":"tester","round":1,"point":"after","entries":[]}' > "$MH_DEV_RUNTIME/snapshots/mock.after.json"
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/validate-changes.sh --role tester --round 0 --before "$MH_DEV_RUNTIME/snapshots/mock.before.json" --after "$MH_DEV_RUNTIME/snapshots/mock.after.json" 2>&1)
+code=$?
+if [ $code -ne 0 ]; then
+  echo -e "  ${GREEN}PASS${NC}: AC-06: validate-changes --round 0 vs repair.round=1 → BLOCKED"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-06: validate-changes --round 0 vs repair.round=1 应 BLOCKED (got exit=$code)"
+  FAIL=$((FAIL + 1))
+fi
+
+setup_mhdev_state_r45 1
+echo '{"schema_version":1,"role":"tester","round":1,"point":"before","entries":[]}' > "$MH_DEV_RUNTIME/snapshots/mock.before.json"
+echo '{"schema_version":1,"role":"tester","round":1,"point":"after","entries":[]}' > "$MH_DEV_RUNTIME/snapshots/mock.after.json"
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/validate-changes.sh --role tester --round 2 --before "$MH_DEV_RUNTIME/snapshots/mock.before.json" --after "$MH_DEV_RUNTIME/snapshots/mock.after.json" 2>&1)
+code=$?
+if [ $code -ne 0 ]; then
+  echo -e "  ${GREEN}PASS${NC}: AC-06: validate-changes --round 2 vs repair.round=1 → BLOCKED"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-06: validate-changes --round 2 vs repair.round=1 应 BLOCKED (got exit=$code)"
+  FAIL=$((FAIL + 1))
+fi
+
+# AC-08: validate-outputs.sh verify 在 tester verdict PASS 后回填 state.json
+setup_mhdev_state_r45 1
+cat > "$MH_DEV_RUNTIME/acceptance-criteria.json" << 'CRITEOF'
+{"schema_version":1,"cr_id":"CR-011","items":[{"id":"AC-01","kind":"AC","statement":"test","required_evidence":"test"},{"id":"AX-01","kind":"AX","statement":"boundary","required_evidence":"test"}]}
+CRITEOF
+cat > "$MH_DEV_RUNTIME/evidence/test-verdict.json" << 'TVEOF'
+{"schema_version":1,"role":"tester","round":1,"verdict":"PASS","generated_at":"2026-08-11T00:00:00Z","delta_ref":"snapshots/developer.r1.after.json","commands":[{"id":"cmd-01","command":"bash tests/run-all-tests.sh","cwd":"/tmp","started_at":"2026-08-11T00:00:00Z","ended_at":"2026-08-11T00:00:01Z","exit_code":0,"summary":"passed"}],"acceptance":[{"id":"AC-01","status":"PASS","evidence":["cmd-01"],"summary":"passed"},{"id":"AX-01","status":"PASS","evidence":["cmd-01"],"summary":"passed"}],"failures":[],"summary":"passed"}
+TVEOF
+cat > "$MH_DEV_RUNTIME/evidence/change-attribution.tester.1.json" << 'ATTEOF'
+{"schema_version":1,"role":"tester","round":1,"before_snapshot":"snapshots/tester.r1.before.json","after_snapshot":"snapshots/tester.r1.after.json","changed":[],"violations":[],"result":"PASS","validated_at":"2026-08-11T00:00:00Z"}
+ATTEOF
+python3 -c "
+import json
+s=json.load(open('$MH_DEV_RUNTIME/state.json'))
+s['snapshots']={'tester.1':{'before':'snapshots/tester.r1.before.json','after':'snapshots/tester.r1.after.json','attribution':'evidence/change-attribution.tester.1.json'}}
+json.dump(s,open('$MH_DEV_RUNTIME/state.json','w'),indent=2)
+"
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/validate-outputs.sh verify 2>&1)
+code=$?
+if [ $code -eq 0 ]; then
+  echo -e "  ${GREEN}PASS${NC}: AC-08: validate-outputs.sh verify → PASS"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-08: validate-outputs.sh verify 应 PASS (got exit=$code)"
+  echo "        output: $output"
+  FAIL=$((FAIL + 1))
+fi
+
+# 验证 state.json 已回填 test_verdict=PASS, mechanical_preflight=pass
+TOTAL=$((TOTAL + 1))
+test_verdict=$(python3 -c "import json;s=json.load(open('$MH_DEV_RUNTIME/state.json'));print(s.get('test_verdict',''))")
+mech_preflight=$(python3 -c "import json;s=json.load(open('$MH_DEV_RUNTIME/state.json'));print(s.get('mechanical_preflight',''))")
+if [ "$test_verdict" = "PASS" ] && [ "$mech_preflight" = "pass" ]; then
+  echo -e "  ${GREEN}PASS${NC}: AC-08: state.json 回填 test_verdict=PASS, mechanical_preflight=pass"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-08: state.json 回填失败 (test_verdict=$test_verdict, mechanical_preflight=$mech_preflight)"
+  FAIL=$((FAIL + 1))
+fi
+
+# AC-07: check-transition.sh done 在 R5 回填后 → PASS（不执行 transition-state.sh done）
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/check-transition.sh done 2>&1)
+code=$?
+if [ $code -eq 0 ]; then
+  echo -e "  ${GREEN}PASS${NC}: AC-07: check-transition.sh done → PASS (门禁通过)"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-07: check-transition.sh done 应 PASS (got exit=$code)"
+  echo "        output: $output"
+  FAIL=$((FAIL + 1))
+fi
+
+# AX-05: transition-state.sh repair 后 repair.round+1
+setup_mhdev_state_r45 0 verify
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/transition-state.sh repair --actor planner --expected-revision 1 2>&1)
+code=$?
+if [ $code -eq 0 ]; then
+  new_round=$(python3 -c "import json;s=json.load(open('$MH_DEV_RUNTIME/state.json'));print(s.get('repair',{}).get('round',0))")
+  if [ "$new_round" = "1" ]; then
+    echo -e "  ${GREEN}PASS${NC}: AX-05: transition-state.sh repair → repair.round=0→1"
+    PASS=$((PASS + 1))
+  else
+    echo -e "  ${RED}FAIL${NC}: AX-05: repair.round 应为 1 (got $new_round)"
+    FAIL=$((FAIL + 1))
+  fi
+else
+  echo -e "  ${RED}FAIL${NC}: AX-05: transition-state.sh repair 应 PASS (got exit=$code)"
+  echo "        output: $output"
+  FAIL=$((FAIL + 1))
+fi
 # === 结果汇总 ===
 echo ""
 echo "========================"
@@ -317,3 +542,4 @@ else
   echo -e "${RED}有 $FAIL 项失败${NC}"
   exit 1
 fi
+

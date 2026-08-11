@@ -17,6 +17,9 @@ def atomically_write(path,data):
  with os.fdopen(fd,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2);f.write('\n')
  os.replace(tmp,path)
 state,before,after=load(state_path),load(before_path),load(after_path)
+# R4: repair.round 是 round 口径单一真相源，命令行 --round 必须与之一致
+state_round=state.get('repair',{}).get('round',0)
+if round_!=state_round: raise SystemExit(f'BLOCKED: --round {round_} != state.json repair.round {state_round}')
 if state.get('workflow')!='mh-dev': raise SystemExit('BLOCKED: invalid mh-dev state')
 for snap,point in [(before,'before'),(after,'after')]:
  if snap.get('role')!=role or snap.get('round')!=round_ or snap.get('point')!=point: raise SystemExit(f'BLOCKED: {point} snapshot provenance mismatch')
