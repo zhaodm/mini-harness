@@ -11,7 +11,7 @@
  * @typedef {Object} DetectScenarioInput
  * @property {boolean} globalStateExists - deliverables/.state.md 是否存在
  * @property {string|null} reqStatePhase - 当前 REQ 的 phase 字段 (init/propose/apply/archive/done/null)
- * @property {string[]} outputSpecFiles - output/spec/ 下的文件名列表
+ * @property {string[]} outputSpecFiles - deliverables/{REQ-ID}/docs/spec/ 下的文件名列表
  * @property {string} [activeReqId] - 当前活跃的 REQ-ID
  */
 
@@ -27,7 +27,7 @@
  *
  * 判断优先级（从高到低）:
  * 1. RESUME: 有未完成流程（phase 非空且 ≠ done）
- * 2. CHANGE: output/spec/ 有已归档文件
+ * 2. CHANGE: deliverables/{REQ-ID}/docs/spec/ 有已归档文件
  * 3. NEW: 以上均不满足
  *
  * @param {DetectScenarioInput} input
@@ -46,11 +46,11 @@ export function detectScenario(input) {
     };
   }
 
-  // 优先级 2: CHANGE — output/spec/ 有已归档文件
+  // 优先级 2: CHANGE — docs/spec/ 有已归档文件
   if (outputSpecFiles && outputSpecFiles.length > 0) {
     return {
       scenario: 'CHANGE',
-      reason: `output/spec/ 存在 ${outputSpecFiles.length} 个已归档文件，进入变更模式`
+      reason: `docs/spec/ 存在 ${outputSpecFiles.length} 个已归档文件，进入变更模式`
     };
   }
 

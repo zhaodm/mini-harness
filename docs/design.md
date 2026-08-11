@@ -80,12 +80,7 @@ mini-harness/
 │   └── output-guides/           产出结构参考
 ├── docs/                        设计参考（人工阅读，Orchestrator 运行时不读）
 ├── deliverables/                运行时产物（按 REQ-ID 隔离，git忽略）
-├── reference/                   用户参考资料输入
-└── output/                      最终交付
-    ├── spec/                    全量需求/设计文档归档
-    ├── reference/               参考资料归档
-    ├── lessons-learned.md       经验累积文档
-    └── {产出物}                 代码/产品
+└── {产出物}                     归档产物在 deliverables/{REQ-ID}/ 下
 ```
 
 ---
@@ -134,8 +129,8 @@ mini-harness/
 ### Orchestrator 调度循环
 
 ```
-读取 .state.md → 确定下一步 → 写 handoff → 派发 SubAgent
-→ 接收回报 → 质量门禁 → 更新 .state.md → 循环
+读取 .engine/.state.md → 确定下一步 → 写 handoff → 派发 SubAgent
+→ 接收回报 → 质量门禁 → 更新 .engine/.state.md → 循环
 ```
 
 详见：skills/mh-codeflow/SKILL.md "调度协议"节
@@ -148,11 +143,11 @@ mini-harness/
 Orchestrator 主会话（人机交互 + 质量门禁）
     │
     ├── 生成 handoff 内容
-    ├── 更新 .state.md: current_role={被派发角色}
+    ├── 更新 .engine/.state.md: current_role={被派发角色}
     ├── 调用 Workflow 工具 ──→ agent(THINKER/WORKER/VERIFIER)
     ├── 接收结构化返回
     ├── 执行质量门禁
-    └── 更新 .state.md: current_role=ORCHESTRATOR
+    └── 更新 .engine/.state.md: current_role=ORCHESTRATOR
 ```
 
 - Workflow SubAgent 继承 PreToolUse Hook（role-guard.sh 权限控制仍生效）
@@ -197,7 +192,7 @@ clarify(track=ppt) → Thinker[needs→visual] → SR1(wireframe审批) → Work
 ### Track 机制
 
 - Track 在 clarify 阶段由入口命令确定：`/mh-run` → code，`/mh-ppt` → ppt
-- Track 写入 .state.md 后只读，切换需重新开需求
+- Track 写入 .engine/.state.md 后只读，切换需重新开需求
 - auto-advance.js 不写 if(track) 分支——步骤 ID 编码 track 归属（WIREFRAME-PENDING 只出现在 ppt track）
 
 ---
@@ -227,8 +222,8 @@ Orchestrator 与各角色间信息传递的唯一通道。结构化文件，包�
 
 ### Orchestrator 运行时上下文负载
 
-Orchestrator 启动时读取：本文件(orchestrator.md) + 当前 skill + .state.md + handoff。
-不需要读取 design.md、source-of-truth.md（人工维护参考）。
+Orchestrator 启动时读取：本文件(orchestrator.md) + 当前 skill + .engine/.state.md + handoff。
+不需要读取 THINKER-propose-design.md、source-of-truth.md（人工维护参考）。
 
 ---
 
@@ -297,7 +292,7 @@ Orchestrator 接收回报后逐项核对对应角色验收清单。详见 skills
 - 总耗时、角色派发/驳回次数、修复轮次与收敛性、SR审批结果、断点异常
 
 模板：templates/metrics-template.md
-产出：deliverables/{REQ-ID}/metrics.md
+产出：deliverables/{REQ-ID}/docs/metrics.md
 
 ### 经验记忆（lessons-learned）
 
@@ -317,10 +312,10 @@ Orchestrator 接收回报后逐项核对对应角色验收清单。详见 skills
 #### 存储架构
 
 ```
-deliverables/{REQ-ID}/lessons.md    ← 过程暂存（实时追加）
+deliverables/{REQ-ID}/.engine/lessons.md    ← 过程暂存（实时追加）
          │
-         ▼ ARC-6 merge
-output/lessons-learned.md           ← 全量累积（跨 REQ 持久化）
+         ▼ ARC-7 merge
+deliverables/{REQ-ID}/docs/lessons-learned.md  ← 全量累积（从 .engine/ 归档）
 ```
 
 #### 消费方式
@@ -389,7 +384,7 @@ output/lessons-learned.md           ← 全量累积（跨 REQ 持久化）
 | 模板 | 用途 | 消费者 |
 |------|------|--------|
 | handoff-template.md | 任务派发格式 | Orchestrator |
-| state-template.md | .state.md 完整 schema | Orchestrator |
+| state-template.md | .engine/.state.md 完整 schema | Orchestrator |
 | state-pointer-template.md | 全局指针（首次运行自动拷贝） | Orchestrator |
 | logging-standard.md | 日志格式规范 | 全角色 |
 | metrics-template.md | 执行指标格式 | Orchestrator（ARC-5） |

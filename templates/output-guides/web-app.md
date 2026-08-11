@@ -6,7 +6,7 @@
 ## 推荐目录结构
 
 ```
-output/
+deliverables/{REQ-ID}/
 ├── src/
 │   ├── components/      # UI 组件（按功能分组）
 │   ├── pages/           # 页面/路由级组件

@@ -1,35 +1,48 @@
-# output/ 目录结构规范
+# deliverables/{REQ-ID}/ 产品区目录结构规范
 
 > 本文件是归档产出目录结构的权威参考。
 > 所有角色在归档时以此为准，verify-archive.sh 强制校验。
+> CR-010: 取消根 output/ 二份存放，产出即归档。
 
 ---
 
 ## 目录布局
 
 ```
-output/
-├── docs/                         # 文档类产出（框架归档生成）
-│   ├── spec/                    # 需求+设计规格
-│   │   ├── requirement-spec.md  # Thinker 需求规格
-│   │   └── design.md           # Thinker 技术设计
-│   ├── kb/                      # 分层知识库（AI 项目上下文）
-│   │   ├── system-map.md       # Layer 0: 全景入口（≤150行）
-│   │   ├── domains/            # Layer 1: 域指南（每份≤400行）
-│   │   ├── recipes/            # Layer 2: 操作食谱（每份≤80行）
-│   │   └── kb-verify.sh       # 新鲜度检查脚本
-│   ├── lessons-learned.md       # 经验沉淀（EXP-N）
-│   └── metrics.md               # 执行指标
-├── src/                          # 源代码产出（Worker 交付）
+deliverables/{REQ-ID}/
+├── .engine/                          ← 引擎运行态（平铺，文件名保持原样）
+│   ├── .state.md
+│   ├── handoffs/
+│   ├── process.log
+│   ├── lessons.md
+│   ├── SR{N}-record.md
+│   └── plan-action.md
+├── .archiveignore                    ← Thinker 产出（归档排除规则）
+├── ORCHESTRATOR-init-proposal.md     ← Orchestrator 产出（init 阶段）
+├── THINKER-propose-*.md             ← Thinker 产出
+├── WORKER-apply-*.md                ← Worker 产出
+├── VERIFIER-apply-*.md              ← Verifier 产出
+├── docs/                             # 文档类产出（框架归档生成）
+│   ├── spec/                         # 需求+设计规格
+│   │   ├── requirement-spec.md       # Thinker 需求规格
+│   │   └── design.md                 # Thinker 技术设计
+│   ├── kb/                           # 分层知识库（AI 项目上下文）
+│   │   ├── system-map.md             # Layer 0: 全景入口（≤150行）
+│   │   ├── domains/                  # Layer 1: 域指南（每份≤400行）
+│   │   ├── recipes/                  # Layer 2: 操作食谱（每份≤80行）
+│   │   └── kb-verify.sh              # 新鲜度检查脚本
+│   ├── lessons-learned.md            # 经验沉淀（EXP-N）
+│   └── metrics.md                    # 执行指标
+├── src/                              # 源代码产出（Worker 交付）
 │   └── {按 output-guide 组织}
-├── tests/                        # 测试产出
-│   ├── regression-suite.md      # 回归套件（框架自动沉淀）
-│   └── {unit/, integration/, e2e/}  # 测试代码（Worker 交付）
-├── deploy/                       # 部署/基础设施产出
+├── tests/                            # 测试产出
+│   ├── regression-suite.md           # 回归套件（框架自动沉淀）
+│   └── {unit/, integration/, e2e/}   # 测试代码（Worker 交付）
+├── deploy/                           # 部署/基础设施产出
 │   └── {Dockerfile, docker-compose.yml, k8s/, .github/, CI configs}
-├── assets/                       # 静态资源/设计稿
+├── assets/                           # 静态资源/设计稿
 │   └── {wireframes/, images/, fonts/, icons/}
-└── reference/                    # 参考资料
+└── reference/                        # 参考资料
     └── {外部文档、API 文档截图等}
 ```
 
@@ -39,6 +52,7 @@ output/
 
 | 目录 | 放什么 | 谁生成 | 说明 |
 |------|--------|--------|------|
+| .engine/ | 引擎运行态 | Orchestrator/框架 | 不归档，运行态文件 |
 | docs/ | 供人/AI 阅读的文档 | 框架 ARC 步骤 | 不可执行，纯知识载体 |
 | docs/spec/ | 需求规格 + 技术设计 | ARC-1, ARC-2 | change 模式走 merge 流程 |
 | src/ | 可执行的项目源代码 | Worker | 按 output-guide 组织 |
@@ -49,10 +63,14 @@ output/
 
 ---
 
-## 根目录允许的文件
+## 产品区根目录允许的文件
 
-output/ 根目录只允许以下文件（非目录）：
+deliverables/{REQ-ID}/ 根目录允许以下文件（非目录）：
 
+- `ORCHESTRATOR-*.md` — Orchestrator 产出
+- `THINKER-*.md` — Thinker 产出
+- `WORKER-*.md` — Worker 产出
+- `VERIFIER-*.md` — Verifier 产出
 - `README.md` — 项目说明
 - `package.json` / `pyproject.toml` / `go.mod` / `Cargo.toml` — 包管理
 - `tsconfig.json` / `vite.config.*` / `webpack.config.*` — 构建配置
@@ -66,33 +84,16 @@ output/ 根目录只允许以下文件（非目录）：
 
 ## ARC 步骤与路径对应
 
+> CR-010: ARC-2/3/5 已取消（产出即归档，无二份存放）
+
 | ARC 步骤 | 写入路径 |
 |----------|---------|
-| ARC-1 需求归档 | `output/docs/spec/requirement-spec.md` |
-| ARC-2 设计归档 | `output/docs/spec/design.md` |
-| ARC-3 产出物归档 | `output/src/`, `output/tests/`, `output/deploy/` (按类型分流) |
-| ARC-4 参考资料归档 | `output/reference/` |
-| ARC-5 测试用例沉淀 | `output/tests/regression-suite.md` |
-| ARC-6 执行指标 | `output/docs/metrics.md` |
-| ARC-7 经验沉淀 | `output/docs/lessons-learned.md` |
-| ARC-8 AI 知识库 | `output/docs/kb/`（system-map + domains/ + recipes/ + kb-verify.sh） |
-
----
-
-## ARC-3 分流规则
-
-Worker 交付的 `deliverables/{REQ-ID}/output/` 内容按以下规则分流：
-
-| 文件模式 | 目标目录 |
-|---------|---------|
-| `src/**`, `lib/**`, `app.**`, `main.**`, `index.**` | `output/src/` |
-| `tests/**`, `test/**`, `__tests__/**`, `*_test.*`, `*.test.*`, `*.spec.*` | `output/tests/` |
-| `Dockerfile*`, `docker-compose*`, `.github/**`, `k8s/**`, `*.workflow`, `deploy/**` | `output/deploy/` |
-| `*.png`, `*.jpg`, `*.svg`, `*.gif`, `*.ico`, `fonts/**`, `wireframes/**`, `images/**` | `output/assets/` |
-| `package.json`, `*.toml`, `*.mod`, `Makefile`, `README.md`, `tsconfig*`, `.*rc`, `.env*`, `.gitignore` | `output/`（根目录） |
-| 其他 `*.md`（非上述匹配） | `output/docs/` |
-
-如果 Worker 的 output/ 已经有 `src/`, `tests/` 等目录结构，则保持原结构直接对应复制。
+| ARC-1 .archiveignore 禁止项 | 检查 deliverables/{REQ-ID}/ 产品区 |
+| ARC-4 归档非空 | 检查 deliverables/{REQ-ID}/ 产品区（排除 .engine/） |
+| ARC-5 测试用例沉淀 | `deliverables/{REQ-ID}/tests/regression-suite.md` |
+| ARC-6 执行指标 | `deliverables/{REQ-ID}/docs/metrics.md` |
+| ARC-7 经验沉淀 | `deliverables/{REQ-ID}/docs/lessons-learned.md`（从 .engine/lessons.md 归档） |
+| ARC-8 AI 知识库 | `deliverables/{REQ-ID}/docs/kb/`（system-map + domains/ + recipes/ + kb-verify.sh） |
 
 ---
 
@@ -100,6 +101,7 @@ Worker 交付的 `deliverables/{REQ-ID}/output/` 内容按以下规则分流：
 
 | output_type | 额外说明 |
 |-------------|---------|
-| ppt | 产出物直接放 `output/src/`（HTML+CSS），wireframes 放 `output/assets/wireframes/` |
-| documentation | 无 src/，主产出在 `output/docs/` |
-| infrastructure | 主产出在 `output/deploy/`，src/ 可选 |
+| code | 产出物放 `src/` + `tests/` + `docs/` + `deploy/`（按需） |
+| ppt | 产出物直接放产品区根（HTML+CSS），wireframes 放 `assets/wireframes/` |
+| documentation | 无 src/，主产出在 `docs/` |
+| infrastructure | 主产出在 `deploy/`，src/ 可选 |

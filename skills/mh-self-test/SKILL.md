@@ -17,7 +17,7 @@ Worker 完成编码实现后，在填写 code-report.md 之前执行。
 
 ## 前置: 读取技术栈信息
 
-1. 读取 `deliverables/{REQ-ID}/.state.md` 中 tech_stack、test_strategy 字段
+1. 读取 `deliverables/{REQ-ID}/.engine/.state.md` 中 tech_stack、test_strategy 字段
 2. 根据 tech_stack.language 确定命令路由
 
 ---
@@ -33,7 +33,7 @@ Worker 完成编码实现后，在填写 code-report.md 之前执行。
 | go | go.mod | go test ./... |
 | rust | Cargo.toml | cargo test |
 | java | pom.xml / build.gradle | mvn test / gradle test |
-| unknown | .state.md tech_stack.test_framework | 读取用户指定的命令 |
+| unknown | .engine/.state.md tech_stack.test_framework | 读取用户指定的命令 |
 
 跳过条件：
 - test_strategy=none 或 test_strategy=manual: 跳过此步，记录 "测试跳过（test_strategy={value}）"
@@ -51,7 +51,7 @@ Worker 完成编码实现后，在填写 code-report.md 之前执行。
 | go | .golangci.yml | golangci-lint run |
 | rust | (内置) | cargo clippy -- -D warnings |
 | java | checkstyle.xml | mvn checkstyle:check |
-| unknown | .state.md tech_stack.lint_tool | 读取用户指定的命令；如无则跳过 |
+| unknown | .engine/.state.md tech_stack.lint_tool | 读取用户指定的命令；如无则跳过 |
 
 自动修复可修复项，不可自动修复的手动修复。
 
@@ -66,7 +66,7 @@ Worker 完成编码实现后，在填写 code-report.md 之前执行。
 | go | go.mod | go build ./... |
 | rust | Cargo.toml | cargo build --release |
 | java | pom.xml / build.gradle | mvn package -DskipTests / gradle build |
-| unknown | .state.md tech_stack.build_tool | 读取用户指定的命令；如无则跳过 |
+| unknown | .engine/.state.md tech_stack.build_tool | 读取用户指定的命令；如无则跳过 |
 
 跳过条件：
 - test_strategy=manual 或 test_strategy=none: 跳过构建步骤
@@ -84,7 +84,7 @@ Worker 完成编码实现后，在填写 code-report.md 之前执行。
 
 ## 输出
 
-将结果记录到 deliverables/worker/code-report.md 的"测试结果"和"自检结果"部分：
+将结果记录到 deliverables/{REQ-ID}/WORKER-apply-code-report-t{N}.md 的"测试结果"和"自检结果"部分：
 
 ```
 ## 测试结果

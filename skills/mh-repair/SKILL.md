@@ -40,16 +40,16 @@ Orchestrator 根据 action 执行：
 2. **定位根因**：不要只修表面症状，找到根本原因
 3. **回归保护**：修复前先写一个能复现 bug 的测试，修复后确认该测试通过
 4. **避免引入新问题**：修复后运行全量测试，确认无回归
-5. **保留历史**：code-report 保存为 `worker/code-report-r{N}.md`（不覆盖上轮），记录本轮修复了什么
+5. **保留历史**：code-report 保存为 `WORKER-apply-code-report-r{N}.md`（不覆盖上轮），记录本轮修复了什么
 
 ---
 
 ## 修复派发
 
-1. 快照当前 output/ 文件 hash，追加到 `.state.md` repair_snapshots
-2. 更新 `.state.md`: repair_round={R+1}, repair_task=Task-{N}
+1. 快照当前 deliverables/{REQ-ID}/ 文件 hash，追加到 `.engine/.state.md` repair_snapshots
+2. 更新 `.engine/.state.md`: repair_round={R+1}, repair_task=Task-{N}
 3. 追加 repair_history 条目: `{ round, errorType, failedCount, summary, root_cause_hypothesis, action_taken }`
-4. 写入新 handoff `handoffs/{REQ-ID}-DEV1-T{N}-R{R+1}.md`，含修复上下文:
+4. 写入新 handoff `.engine/handoffs/{REQ-ID}-DEV1-T{N}-R{R+1}.md`，含修复上下文:
    - 失败特征 / 根因假设 / 建议修复方向 / 历史尝试
    - 白名单追加 Verifier 失败报告路径
 5. Worker 修复 → Verifier 重新审计

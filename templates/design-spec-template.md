@@ -22,5 +22,33 @@
 | 模块 | 导出接口/类型 | 签名 | 被谁调用 |
 |------|-------------|------|---------|
 
-## 7. 机器可检查清单（可选）
+## 7. 产出物目录结构
+
+> Thinker 在设计阶段规划完整产出物目录结构。Worker 按此路径落位。
+
+### 顶层目录
+
+| 目录 | 用途 | 产出角色 |
+|------|------|---------|
+| {src/} | {源代码} | {WORKER} |
+| {tests/} | {测试代码} | {WORKER} |
+| {docs/} | {项目文档} | {WORKER/ORCHESTRATOR} |
+
+### Task 产出路径
+
+| Task ID | 产出文件路径（相对 deliverables/{REQ-ID}/） | 验证方式 |
+|---------|------------------------------------------|---------|
+| Task-1 | src/api.ts | {验证方式} |
+| Task-2 | tests/api.test.ts | {验证方式} |
+
+### output_type 特化
+
+| output_type | 目录差异 |
+|-------------|---------|
+| code | src/ + tests/ + docs/ + deploy/（按需） |
+| ppt | HTML+CSS 直接放产品区根（无 src/），wireframes 放 THINKER-propose-wireframes/ |
+| documentation | 无 src/，主产出在 docs/ |
+| infrastructure | 主产出在 deploy/，src/ 可选 |
+
+## 8. 机器可检查清单（可选）
 格式: `CHECK: {grep_pattern} IN {file_glob} — {description}`

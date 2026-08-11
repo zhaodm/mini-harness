@@ -32,36 +32,36 @@ check_a() {
     fi
 
     # slide-spec.md
-    if [ ! -s "$REQ_DIR/thinker/slide-spec.md" ]; then
-        echo "FAIL: $REQ_DIR/thinker/slide-spec.md 缺失或为空"
+    if [ ! -s "$REQ_DIR/THINKER-propose-slide-spec.md" ]; then
+        echo "FAIL: $REQ_DIR/THINKER-propose-slide-spec.md 缺失或为空"
         ERRORS=$((ERRORS + 1))
     else
-        echo "PASS: $REQ_DIR/thinker/slide-spec.md"
+        echo "PASS: $REQ_DIR/THINKER-propose-slide-spec.md"
     fi
 
     # wireframes 目录
-    if [ ! -d "$REQ_DIR/thinker/wireframes" ]; then
-        echo "FAIL: $REQ_DIR/thinker/wireframes/ 目录不存在"
+    if [ ! -d "$REQ_DIR/THINKER-propose-wireframes" ]; then
+        echo "FAIL: $REQ_DIR/THINKER-propose-wireframes/ 目录不存在"
         ERRORS=$((ERRORS + 1))
     else
         local wf_count
-        wf_count=$(find "$REQ_DIR/thinker/wireframes" -name "*.html" | wc -l | tr -d ' ')
+        wf_count=$(find "$REQ_DIR/THINKER-propose-wireframes" -name "*.html" | wc -l | tr -d ' ')
         if [ "$wf_count" -eq 0 ]; then
-            echo "FAIL: $REQ_DIR/thinker/wireframes/ 无 HTML 文件"
+            echo "FAIL: $REQ_DIR/THINKER-propose-wireframes/ 无 HTML 文件"
             ERRORS=$((ERRORS + 1))
         else
-            echo "PASS: $REQ_DIR/thinker/wireframes/ ($wf_count 个文件)"
+            echo "PASS: $REQ_DIR/THINKER-propose-wireframes/ ($wf_count 个文件)"
         fi
     fi
 
-    # output 目录
-    if [ -d "$REQ_DIR/output" ]; then
+    # output 目录（产品区 HTML）
+    if [ -d "$REQ_DIR" ]; then
         local out_count
-        out_count=$(find "$REQ_DIR/output" -name "*.html" | wc -l | tr -d ' ')
+        out_count=$(find "$REQ_DIR" -maxdepth 1 -name "*.html" | wc -l | tr -d ' ')
         if [ "$out_count" -eq 0 ]; then
-            echo "INFO: $REQ_DIR/output/ 无 HTML 文件（Worker 尚未实现）"
+            echo "INFO: $REQ_DIR/ 无 HTML 文件（Worker 尚未实现）"
         else
-            echo "PASS: $REQ_DIR/output/ ($out_count 个文件)"
+            echo "PASS: $REQ_DIR/ ($out_count 个 HTML 文件)"
         fi
     fi
 }
@@ -72,20 +72,20 @@ check_b() {
 
     local target_dir=""
 
-    # 优先检查 output（最终产出），其次 wireframes，最后 templates
-    if [ -n "$req_id" ] && [ -d "$REQ_DIR/output" ]; then
+    # 优先检查产品区根 HTML（最终产出），其次 wireframes，最后 templates
+    if [ -n "$req_id" ] && [ -d "$REQ_DIR" ]; then
         local out_count
-        out_count=$(find "$REQ_DIR/output" -name "*.html" 2>/dev/null | wc -l | tr -d ' ')
+        out_count=$(find "$REQ_DIR" -maxdepth 1 -name "*.html" 2>/dev/null | wc -l | tr -d ' ')
         if [ "$out_count" -gt 0 ]; then
-            target_dir="$REQ_DIR/output"
+            target_dir="$REQ_DIR"
         fi
     fi
 
-    if [ -z "$target_dir" ] && [ -n "$req_id" ] && [ -d "$REQ_DIR/thinker/wireframes" ]; then
+    if [ -z "$target_dir" ] && [ -n "$req_id" ] && [ -d "$REQ_DIR/THINKER-propose-wireframes" ]; then
         local wf_count
-        wf_count=$(find "$REQ_DIR/thinker/wireframes" -name "*.html" 2>/dev/null | wc -l | tr -d ' ')
+        wf_count=$(find "$REQ_DIR/THINKER-propose-wireframes" -name "*.html" 2>/dev/null | wc -l | tr -d ' ')
         if [ "$wf_count" -gt 0 ]; then
-            target_dir="$REQ_DIR/thinker/wireframes"
+            target_dir="$REQ_DIR/THINKER-propose-wireframes"
         fi
     fi
 
@@ -122,8 +122,8 @@ check_b() {
 
         # 检查 ppt-base.css 引用（仅 system 模式强制）
         local design_mode=""
-        if [ -n "$req_id" ] && [ -f "$REQ_DIR/.state.md" ]; then
-            design_mode=$(grep "^ppt_design_mode:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "system")
+        if [ -n "$req_id" ] && [ -f "$REQ_DIR/.engine/.state.md" ]; then
+            design_mode=$(grep "^ppt_design_mode:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo "system")
         fi
         if [ "$design_mode" != "creative" ]; then
             if ! grep -q 'ppt-base.css' "$f"; then
@@ -163,9 +163,9 @@ check_c() {
         return
     fi
 
-    local target_dir="$REQ_DIR/output"
+    local target_dir="$REQ_DIR"
     if [ ! -d "$target_dir" ]; then
-        target_dir="$REQ_DIR/thinker/wireframes"
+        target_dir="$REQ_DIR/THINKER-propose-wireframes"
     fi
 
     if [ ! -d "$target_dir" ]; then
@@ -199,9 +199,9 @@ check_c() {
     done <<< "$html_files"
 
     # 页数一致性检查
-    if [ -f "$REQ_DIR/thinker/slide-spec.md" ]; then
+    if [ -f "$REQ_DIR/THINKER-propose-slide-spec.md" ]; then
         local spec_pages
-        spec_pages=$(grep -c "^## Slide" "$REQ_DIR/thinker/slide-spec.md" 2>/dev/null || echo "0")
+        spec_pages=$(grep -c "^## Slide" "$REQ_DIR/THINKER-propose-slide-spec.md" 2>/dev/null || echo "0")
         local html_pages
         html_pages=$(find "$target_dir" -name "*.html" | wc -l | tr -d ' ')
 

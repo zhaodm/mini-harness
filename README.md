@@ -78,14 +78,18 @@ mh-dev 使用 fast/light/formal 轨道、开发者变更快照、机械预检、
 
 ### 最终产出
 
-归档完成后，所有交付物位于 `output/` 目录：
+归档完成后，所有交付物位于 `deliverables/{REQ-ID}/` 目录（产出即归档，不存两份）：
 
 ```
-output/
-├── spec/               需求/设计文档（全量累积）
-├── reference/          参考资料归档
-├── lessons-learned.md  经验沉淀（越用越好）
-└── {产出物}            代码/产品/PPT
+deliverables/{REQ-ID}/
+├── .engine/                引擎运行态（.state.md、handoffs/、process.log 等）
+├── ORCHESTRATOR-init-*.md  Orchestrator 产出
+├── THINKER-propose-*.md    Thinker 产出（需求规格、技术设计）
+├── WORKER-apply-*.md       Worker 产出（代码报告）
+├── VERIFIER-apply-*.md     Verifier 产出（测试报告）
+├── docs/                   项目文档（spec、metrics、lessons、kb）
+├── src/ tests/ deploy/     项目代码（按设计文档规划）
+└── reference/              参考资料归档
 ```
 
 ---
@@ -99,6 +103,8 @@ output/
 | verify.sh | 结构校验（文件、流程、契约） |
 | verify-qa.sh | 内容质量校验（模糊词、测试结果、报告完整性） |
 | verify-ppt.sh | PPT 专项（字号底线、导航、视口） |
+
+role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；全局路径穿越检测拒绝包含 `..` 组件的写入路径。
 
 ---
 

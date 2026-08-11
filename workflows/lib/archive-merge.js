@@ -2,7 +2,7 @@
  * archive-merge.js — 归档合并引擎
  *
  * 实现 REQ-ID 标签定位 + 追加/替换/废弃 三种合并策略。
- * 确保 output/spec/ 文档始终是全量文档。
+ * 确保 deliverables/{REQ-ID}/docs/spec/ 文档始终是全量文档。
  *
  * @module workflows/lib/archive-merge
  */

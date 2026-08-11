@@ -6,8 +6,8 @@
 set -euo pipefail
 
 DELIVERABLES_DIR="deliverables"
-SPEC_DIR="output/spec"
-OUTPUT_DIR="output"
+SPEC_DIR="deliverables/$req_id/docs/spec"
+OUTPUT_DIR="deliverables/$req_id"
 ERRORS=0
 
 check_type="${1:-all}"
@@ -24,10 +24,10 @@ fi
 
 REQ_DIR="$DELIVERABLES_DIR/$req_id"
 
-# 读取 .state.md 字段
+# 读取 .engine/.state.md 字段
 get_field() {
-    if [ -n "$req_id" ] && [ -f "$REQ_DIR/.state.md" ]; then
-        grep "^${1}:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo ""
+    if [ -n "$req_id" ] && [ -f "$REQ_DIR/.engine/.state.md" ]; then
+        grep "^${1}:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo ""
     else
         echo ""
     fi
@@ -52,8 +52,8 @@ check_a() {
     # REQ-ID 级别文件
     if [ -n "$req_id" ]; then
         local req_files=(
-            "$REQ_DIR/.state.md"
-            "$REQ_DIR/proposal.md"
+            "$REQ_DIR/.engine/.state.md"
+            "$REQ_DIR/ORCHESTRATOR-init-proposal.md"
         )
         for f in "${req_files[@]}"; do
             if [ ! -f "$f" ]; then
@@ -87,43 +87,43 @@ check_b() {
     # propose 阶段产物检查（propose/apply/archive 都需要）
     if [ "$phase" = "propose" ] || [ "$phase" = "apply" ] || [ "$phase" = "archive" ]; then
         # Thinker design.md（支持单文件或多文件模式）
-        if [ -s "$REQ_DIR/thinker/design.md" ]; then
-            echo "PASS: $REQ_DIR/thinker/design.md（单文件模式）"
-        elif [ -s "$REQ_DIR/thinker/overview.md" ]; then
-            echo "PASS: $REQ_DIR/thinker/overview.md（多文件模式）"
+        if [ -s "$REQ_DIR/THINKER-propose-design.md" ]; then
+            echo "PASS: $REQ_DIR/THINKER-propose-design.md（单文件模式）"
+        elif [ -s "$REQ_DIR/THINKER-propose-overview.md" ]; then
+            echo "PASS: $REQ_DIR/THINKER-propose-overview.md（多文件模式）"
         else
-            echo "FAIL: $REQ_DIR/thinker/ 缺少 design.md 或 overview.md"
+            echo "FAIL: $REQ_DIR/ 缺少 THINKER-propose-design.md"
             ERRORS=$((ERRORS + 1))
         fi
 
         # Thinker requirement-spec.md - skip for manual/none test_strategy
         if [ "$test_strategy" != "manual" ] && [ "$test_strategy" != "none" ]; then
-            if [ ! -s "$REQ_DIR/thinker/requirement-spec.md" ]; then
-                echo "FAIL: $REQ_DIR/thinker/requirement-spec.md 缺失或为空"
+            if [ ! -s "$REQ_DIR/THINKER-propose-requirement-spec.md" ]; then
+                echo "FAIL: $REQ_DIR/THINKER-propose-requirement-spec.md 缺失或为空"
                 ERRORS=$((ERRORS + 1))
             else
-                echo "PASS: $REQ_DIR/thinker/requirement-spec.md"
+                echo "PASS: $REQ_DIR/THINKER-propose-requirement-spec.md"
             fi
         else
             echo "INFO: test_strategy=$test_strategy, testcases.md 非必需"
         fi
 
         # plan-action.md - always required
-        if [ ! -s "$REQ_DIR/plan-action.md" ]; then
-            echo "FAIL: $REQ_DIR/plan-action.md 缺失或为空"
+        if [ ! -s "$REQ_DIR/.engine/plan-action.md" ]; then
+            echo "FAIL: $REQ_DIR/.engine/plan-action.md 缺失或为空"
             ERRORS=$((ERRORS + 1))
         else
-            echo "PASS: $REQ_DIR/plan-action.md"
+            echo "PASS: $REQ_DIR/.engine/plan-action.md"
         fi
     fi
 
     # apply 阶段产物检查（apply/archive 都需要）
     if [ "$phase" = "apply" ] || [ "$phase" = "archive" ]; then
-        if [ ! -d "$REQ_DIR/output" ] || [ -z "$(ls -A "$REQ_DIR/output" 2>/dev/null)" ]; then
-            echo "FAIL: $REQ_DIR/output/ 为空"
+        if [ ! -d "$REQ_DIR" ] || [ -z "$(find "$REQ_DIR" -type f -not -path "*/.engine/*" -not -path "*/node_modules/*" 2>/dev/null | head -1)" ]; then
+            echo "FAIL: $REQ_DIR/ 产品区为空"
             ERRORS=$((ERRORS + 1))
         else
-            echo "PASS: $REQ_DIR/output/ 非空"
+            echo "PASS: $REQ_DIR/ 产品区非空"
         fi
     fi
 
@@ -140,13 +140,13 @@ check_b() {
     # done 阶段：产出物中不应包含开发环境目录
     if [ "$phase" = "done" ]; then
         for excluded in .venv node_modules __pycache__ .pytest_cache .ruff_cache; do
-            if [ -d "$OUTPUT_DIR/$excluded" ]; then
-                echo "WARN: output/ 包含 $excluded/（应排除的开发环境目录）"
+            if [ -d "$REQ_DIR/$excluded" ]; then
+                echo "WARN: 产品区包含 $excluded/（应排除的开发环境目录）"
             fi
         done
         # spec/ 归档完整性
-        if [ ! -s "output/spec/design.md" ] && [ ! -s "output/spec/design-overview.md" ]; then
-            echo "WARN: output/spec/ 缺少设计文档（ARC-2 归档可能未执行）"
+        if [ ! -s "$REQ_DIR/docs/spec/design.md" ] && [ ! -s "$REQ_DIR/docs/spec/design-overview.md" ]; then
+            echo "WARN: docs/spec/ 缺少设计文档（ARC-2 归档可能未执行）"
         fi
     fi
 
@@ -164,28 +164,28 @@ check_c() {
         return
     fi
 
-    if [ ! -f "$REQ_DIR/.state.md" ]; then
-        echo "FAIL: $REQ_DIR/.state.md 不存在，无法校验流程"
+    if [ ! -f "$REQ_DIR/.engine/.state.md" ]; then
+        echo "FAIL: $REQ_DIR/.engine/.state.md 不存在，无法校验流程"
         ERRORS=$((ERRORS + 1))
         return
     fi
 
-    # .state.md 必填字段校验
+    # .engine/.state.md 必填字段校验
     local required_fields="req_id phase current_step current_role last_updated"
     for field in $required_fields; do
-        if ! grep -q "^${field}:" "$REQ_DIR/.state.md" 2>/dev/null; then
-            echo "FAIL: .state.md 缺少必填字段: $field"
+        if ! grep -q "^${field}:" "$REQ_DIR/.engine/.state.md" 2>/dev/null; then
+            echo "FAIL: .engine/.state.md 缺少必填字段: $field"
             ERRORS=$((ERRORS + 1))
         fi
     done
 
     # phase 与产物一致性校验
     local phase
-    phase=$(grep "^phase:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+    phase=$(grep "^phase:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 
     if [ "$phase" = "apply" ] || [ "$phase" = "archive" ] || [ "$phase" = "done" ]; then
-        if [ ! -s "$REQ_DIR/plan-action.md" ]; then
-            echo "FAIL: phase=$phase 但 plan-action.md 缺失（propose 阶段产物不完整）"
+        if [ ! -s "$REQ_DIR/.engine/plan-action.md" ]; then
+            echo "FAIL: phase=$phase 但 .engine/plan-action.md 缺失（propose 阶段产物不完整）"
             ERRORS=$((ERRORS + 1))
         fi
     fi
@@ -198,7 +198,7 @@ check_c() {
     fi
 
     # Handoff 文件统计
-    local handoff_dir="$REQ_DIR/handoffs"
+    local handoff_dir="$REQ_DIR/.engine/handoffs"
     if [ -d "$handoff_dir" ]; then
         local handoff_count
         handoff_count=$(find "$handoff_dir" -name "*.md" -not -name ".*" | wc -l)
@@ -235,18 +235,18 @@ check_c() {
 
     # process.log 完整性检查
     if [ "$phase" = "done" ]; then
-        local log_file="$REQ_DIR/process.log"
+        local log_file="$REQ_DIR/.engine/process.log"
         if [ ! -f "$log_file" ]; then
-            echo "FAIL: phase=done 但 process.log 不存在"
+            echo "FAIL: phase=done 但 .engine/process.log 不存在"
             ERRORS=$((ERRORS + 1))
         else
             local log_lines
             log_lines=$(wc -l < "$log_file" | tr -d ' ')
             local min_lines=6
             if [ "$log_lines" -lt "$min_lines" ]; then
-                echo "WARN: process.log 仅 $log_lines 行（期望 ≥$min_lines）"
+                echo "WARN: .engine/process.log 仅 $log_lines 行（期望 ≥$min_lines）"
             else
-                echo "PASS: process.log $log_lines 行"
+                echo "PASS: .engine/process.log $log_lines 行"
             fi
         fi
     fi
@@ -263,14 +263,14 @@ check_d() {
         return
     fi
 
-    if [ ! -f "$REQ_DIR/.state.md" ]; then
-        echo "SKIP: $REQ_DIR/.state.md 不存在"
+    if [ ! -f "$REQ_DIR/.engine/.state.md" ]; then
+        echo "SKIP: $REQ_DIR/.engine/.state.md 不存在"
         return
     fi
 
     # 修复循环耗尽检测
     local repair_round
-    repair_round=$(grep "^repair_round:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "0")
+    repair_round=$(grep "^repair_round:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo "0")
     if [ "$repair_round" -ge 5 ] 2>/dev/null; then
         echo "FAIL: repair_round=$repair_round（修复循环耗尽，需人工介入）"
         ERRORS=$((ERRORS + 1))
@@ -281,7 +281,7 @@ check_d() {
     fi
 
     # Handoff 超时检测（pending 且 >30 分钟）
-    local handoff_dir="$REQ_DIR/handoffs"
+    local handoff_dir="$REQ_DIR/.engine/handoffs"
     if [ -d "$handoff_dir" ]; then
         local now
         now=$(date +%s)
@@ -304,8 +304,8 @@ check_d() {
 
     # 状态一致性检测
     local current_step current_handoff
-    current_step=$(grep "^current_step:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
-    current_handoff=$(grep "^current_handoff:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+    current_step=$(grep "^current_step:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+    current_handoff=$(grep "^current_handoff:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 
     if [ -n "$current_handoff" ] && [ "$current_handoff" != '""' ] && [ "$current_handoff" != "''" ]; then
         if [ ! -f "$handoff_dir/$current_handoff" ]; then
@@ -316,23 +316,23 @@ check_d() {
         fi
     fi
 
-    # TODO/占位符残留检测（扫描 output/ 中的代码文件）
-    if [ -d "$REQ_DIR/output" ]; then
+    # TODO/占位符残留检测（扫描产品区中的代码文件，排除 .engine/）
+    if [ -d "$REQ_DIR" ]; then
         local todo_count=0
-        todo_count=$(grep -rl "TODO\|FIXME\|PLACEHOLDER\|{待填充}\|Lorem ipsum" "$REQ_DIR/output" 2>/dev/null | wc -l | tr -d ' ')
+        todo_count=$(grep -rl "TODO\|FIXME\|PLACEHOLDER\|{待填充}\|Lorem ipsum" "$REQ_DIR" --exclude-dir=".engine" --exclude-dir="node_modules" --exclude-dir=".git" 2>/dev/null | wc -l | tr -d ' ')
         if [ "$todo_count" -gt 0 ]; then
-            echo "WARN: output/ 中 $todo_count 个文件含 TODO/FIXME/占位符"
-            grep -rl "TODO\|FIXME\|PLACEHOLDER\|{待填充}\|Lorem ipsum" "$REQ_DIR/output" 2>/dev/null | head -3 | while read -r f; do
+            echo "WARN: 产品区中 $todo_count 个文件含 TODO/FIXME/占位符"
+            grep -rl "TODO\|FIXME\|PLACEHOLDER\|{待填充}\|Lorem ipsum" "$REQ_DIR" --exclude-dir=".engine" --exclude-dir="node_modules" --exclude-dir=".git" 2>/dev/null | head -3 | while read -r f; do
                 echo "  - $f"
             done
         else
-            echo "PASS: output/ 无 TODO/占位符残留"
+            echo "PASS: 产品区 无 TODO/占位符残留"
         fi
     fi
 
     # 任务超时检测
     local task_started
-    task_started=$(grep "^task_started_at:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' | tr -d '"' || echo "")
+    task_started=$(grep "^task_started_at:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' | tr -d '"' || echo "")
     if [ -n "$task_started" ] && [ "$task_started" != '""' ] && [ "$task_started" != "''" ]; then
         local start_epoch now_epoch elapsed
         start_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$task_started" +%s 2>/dev/null || date -d "$task_started" +%s 2>/dev/null || echo "0")
@@ -360,7 +360,7 @@ check_e() {
         return
     fi
 
-    local handoff_dir="$REQ_DIR/handoffs"
+    local handoff_dir="$REQ_DIR/.engine/handoffs"
     if [ ! -d "$handoff_dir" ]; then
         echo "SKIP: 无 handoffs 目录"
         return
@@ -403,27 +403,27 @@ check_e() {
     fi
 
     # 检查 completed_steps 与实际文件一致性
-    if [ -f "$REQ_DIR/.state.md" ]; then
+    if [ -f "$REQ_DIR/.engine/.state.md" ]; then
         local phase
-        phase=$(grep "^phase:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+        phase=$(grep "^phase:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 
         # 如果 phase=apply 或更后，plan-action.md 必须存在
         if [ "$phase" = "apply" ] || [ "$phase" = "archive" ] || [ "$phase" = "done" ]; then
-            if [ ! -s "$REQ_DIR/plan-action.md" ]; then
-                echo "FAIL: phase=$phase 但 plan-action.md 不存在（契约不一致）"
+            if [ ! -s "$REQ_DIR/.engine/plan-action.md" ]; then
+                echo "FAIL: phase=$phase 但 .engine/plan-action.md 不存在（契约不一致）"
                 ERRORS=$((ERRORS + 1))
             else
-                echo "PASS: phase=$phase 与 plan-action.md 一致"
+                echo "PASS: phase=$phase 与 .engine/plan-action.md 一致"
             fi
         fi
 
-        # 如果 phase=done，output/ 必须有内容
+        # 如果 phase=done，产品区必须有内容
         if [ "$phase" = "done" ]; then
-            if [ -z "$(ls -A "$REQ_DIR/output" 2>/dev/null)" ]; then
-                echo "FAIL: phase=done 但 output/ 为空（契约不一致）"
+            if [ -z "$(find "$REQ_DIR" -type f -not -path "*/.engine/*" -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | head -1)" ]; then
+                echo "FAIL: phase=done 但产品区为空（契约不一致）"
                 ERRORS=$((ERRORS + 1))
             else
-                echo "PASS: phase=done 与 output/ 一致"
+                echo "PASS: phase=done 与产品区一致"
             fi
         fi
     fi
@@ -435,14 +435,14 @@ check_e() {
             [ -f "$handoff" ] || continue
             if echo "$(basename "$handoff")" | grep -q "TEST\|VERIFY"; then
                 # 检查是否在 propose 之后的审计（有 design.md 可参考）
-                if [ -f "$REQ_DIR/thinker/design.md" ]; then
+                if [ -f "$REQ_DIR/THINKER-propose-design.md" ]; then
                     if ! grep -q "design.md" "$handoff" 2>/dev/null; then
                         echo "WARN: $(basename "$handoff") (Verifier) 白名单未包含 design.md"
                         alignment_warns=$((alignment_warns + 1))
                     fi
                 fi
-                if ! grep -q "output/" "$handoff" 2>/dev/null; then
-                    echo "WARN: $(basename "$handoff") (Verifier) 白名单未包含 output/（可能无法验证产出物）"
+                if ! grep -q "deliverables/" "$handoff" 2>/dev/null; then
+                    echo "WARN: $(basename "$handoff") (Verifier) 白名单未包含产出物路径（可能无法验证产出物）"
                     alignment_warns=$((alignment_warns + 1))
                 fi
             fi

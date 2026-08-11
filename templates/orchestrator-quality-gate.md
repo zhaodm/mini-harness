@@ -32,9 +32,9 @@
 
 ## Worker 产出验收
 
-- [ ] code-report.md 中 dev-test = PASS
-- [ ] code-report.md 中 post-verify = PASS
-- [ ] output/ 中文件数量与 Task 描述匹配
+- [ ] WORKER-apply-code-report 中 dev-test = PASS
+- [ ] WORKER-apply-code-report 中 post-verify = PASS
+- [ ] deliverables/{REQ-ID}/ 中文件数量与 Task 描述匹配
 - [ ] 无 TODO/FIXME/placeholder 拋留在交付代码中
 
 ## Verifier 产出验收

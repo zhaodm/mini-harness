@@ -1,5 +1,13 @@
 # 需求规格说明书
 
+## 产出物目录结构要求
+
+> 声明本项目期望的产出物顶层目录结构（Thinker 在设计阶段将细化为完整路径规划）
+
+- 顶层目录: {如 src/, docs/, tests/, deploy/ ...}
+- output_type: {code | ppt | documentation | infrastructure}
+- 特殊要求: {如有}
+
 ## 功能需求
 
 ### FR-{N}: {需求标题}

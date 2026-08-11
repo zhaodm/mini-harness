@@ -31,7 +31,11 @@ for path,new in a.items():
 paths=sorted(set(b)|set(a)); changes=[]; violations=[]
 sensitive={'CLAUDE.md','.claude/settings.json','scripts/role-guard.sh','tools/mh-dev/templates/state.json.template','tools/mh-dev/scripts/check-transition.sh','tools/mh-dev/scripts/transition-state.sh','tools/mh-dev/scripts/validate-changes.sh','tools/mh-dev/scripts/validate-outputs.sh'}
 scope=set(state.get('approved_scope',[])); track=state.get('track')
-def allowed_dev(path): return path in scope or any(x.endswith('/') and path.startswith(x) for x in scope)
+# Normalize: approved_scope may contain absolute paths, but snapshot paths from git porcelain are relative to ROOT_DIR.
+abs_scope=set(os.path.join(root,p) if not os.path.isabs(p) else p for p in scope)
+def allowed_dev(path):
+ ap=os.path.join(root,path) if not os.path.isabs(path) else path
+ return ap in abs_scope or any(x.endswith('/') and ap.startswith(x) for x in abs_scope)
 for path in paths:
  if path in rename_old_to_new: continue
  old=b.get(path); new=a.get(path)
@@ -60,7 +64,7 @@ for path in paths:
   elif path in sensitive and track!='formal': violations.append(f'formal track required: {path}')
   else: item['allowed_by']='approved_scope'
  else:
-  if not (path.startswith('tools/mh-dev/tests/') or path in {'tools/mh-dev/.mh-dev/evidence/test-verdict.json','tools/mh-dev/.mh-dev/evidence/test-report.md'}):
+  if not (path.startswith('tools/mh-dev/tests/') or path.startswith('tests/') or path in {'tools/mh-dev/.mh-dev/evidence/test-verdict.json','tools/mh-dev/.mh-dev/evidence/test-report.md'}):
    violations.append(f'unauthorized tester path: {path}')
   else: item['allowed_by']='tester_scope'
  changes.append(item)

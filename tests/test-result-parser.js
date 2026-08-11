@@ -26,7 +26,7 @@ const doneReport = `
 ## 完成回报
 - status: done
 - output_files:
-  - deliverables/TEST001/sa/design.md
+  - deliverables/TEST001/THINKER-propose-design.md
   - deliverables/TEST001/.archiveignore
 - summary: 架构设计完成，包含 3 个 Task
 - issues: N/A
@@ -35,7 +35,7 @@ const doneReport = `
 const parsed = parseReport(doneReport);
 assert('status=done', parsed.status === 'done');
 assert('解析出 2 个输出文件', parsed.outputFiles.length === 2);
-assert('第一个文件路径正确', parsed.outputFiles[0] === 'deliverables/TEST001/sa/design.md');
+assert('第一个文件路径正确', parsed.outputFiles[0] === 'deliverables/TEST001/THINKER-propose-design.md');
 assert('第二个文件路径正确', parsed.outputFiles[1] === 'deliverables/TEST001/.archiveignore');
 assert('保留原始输出', parsed.raw === doneReport);
 
@@ -46,7 +46,7 @@ const failedReport = `
 ## 完成回报
 - status: failed
 - output_files:
-  - deliverables/TEST001/de/code-report-t1.md
+  - deliverables/TEST001/WORKER-apply-code-report-t1.md
 - summary: 编译失败，缺少依赖
 - issues: ModuleNotFoundError: No module named 'fastapi'
 `;
@@ -77,9 +77,9 @@ const mixedReport = `
 ## 完成回报
 - status: done
 - output_files:
-  - deliverables/TEST001/output/src/app.ts
-  - deliverables/TEST001/output/src/routes/index.ts
-  - deliverables/TEST001/output/package.json
+  - deliverables/TEST001/src/app.ts
+  - deliverables/TEST001/src/routes/index.ts
+  - deliverables/TEST001/package.json
 - summary: Task-1 完成
 - issues: N/A
 

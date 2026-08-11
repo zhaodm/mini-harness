@@ -14,11 +14,11 @@ description: This skill should be used when the user starts a new project requir
 ## 前置检查
 
 1. 如 `deliverables/.state.md` 不存在，从 `templates/state-pointer-template.md` 拷贝
-2. 如存在，读取 req_id 和对应 `.state.md` 的 phase
-3. 如 `output/lessons-learned.md` 存在，加载历史经验
+2. 如存在，读取 req_id 和对应 `.engine/.state.md` 的 phase
+3. 如 `deliverables/{REQ-ID}/docs/lessons-learned.md` 存在，加载历史经验
 4. **调用 `detectScenario()`**（`workflows/lib/detect-scenario.js`）判断场景
 5. RESUME → 提示用户继续或放弃；CHANGE → 增量开发模式；NEW → 全新项目
-6. **旧角色 schema 迁移**：如 .state.md 含旧 current_role（PM/BA/SA/DE/TE/UX），
+5. **旧角色 schema 迁移**：如 .engine/.state.md 含旧 current_role（PM/BA/SA/DE/TE/UX），
    提示"检测到旧角色 schema，将自动迁移"并映射：
    - PM → ORCHESTRATOR
    - BA/SA/UX → THINKER
@@ -27,9 +27,9 @@ description: This skill should be used when the user starts a new project requir
 
 ### CHANGE 模式要点
 
-- Proposal 标注"增量开发，基于 output/ 已有代码"
+- Proposal 标注"增量开发，基于 deliverables/{REQ-ID}/ 已有代码"
 - Thinker 仅产出增量文档，归档时 `archiveMerge()` 负责 merge 全量
-- Worker handoff 白名单包含 `output/`；Verifier 回归覆盖全部已有功能
+- Worker handoff 白名单包含 design.md 规划的项目代码路径；Verifier 回归覆盖全部已有功能
 
 ## 环境预检
 
@@ -38,15 +38,15 @@ description: This skill should be used when the user starts a new project requir
 - 包管理器: poetry.lock→poetry, package-lock.json→npm, yarn.lock→yarn, pnpm-lock.yaml→pnpm
 - 浏览器检测（仅 UI 类需求）: Playwright/Selenium/Cypress 可用性
 
-检测不完整时向用户确认。结果写入 `.state.md` tech_stack 和 env 字段。
+检测不完整时向用户确认。结果写入 `.engine/.state.md` tech_stack 和 env 字段。
 
 ## Step 1: 初始化任务目录 + Track 选择
 
-1. 生成 REQ-ID → 创建 `deliverables/{REQ-ID}/` 目录结构
+1. 生成 REQ-ID → 创建 `deliverables/{REQ-ID}/` 目录结构（含 `.engine/` 子目录）
 2. **Track 选择**（由入口命令决定）：
    - `/mh-run` → `track: code`
    - `/mh-ppt` → `track: ppt`
-3. 写入 `.state.md`（schema 见 `templates/state-template.md`），含 track 字段
+3. 写入 `.engine/.state.md`（schema 见 `templates/state-template.md`），含 track 字段
 4. track 写入后只读，切换需重新开需求
 
 ## Step 2: 需求澄清（人机协作）
@@ -61,13 +61,13 @@ description: This skill should be used when the user starts a new project requir
 
 **调用 `recommendTestStrategy()`**（`workflows/lib/recommend-type-mode.js`），根据 tech_stack 和浏览器可用性推断 test_strategy。
 
-向用户呈现推荐结果并请求确认，确认后写入 test_strategy 到 `.state.md`。
+向用户呈现推荐结果并请求确认，确认后写入 test_strategy 到 `.engine/.state.md`。
 
 ## Step 4: Proposal 定稿
 
-1. 写入 `deliverables/{REQ-ID}/proposal.md`
+1. 写入 `deliverables/{REQ-ID}/ORCHESTRATOR-init-proposal.md`
 2. 向用户呈现，请求确认
-3. 确认 → 更新 `.state.md`: phase=init, current_step=INIT-DONE；更新 `deliverables/.state.md`: req_id={REQ-ID}（全局指针）
+3. 确认 → 更新 `.engine/.state.md`: phase=init, current_step=INIT-DONE；更新 `deliverables/.state.md`: req_id={REQ-ID}（全局指针）
 4. 驳回 → 修改后重新呈现，循环直到确认
 
 ### Proposal 格式
@@ -84,4 +84,4 @@ description: This skill should be used when the user starts a new project requir
 ## 异常处理
 
 - reference/ 为空：提示用户补充或口述
-- RESUME 用户放弃：清理 .state.md，重新 NEW
+- RESUME 用户放弃：清理 .engine/.state.md，重新 NEW

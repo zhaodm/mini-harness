@@ -65,7 +65,7 @@ console.log('\n--- 5. 特殊字符处理 ---');
 
 const specialChars = assemblePrompt(
   '# 契约\n含有 `代码块` 和 $变量',
-  '## Handoff\n路径: deliverables/${req}/sa/'
+  '## Handoff\n路径: deliverables/${req}/THINKER-propose-design.md'
 );
 assert('保留反引号', specialChars.includes('`代码块`'));
 assert('保留 $ 符号', specialChars.includes('$变量'));

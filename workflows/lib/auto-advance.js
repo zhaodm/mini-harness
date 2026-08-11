@@ -6,7 +6,7 @@
  *
  * 不变量：auto-advance.js 不写 if(track) 分支。track 通过 clarify 阶段写入不同的
  * 步骤序列来分流，状态机本身按 current_step 决策。WIREFRAME-PENDING 只出现在 ppt track
- * 的 .state.md 中，状态机只需识别该步骤 ID。
+ * 的 .engine/.state.md 中，状态机只需识别该步骤 ID。
  *
  * @module workflows/lib/auto-advance
  */
@@ -26,7 +26,7 @@
  * @property {string} [nextPhase] - advance 时的目标阶段
  * @property {string} [nextStep] - advance 时的目标步骤
  * @property {string} reason - 决策理由
- * @property {Object} [stateResets] - advance 时需要重置的 .state.md 字段
+ * @property {Object} [stateResets] - advance 时需要重置的 .engine/.state.md 字段
  */
 
 // 需要人工暂停的步骤

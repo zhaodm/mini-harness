@@ -16,13 +16,13 @@ import { archiveMerge } from './archive-merge.js';
 
 /**
  * @typedef {Object} KBSources
- * @property {string} [requirementSpec] - ba/requirement-spec.md
- * @property {string} [designContent] - sa/design.md
- * @property {string[]} [codeReports] - de/code-report*.md 数组
- * @property {string} [codeReviewContent] - te/code-review.md
- * @property {Object[]} [repairHistory] - .state.md repair_history[]
- * @property {string[]} [outputFiles] - output/ 文件路径列表
- * @property {Object} [techStack] - .state.md tech_stack
+ * @property {string} [requirementSpec] - THINKER-propose-requirement-spec.md
+ * @property {string} [designContent] - THINKER-propose-design.md
+ * @property {string[]} [codeReports] - WORKER-apply-code-report*.md 数组
+ * @property {string} [codeReviewContent] - Verifier code-review 内容
+ * @property {Object[]} [repairHistory] - .engine/.state.md repair_history[]
+ * @property {string[]} [outputFiles] - deliverables/{REQ-ID}/ 文件路径列表
+ * @property {Object} [techStack] - .engine/.state.md tech_stack
  * @property {string} [outputType] - 产出类型（可选，用于推断）
  */
 

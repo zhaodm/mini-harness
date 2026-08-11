@@ -19,7 +19,7 @@ function assert(desc, condition, detail = '') {
 
 console.log('=== detect-archive-mode 单元测试 ===\n');
 
-// --- 1. 首次归档: output/spec 为空 ---
+// --- 1. 首次归档: docs/spec 为空 ---
 console.log('--- 1. 首次归档 ---');
 
 const first1 = detectArchiveMode({
@@ -27,11 +27,11 @@ const first1 = detectArchiveMode({
   baselineFiles: [],
   reqId: 'REQ001'
 });
-assert('空 output/spec → first', first1.archiveMode === 'first');
+assert('空 docs/spec → first', first1.archiveMode === 'first');
 assert('existingFiles 为空', first1.existingFiles.length === 0);
 assert('nextBaselineVersion=1', first1.nextBaselineVersion === 1);
 
-// --- 2. 变更归档: output/spec 有文件 ---
+// --- 2. 变更归档: docs/spec 有文件 ---
 console.log('\n--- 2. 变更归档 ---');
 
 const change1 = detectArchiveMode({

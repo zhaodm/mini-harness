@@ -31,9 +31,9 @@ assert() {
 setup_env() {
   local req_id="$1" track="$2" report_content="$3"
   rm -rf "$TMPDIR/deliverables"
-  mkdir -p "$TMPDIR/deliverables/$req_id/verifier"
+  mkdir -p "$TMPDIR/deliverables/$req_id/.engine"
   echo "req_id: $req_id" > "$TMPDIR/deliverables/.state.md"
-  cat > "$TMPDIR/deliverables/$req_id/.state.md" <<EOF
+  cat > "$TMPDIR/deliverables/$req_id/.engine/.state.md" <<EOF
 req_id: $req_id
 phase: apply
 current_step: VERIFY-2
@@ -42,7 +42,7 @@ track: $track
 last_updated: "2026-08-10T10:00:00Z"
 EOF
   if [ -n "$report_content" ]; then
-    echo "$report_content" > "$TMPDIR/deliverables/$req_id/verifier/final-test-report.md"
+    echo "$report_content" > "$TMPDIR/deliverables/$req_id/VERIFIER-apply-final-test-report.md"
   fi
 }
 
@@ -68,7 +68,7 @@ assert "ppt track → exit 0" "0" "$result"
 # --- 2. 无 Verifier 报告 → 跳过 ---
 echo "--- 2. 无报告文件 → exit 0 ---"
 setup_env "REQ003" "code" ""
-rm -f "$TMPDIR/deliverables/REQ003/verifier/final-test-report.md"
+rm -f "$TMPDIR/deliverables/REQ003/VERIFIER-apply-final-test-report.md"
 result=$(run_verify "REQ003")
 assert "无报告 → exit 0" "0" "$result"
 

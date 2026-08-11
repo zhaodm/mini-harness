@@ -19,7 +19,7 @@ function assert(desc, condition, detail = '') {
 
 console.log('=== detect-scenario 单元测试 ===\n');
 
-// --- 1. NEW 场景: 无 state 文件，无 output/spec ---
+// --- 1. NEW 场景: 无 state 文件，无 docs/spec ---
 console.log('--- 1. NEW 场景 ---');
 
 const newResult1 = detectScenario({
@@ -56,7 +56,7 @@ const resumeResult2 = detectScenario({
   outputSpecFiles: ['design.md'],
   activeReqId: 'REQ005'
 });
-assert('phase=apply 且有 output/spec → RESUME（优先级高于 CHANGE）', resumeResult2.scenario === 'RESUME');
+assert('phase=apply 且有 docs/spec → RESUME（优先级高于 CHANGE）', resumeResult2.scenario === 'RESUME');
 assert('未完成流程优先于变更模式', resumeResult2.activeReqId === 'REQ005');
 
 // --- 3. CHANGE 场景: phase=done 且有归档产物 ---
@@ -68,16 +68,16 @@ const changeResult1 = detectScenario({
   outputSpecFiles: ['requirement-spec.md', 'design.md'],
   activeReqId: 'REQ002'
 });
-assert('phase=done + output/spec 有文件 → CHANGE', changeResult1.scenario === 'CHANGE');
+assert('phase=done + docs/spec 有文件 → CHANGE', changeResult1.scenario === 'CHANGE');
 
 const changeResult2 = detectScenario({
   globalStateExists: false,
   reqStatePhase: null,
   outputSpecFiles: ['design.md']
 });
-assert('无 state 但 output/spec 有文件 → CHANGE', changeResult2.scenario === 'CHANGE');
+assert('无 state 但 docs/spec 有文件 → CHANGE', changeResult2.scenario === 'CHANGE');
 
-// --- 4. 边界: phase=done 但无 output/spec ---
+// --- 4. 边界: phase=done 但无 docs/spec ---
 console.log('\n--- 4. 边界情况 ---');
 
 const edgeResult1 = detectScenario({
@@ -86,7 +86,7 @@ const edgeResult1 = detectScenario({
   outputSpecFiles: [],
   activeReqId: 'REQ001'
 });
-assert('phase=done 但 output/spec 为空 → NEW（历史已清理）', edgeResult1.scenario === 'NEW');
+assert('phase=done 但 docs/spec 为空 → NEW（历史已清理）', edgeResult1.scenario === 'NEW');
 
 // --- 5. init 阶段视为 RESUME ---
 console.log('\n--- 5. init 阶段 ---');

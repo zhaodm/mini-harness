@@ -27,7 +27,7 @@ REQ_DIR="$DELIVERABLES_DIR/$req_id"
 # 读取字段
 get_field() {
     local field="$1"
-    grep "^${field}:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo ""
+    grep "^${field}:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo ""
 }
 
 echo "=== 内容质量检查: $req_id ==="
@@ -37,7 +37,7 @@ echo ""
 # QA-1: Thinker 需求文档 — 禁止模糊词
 # ─────────────────────────────────────────────
 check_thinker_ambiguity() {
-    local file="$REQ_DIR/thinker/requirement-spec.md"
+    local file="$REQ_DIR/THINKER-propose-requirement-spec.md"
     if [ ! -f "$file" ]; then return; fi
 
     echo "--- QA-1: 需求文档模糊词检查 ---"
@@ -45,7 +45,7 @@ check_thinker_ambiguity() {
     ambiguous=$(grep -n -i "适当\|合理\|尽量\|较快\|较好\|一般来说\|大概\|可能需要" "$file" 2>/dev/null || true)
 
     if [ -n "$ambiguous" ]; then
-        echo "FAIL: requirement-spec.md 含模糊词（需求不可测试）:"
+        echo "FAIL: THINKER-propose-requirement-spec.md 含模糊词（需求不可测试）:"
         echo "$ambiguous" | head -5
         ERRORS=$((ERRORS + 1))
     else
@@ -58,12 +58,18 @@ check_thinker_ambiguity() {
 # QA-2: Worker code-report — 必须含测试结果
 # ─────────────────────────────────────────────
 check_worker_report() {
-    local file="$REQ_DIR/worker/code-report.md"
+    local file="$REQ_DIR/WORKER-apply-code-report-t1.md"
+    if [ ! -f "$file" ]; then
+        # 尝试通用匹配
+        for f in "$REQ_DIR"/WORKER-apply-code-report*.md; do
+            [ -f "$f" ] && file="$f" && break
+        done
+    fi
     if [ ! -f "$file" ]; then return; fi
 
     echo "--- QA-2: Worker code-report 测试结果检查 ---"
     if ! grep -qi "dev-test.*PASS\|测试.*通过\|tests.*pass" "$file" 2>/dev/null; then
-        echo "FAIL: code-report.md 未包含 dev-test PASS 记录"
+        echo "FAIL: WORKER-apply-code-report 未包含 dev-test PASS 记录"
         ERRORS=$((ERRORS + 1))
     else
         echo "PASS: 含测试通过记录"
@@ -78,7 +84,7 @@ check_verifier_conclusion() {
     echo "--- QA-3: Verifier 测试报告结论检查 ---"
     local found=0
 
-    for report in "$REQ_DIR"/verifier/*test-report*.md "$REQ_DIR"/verifier/*report*.md; do
+    for report in "$REQ_DIR"/VERIFIER-apply-*test-report*.md "$REQ_DIR"/VERIFIER-apply-*report*.md; do
         [ -f "$report" ] || continue
         if grep -qi "结论.*PASS\|结论.*FAIL\|PASS\|FAIL\|通过\|不通过" "$report" 2>/dev/null; then
             echo "PASS: $(basename "$report") 含明确结论"
@@ -103,7 +109,7 @@ check_handoff_completion() {
     echo "--- QA-4: Handoff 完成报告完整性 ---"
     local checked=0
 
-    for hf in "$REQ_DIR"/handoffs/*.md; do
+    for hf in "$REQ_DIR"/.engine/handoffs/*.md; do
         [ -f "$hf" ] || continue
         # 只检查已完成的 handoff（含 status: done/completed）
         if ! grep -qi "status:.*done\|status:.*completed" "$hf" 2>/dev/null; then
@@ -134,7 +140,7 @@ check_handoff_completion() {
 # ─────────────────────────────────────────────
 check_slidespec_quality() {
     if ! is_ppt_project; then return; fi
-    local file="$REQ_DIR/thinker/slide-spec.md"
+    local file="$REQ_DIR/THINKER-propose-slide-spec.md"
     if [ ! -f "$file" ]; then return; fi
 
     echo "--- QA-5: slide-spec 视觉设计完整性 ---"
@@ -181,8 +187,12 @@ check_ppt_inline_styles() {
     echo "--- QA-6: PPT HTML 内联样式检查 ---"
     local bad_files=0
 
-    for html in "$REQ_DIR"/output/*.html; do
+    for html in "$REQ_DIR"/*.html; do
         [ -f "$html" ] || continue
+        # 跳过 THINKER-propose-wireframes/ 下的 html
+        local parent
+        parent=$(dirname "$html")
+        [[ "$parent" == *wireframes* ]] && continue
         # 统计含 3+ 属性的 style="" 行数
         local inline_count
         inline_count=$(grep -c 'style="[^"]*;[^"]*;[^"]*;' "$html" 2>/dev/null || echo "0")
@@ -212,7 +222,7 @@ check_lessons_after_rejection() {
     local has_rejection=false
     for sr in SR1 SR3; do
         local sr_status
-        sr_status=$(grep -i "${sr}:" "$REQ_DIR/.state.md" 2>/dev/null | grep -i "rejected" || true)
+        sr_status=$(grep -i "${sr}:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | grep -i "rejected" || true)
         if [ -n "$sr_status" ]; then
             has_rejection=true
             break
@@ -220,10 +230,10 @@ check_lessons_after_rejection() {
     done
 
     if [ "$has_rejection" = true ]; then
-        if [ -f "$REQ_DIR/lessons.md" ] && [ -s "$REQ_DIR/lessons.md" ]; then
-            echo "PASS: 存在 SR 驳回且 lessons.md 已记录"
+        if [ -f "$REQ_DIR/.engine/lessons.md" ] && [ -s "$REQ_DIR/.engine/lessons.md" ]; then
+            echo "PASS: 存在 SR 驳回且 .engine/lessons.md 已记录"
         else
-            echo "WARN: 存在 SR 驳回但 lessons.md 为空或不存在（经验可能丢失）"
+            echo "WARN: 存在 SR 驳回但 .engine/lessons.md 为空或不存在（经验可能丢失）"
             WARNS=$((WARNS + 1))
         fi
     else
@@ -240,7 +250,7 @@ check_handoff_feedback() {
     local checked=0
     local missing=0
 
-    for hf in "$REQ_DIR"/handoffs/*-R[2-9]*.md "$REQ_DIR"/handoffs/*-R1[0-9]*.md; do
+    for hf in "$REQ_DIR"/.engine/handoffs/*-R[2-9]*.md "$REQ_DIR"/.engine/handoffs/*-R1[0-9]*.md; do
         [ -f "$hf" ] || continue
         checked=$((checked + 1))
         if ! grep -qi "用户反馈\|用户原文\|user_feedback\|反馈原文" "$hf" 2>/dev/null; then
@@ -265,14 +275,14 @@ check_handoff_feedback() {
 check_repair_reports() {
     echo "--- QA-9: 修复轮次 code-report 存在性 ---"
 
-    if [ ! -f "$REQ_DIR/.state.md" ]; then
-        echo "INFO: 无 .state.md，跳过"
+    if [ ! -f "$REQ_DIR/.engine/.state.md" ]; then
+        echo "INFO: 无 .engine/.state.md，跳过"
         echo ""
         return
     fi
 
     local repair_round
-    repair_round=$(grep "^repair_round:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "0")
+    repair_round=$(grep "^repair_round:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo "0")
 
     if [ "$repair_round" -eq 0 ] 2>/dev/null; then
         echo "INFO: repair_round=0，无修复轮次"
@@ -282,8 +292,8 @@ check_repair_reports() {
 
     local missing=0
     for i in $(seq 2 $((repair_round + 1))); do
-        if ! ls "$REQ_DIR"/worker/code-report-r${i}*.md >/dev/null 2>&1; then
-            echo "FAIL: repair_round=$repair_round 但缺少 worker/code-report-r${i}*.md"
+        if ! ls "$REQ_DIR"/WORKER-apply-code-report-r${i}*.md >/dev/null 2>&1; then
+            echo "FAIL: repair_round=$repair_round 但缺少 WORKER-apply-code-report-r${i}*.md"
             missing=$((missing + 1))
         fi
     done
@@ -305,7 +315,7 @@ check_repair_reports() {
 # ─────────────────────────────────────────────
 check_handoff_linecount() {
     echo "--- QA-11: Handoff 行数检查 ---"
-    local handoff_dir="$REQ_DIR/handoffs"
+    local handoff_dir="$REQ_DIR/.engine/handoffs"
     if [ ! -d "$handoff_dir" ]; then
         echo "SKIP: handoffs/ 目录不存在"
         echo ""
@@ -347,7 +357,7 @@ check_handoff_linecount() {
 check_regression_coverage() {
     echo "--- QA-12: 回归套件覆盖校验 ---"
 
-    local suite="output/tests/regression-suite.md"
+    local suite="$REQ_DIR/tests/regression-suite.md"
     if [ ! -f "$suite" ]; then
         echo "INFO: regression-suite.md 不存在（首次开发），跳过"
         echo ""
@@ -355,7 +365,7 @@ check_regression_coverage() {
     fi
 
     local phase
-    phase=$(grep "^phase:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+    phase=$(grep "^phase:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
     # 仅在 apply/archive/done 阶段校验
     if [[ "$phase" != "apply" && "$phase" != "archive" && "$phase" != "done" ]]; then
         echo "INFO: phase=$phase, 回归校验在 apply+ 阶段执行"
@@ -364,7 +374,7 @@ check_regression_coverage() {
     fi
 
     local report=""
-    for r in "$REQ_DIR"/verifier/final-test-report.md "$REQ_DIR"/verifier/temp-test-report.md; do
+    for r in "$REQ_DIR"/VERIFIER-apply-final-test-report.md "$REQ_DIR"/VERIFIER-apply-temp-test-report.md; do
         [ -f "$r" ] && report="$r" && break
     done
 
@@ -393,15 +403,15 @@ check_testcase_sedimentation() {
     echo "--- QA-13: 测试用例沉淀完整性 ---"
 
     local phase
-    phase=$(grep "^phase:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+    phase=$(grep "^phase:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
     if [[ "$phase" != "archive" && "$phase" != "done" ]]; then
         echo "INFO: phase=$phase, 沉淀校验在 archive/done 阶段执行"
         echo ""
         return
     fi
 
-    local testcases="$REQ_DIR/thinker/requirement-spec.md"
-    local suite="output/tests/regression-suite.md"
+    local testcases="$REQ_DIR/THINKER-propose-requirement-spec.md"
+    local suite="$REQ_DIR/tests/regression-suite.md"
 
     if [ ! -f "$testcases" ]; then
         echo "INFO: 无 testcases.md（可能为 manual 策略），跳过"

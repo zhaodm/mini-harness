@@ -7,7 +7,7 @@ description: This skill should be used when the user runs "/mh-run" or when auto
 
 code track 全流程自动推进。Orchestrator 主导，一次性执行 clarify → propose → apply → archive，仅在人工审批节点暂停。
 
-**日志规则：** 同各阶段 skill 定义，追加日志到 `deliverables/{REQ-ID}/process.log`
+**日志规则：** 同各阶段 skill 定义，追加日志到 `deliverables/{REQ-ID}/.engine/process.log`
 
 ---
 
@@ -35,9 +35,9 @@ code track 全流程自动推进。Orchestrator 主导，一次性执行 clarify
 
 ### 断点恢复
 
-- .state.md 是流程状态的唯一真相源（schema 见 `templates/state-template.md`）
-- Orchestrator 恢复时仅依据 .state.md 和 handoff 文件状态，禁止依赖对话历史
-- 每次更新 .state.md 必须同步更新 last_updated 时间戳
+- .engine/.state.md 是流程状态的唯一真相源（schema 见 `templates/state-template.md`）
+- Orchestrator 恢复时仅依据 .engine/.state.md 和 handoff 文件状态，禁止依赖对话历史
+- 每次更新 .engine/.state.md 必须同步更新 last_updated 时间戳
 
 重新 `/mh-run` 时检测 `auto_advance: true`，从 phase + current_step 恢复继续。
 
@@ -50,14 +50,14 @@ code track 全流程自动推进。Orchestrator 主导，一次性执行 clarify
 ### 标准调度循环（8 步）
 
 ```
-1. 读取 .state.md         → 确认当前位置（phase/step/repair_round/track）
+1. 读取 .engine/.state.md         → 确认当前位置（phase/step/repair_round/track）
 2. 写入 handoff           → 使用 templates/handoff-template.md 格式
 3. 检查停止条件           → 触发则暂停等待用户
-4. 更新 .state.md         → current_step/current_role/current_handoff/task_started_at
+4. 更新 .engine/.state.md         → current_step/current_role/current_handoff/task_started_at
 5. 派发 SubAgent          → 注入角色契约 + handoff + 白名单文件
 6. 接收回报               → SubAgent 填写 handoff 完成回报
 7. 执行质量门禁           → 按对应角色的检查清单逐项核对（见 templates/orchestrator-quality-gate.md）
-8. 推进或驳回             → 通过则更新 .state.md；不通过则写新 handoff 驳回
+8. 推进或驳回             → 通过则更新 .engine/.state.md；不通过则写新 handoff 驳回
 ```
 
 每一步之间打印心跳：`[Orchestrator] {动作描述}`
@@ -136,7 +136,7 @@ Orchestrator 接收角色回报后，按以下顺序执行。检查清单骨架�
 | pause | 暂停等待用户决策 |
 | end | 打印最终摘要，流程结束 |
 
-在 `.state.md` 写入 `auto_advance: true` 用于断点恢复识别。
+在 `.engine/.state.md` 写入 `auto_advance: true` 用于断点恢复识别。
 
 ---
 
@@ -149,7 +149,7 @@ Orchestrator 接收角色回报后，按以下顺序执行。检查清单骨架�
 
 ## 状态重置
 
-`autoAdvance()` 返回 `stateResets` 字段时，Orchestrator 必须同步更新 `.state.md`：
+`autoAdvance()` 返回 `stateResets` 字段时，Orchestrator 必须同步更新 `.engine/.state.md`：
 - SR3-DONE → archive: 重置 `repair_round=0, repair_task=""`
 
 ---
@@ -177,7 +177,7 @@ Orchestrator 接收角色回报后，按以下顺序执行。检查清单骨架�
 ══════════════════════════════════════
 [/mh-run 全流程完成]
 需求编号: {REQ-ID}
-归档产物: output/
+归档产物: deliverables/{REQ-ID}/
 项目状态: DONE
 ══════════════════════════════════════
 ```

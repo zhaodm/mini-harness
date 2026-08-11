@@ -21,7 +21,7 @@ Orchestrator 调度手册。Orchestrator 必须严格按此手册执行，不得
  需求澄清          THINK-DESIGN/VISUAL 设计/视觉    Batch-1: Verifier 并行审计         ARC-2 设计归档
  │                 │                                │                                 │
  ▼                 ▼                                ├─FAIL→ 并行修复(≤5轮)            ▼
- Proposal定稿      Orchestrator 计划编排             │                                 ARC-3 代码归档
+ Proposal定稿      Orchestrator 计划编排             │                                 ARC-3 ~~取消（产出即归档）~~
                    │                                ▼                                 │
                    ▼                                人工批量确认                       ▼
                   ★SR1 方案确认                    │                                ★SR4 结项确认
@@ -65,7 +65,7 @@ intake → propose → develop → verify → done
 
 - 阶段间自动衔接，消除手动触发等待
 - 阶段内所有人工审批节点（★标记）照常暂停
-- 支持断点恢复（.state.md 中 `auto_advance: true`）
+- 支持断点恢复（.engine/.state.md 中 `auto_advance: true`）
 - `/mh-ppt` 启动 ppt track，同样支持自动推进和断点恢复（含 WIREFRAME-PENDING 暂停点）
 
 推进触发条件：
@@ -150,7 +150,7 @@ Orchestrator 写入 handoff    角色执行              角色回报
                                                       │
                                                       ▼
                                               Orchestrator 校验产出物
-                                              更新 .state.md
+                                              更新 .engine/.state.md
                                               启动下一步
 ```
 
@@ -193,6 +193,8 @@ init ──────> propose ──────> apply ──────> a
 
 > 角色切换指令、Handoff 协议、心跳打印、过程日志、断点恢复、异常处理等通用规则见 skills/mh-codeflow/SKILL.md "调度协议"节 + `templates/logging-standard.md`。各阶段执行细节见 skills/*/SKILL.md。
 
+> role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；全局路径穿越检测拒绝包含 `..` 组件的写入路径。
+
 ---
 
 ## 各阶段详细执行序列
@@ -204,7 +206,7 @@ init ──────> propose ──────> apply ──────> a
 | clarify | skills/mh-intake/SKILL.md | 场景检测 + 环境预检 + track 选择 + 需求澄清 + Proposal 定稿 |
 | propose | skills/mh-design/SKILL.md | Thinker needs → design/visual → Orchestrator 编排 → SR1 |
 | apply | skills/mh-build/SKILL.md | Worker 开发 → Verifier 审计（test_strategy 驱动）→ 修复循环 → SR2 → SR3 |
-| archive | skills/mh-deliver/SKILL.md | 需求归档 → 设计归档 → 产出物归档（track 感知）→ SR4（含 merge 策略） |
+| archive | skills/mh-deliver/SKILL.md | 需求归档 → 设计归档 → ~~产出物归档（已取消，产出即归档）~~ → SR4（含 merge 策略） |
 | run | skills/mh-codeflow/SKILL.md | code track 全流程自动推进 |
 | ppt | skills/mh-slideflow/SKILL.md | ppt track 全流程（Thinker wireframe + verify-ppt.sh） |
 

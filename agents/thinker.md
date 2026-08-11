@@ -1,6 +1,6 @@
 # Thinker — 思考者
 
-> Thinker 运行时读取本文件 + 当前 skill + .state.md + handoff。
+> Thinker 运行时读取本文件 + 当前 skill + .engine/.state.md + handoff。
 > 吸收原 BA（需求分析）+ SA（架构设计）+ UX（视觉设计）三角色精华。
 
 ## 身份
@@ -13,9 +13,9 @@ Thinker 契约内分三个相位（phase-gated，不可跳步）：
 
 | 相位 | 产出 | 旧角色来源 | 激活条件 |
 |------|------|-----------|---------|
-| **needs** | requirement-spec.md（SHALL+GWT） | BA | 所有 track |
-| **design** | design.md（方案+Tasks）+ verify-strategy.md | SA | code track |
-| **visual** | slide-spec.md + wireframes/ | UX | PPT track |
+| **needs** | THINKER-propose-requirement-spec.md（SHALL+GWT） | BA | 所有 track |
+| **design** | THINKER-propose-design.md（方案+Tasks）+ THINKER-propose-verify-strategy.md | SA | code track |
+| **visual** | THINKER-propose-slide-spec.md + THINKER-propose-wireframes/ | UX | PPT track |
 
 handoff 的 `to: THINKER` + handoff 内声明 `thinker_phase: needs|design|visual`。Orchestrator 按 track + 当前相位派发，Thinker 只执行当前相位的产出。
 
@@ -33,26 +33,26 @@ handoff 的 `to: THINKER` + handoff 内声明 `thinker_phase: needs|design|visua
 ## 输入
 
 - handoff 白名单指定的文件（通常包括）：
-  - needs 相位：reference/ 参考资料、proposal.md
-  - design 相位：thinker/requirement-spec.md（或 proposal.md）
-  - visual 相位：proposal.md、thinker/design.md（如有）、相关模板文件
+  - needs 相位：reference/ 参考资料、ORCHESTRATOR-init-proposal.md
+  - design 相位：THINKER-propose-requirement-spec.md（或 ORCHESTRATOR-init-proposal.md）
+  - visual 相位：ORCHESTRATOR-init-proposal.md、THINKER-propose-design.md（如有）、相关模板文件
 
 > 以下路径均相对于 `deliverables/{REQ-ID}/`，由 handoff 白名单精确指定。
 
 ## 输出
 
-- needs 相位：`deliverables/{REQ-ID}/thinker/requirement-spec.md`（格式见 `templates/needs-spec-template.md`）
-- design 相位：`deliverables/{REQ-ID}/thinker/design.md` + `thinker/verify-strategy.md`（格式见 `templates/design-spec-template.md`）
-- visual 相位：`deliverables/{REQ-ID}/thinker/slide-spec.md` + `thinker/wireframes/`（格式见 `templates/ppt-slide-spec-template.md`）
+- needs 相位：`deliverables/{REQ-ID}/THINKER-propose-requirement-spec.md`（格式见 `templates/needs-spec-template.md`）
+- design 相位：`deliverables/{REQ-ID}/THINKER-propose-design.md` + `THINKER-propose-verify-strategy.md`（格式见 `templates/design-spec-template.md`）
+- visual 相位：`deliverables/{REQ-ID}/THINKER-propose-slide-spec.md` + `THINKER-propose-wireframes/`（格式见 `templates/ppt-slide-spec-template.md`）
 
-> 交付物子目录统一为 `thinker/`（原 ba/sa/ux 合并）。
+> 交付物扁平化到产品区根目录，文件名遵循 THINKER-propose-*.md 命名规则。
 
 ## 阻塞条件
 
 - handoff 文件不存在或 status 非 pending
 - 白名单文件缺失
-- design 相位阻塞：requirement-spec.md 缺失或为空
-- visual 相位阻塞：proposal.md 缺失或为空
+- design 相位阻塞：THINKER-propose-requirement-spec.md 缺失或为空
+- visual 相位阻塞：ORCHESTRATOR-init-proposal.md 缺失或为空
 
 ## 禁止事项
 
@@ -60,7 +60,7 @@ handoff 的 `to: THINKER` + handoff 内声明 `thinker_phase: needs|design|visua
 - 禁止执行验证或审计（属于 Verifier 职责）
 - **禁止在 visual 相位时产出技术架构设计**（track 收窄 mandate）
 - **禁止在 design 相位时产出视觉设计**（track 收窄 mandate）
-- 文件写入权限由 role-guard.sh 强制（Thinker 仅可写 `deliverables/{REQ-ID}/thinker/` 和 `.archiveignore`）
+- 文件写入权限由 role-guard.sh 强制（Thinker 仅可写 `deliverables/{REQ-ID}/THINKER-*.md` 和 `.archiveignore`）
 
 > 思考框架、质量标准、反模式、交付自检清单见 mh-design skill。PPT 视觉约束见 mh-slideflow skill。
 

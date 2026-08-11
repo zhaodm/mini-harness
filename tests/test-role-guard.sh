@@ -26,8 +26,8 @@ NC='\033[0m'
 
 setup_state() {
   local role=$1 phase=${2:-propose}
-  mkdir -p deliverables/TEST001/{thinker,worker,verifier,output,handoffs}
-  cat > deliverables/TEST001/.state.md << EOF
+  mkdir -p deliverables/TEST001/.engine/handoffs
+  cat > deliverables/TEST001/.engine/.state.md << EOF
 req_id: TEST001
 phase: ${phase}
 current_step: THINK-DESIGN
@@ -92,45 +92,45 @@ echo ""
 echo "--- 1. 单角色权限测试 ---"
 
 setup_state "THINKER"
-assert_allow "THINKER 写 thinker/design.md" "Write" "deliverables/TEST001/thinker/design.md"
+assert_allow "THINKER 写 THINKER-propose-design.md" "Write" "deliverables/TEST001/THINKER-propose-design.md"
 assert_allow "THINKER 写 .archiveignore" "Write" "deliverables/TEST001/.archiveignore"
-assert_block "THINKER 写 verifier/" "Write" "deliverables/TEST001/verifier/report.md"
-assert_block "THINKER 写 worker/" "Write" "deliverables/TEST001/worker/code-report.md"
-assert_block "THINKER 写 output/" "Write" "deliverables/TEST001/output/index.js"
-assert_block "THINKER 写 handoffs/" "Write" "deliverables/TEST001/handoffs/h.md"
+assert_block "THINKER 写 VERIFIER-" "Write" "deliverables/TEST001/VERIFIER-apply-report.md"
+assert_block "THINKER 写 WORKER-" "Write" "deliverables/TEST001/WORKER-apply-code-report-t1.md"
+assert_block "THINKER 写 .engine/.state.md" "Write" "deliverables/TEST001/.engine/.state.md"
+assert_block "THINKER 写 .engine/handoffs/" "Write" "deliverables/TEST001/.engine/handoffs/h.md"
 cleanup_state
 
 echo ""
 setup_state "WORKER"
-assert_allow "WORKER 写 output/" "Write" "deliverables/TEST001/output/app.js"
-assert_allow "WORKER 写 output/ 子目录" "Write" "deliverables/TEST001/output/src/utils.ts"
-assert_allow "WORKER 写 code-report" "Write" "deliverables/TEST001/worker/code-report-t1.md"
-assert_block "WORKER 写 thinker/" "Write" "deliverables/TEST001/thinker/design.md"
-assert_block "WORKER 写 verifier/" "Write" "deliverables/TEST001/verifier/report.md"
+assert_allow "WORKER 写 WORKER-apply-" "Write" "deliverables/TEST001/WORKER-apply-code-report-t1.md"
+assert_allow "WORKER 写 src/ 项目代码" "Write" "deliverables/TEST001/src/app.js"
+assert_allow "WORKER 写 WORKER-apply-quality-gate" "Write" "deliverables/TEST001/WORKER-apply-quality-gate-report-b1.md"
+assert_block "WORKER 写 THINKER-" "Write" "deliverables/TEST001/THINKER-propose-design.md"
+assert_block "WORKER 写 VERIFIER-" "Write" "deliverables/TEST001/VERIFIER-apply-report.md"
 cleanup_state
 
 echo ""
 setup_state "VERIFIER"
-assert_allow "VERIFIER 写 verifier/" "Write" "deliverables/TEST001/verifier/testcases.md"
-assert_allow "VERIFIER 写 verifier/ 子文件" "Write" "deliverables/TEST001/verifier/final-test-report.md"
-assert_block "VERIFIER 写 output/" "Write" "deliverables/TEST001/output/fix.js"
-assert_block "VERIFIER 写 thinker/" "Write" "deliverables/TEST001/thinker/design.md"
-assert_block "VERIFIER 写 worker/" "Write" "deliverables/TEST001/worker/code-report.md"
+assert_allow "VERIFIER 写 VERIFIER-apply-" "Write" "deliverables/TEST001/VERIFIER-apply-temp-test-report.md"
+assert_allow "VERIFIER 写 VERIFIER-apply-final" "Write" "deliverables/TEST001/VERIFIER-apply-final-test-report.md"
+assert_block "VERIFIER 写 WORKER-" "Write" "deliverables/TEST001/WORKER-apply-code-report-t1.md"
+assert_block "VERIFIER 写 THINKER-" "Write" "deliverables/TEST001/THINKER-propose-design.md"
+assert_block "VERIFIER 写 src/" "Write" "deliverables/TEST001/src/fix.js"
 cleanup_state
 
 echo ""
 setup_state "ORCHESTRATOR"
-assert_allow "ORCHESTRATOR 写 .state.md" "Write" "deliverables/TEST001/.state.md"
-assert_allow "ORCHESTRATOR 写 handoffs/" "Write" "deliverables/TEST001/handoffs/REQ001-REQ1-R1.md"
-assert_allow "ORCHESTRATOR 写 plan-action.md" "Write" "deliverables/TEST001/plan-action.md"
-assert_allow "ORCHESTRATOR 写 SR-record" "Write" "deliverables/TEST001/SR1-record.md"
-assert_allow "ORCHESTRATOR 写 lessons.md" "Write" "deliverables/TEST001/lessons.md"
-assert_allow "ORCHESTRATOR 写 process.log" "Write" "deliverables/TEST001/process.log"
+assert_allow "ORCHESTRATOR 写 .engine/.state.md" "Write" "deliverables/TEST001/.engine/.state.md"
+assert_allow "ORCHESTRATOR 写 .engine/handoffs/" "Write" "deliverables/TEST001/.engine/handoffs/REQ001-REQ1-R1.md"
+assert_allow "ORCHESTRATOR 写 .engine/plan-action.md" "Write" "deliverables/TEST001/.engine/plan-action.md"
+assert_allow "ORCHESTRATOR 写 .engine/SR-record" "Write" "deliverables/TEST001/.engine/SR1-record.md"
+assert_allow "ORCHESTRATOR 写 .engine/lessons.md" "Write" "deliverables/TEST001/.engine/lessons.md"
+assert_allow "ORCHESTRATOR 写 .engine/process.log" "Write" "deliverables/TEST001/.engine/process.log"
 assert_allow "ORCHESTRATOR 写 全局 .state.md" "Write" "deliverables/.state.md"
-assert_allow "ORCHESTRATOR 写 quality-gate-report" "Write" "deliverables/TEST001/worker/quality-gate-report.md"
-assert_block "ORCHESTRATOR 写 output/app.js" "Write" "deliverables/TEST001/output/app.js"
-assert_block "ORCHESTRATOR 写 thinker/" "Write" "deliverables/TEST001/thinker/design.md"
-assert_block "ORCHESTRATOR 写 verifier/" "Write" "deliverables/TEST001/verifier/report.md"
+assert_allow "ORCHESTRATOR 写 WORKER-apply-quality-gate-report" "Write" "deliverables/TEST001/WORKER-apply-quality-gate-report-b1.md"
+assert_block "ORCHESTRATOR 写 src/app.js" "Write" "deliverables/TEST001/src/app.js"
+assert_block "ORCHESTRATOR 写 THINKER-" "Write" "deliverables/TEST001/THINKER-propose-design.md"
+assert_block "ORCHESTRATOR 写 VERIFIER-" "Write" "deliverables/TEST001/VERIFIER-apply-report.md"
 cleanup_state
 
 # --- 2. 多角色并行 ---
@@ -138,20 +138,20 @@ echo ""
 echo "--- 2. 多角色并行测试 ---"
 
 setup_state "THINKER,VERIFIER"
-assert_allow "THINKER,VERIFIER 并行: THINKER 写 thinker/" "Write" "deliverables/TEST001/thinker/design.md"
-assert_allow "THINKER,VERIFIER 并行: VERIFIER 写 verifier/" "Write" "deliverables/TEST001/verifier/report.md"
+assert_allow "THINKER,VERIFIER 并行: THINKER 写 THINKER-" "Write" "deliverables/TEST001/THINKER-propose-design.md"
+assert_allow "THINKER,VERIFIER 并行: VERIFIER 写 VERIFIER-" "Write" "deliverables/TEST001/VERIFIER-apply-report.md"
 assert_allow "THINKER,VERIFIER 并行: THINKER 写 .archiveignore" "Write" "deliverables/TEST001/.archiveignore"
-assert_block "THINKER,VERIFIER 并行: WORKER 写 output/" "Write" "deliverables/TEST001/output/index.js"
-assert_block "THINKER,VERIFIER 并行: ORCHESTRATOR 写 handoffs/" "Write" "deliverables/TEST001/handoffs/h.md"
+assert_block "THINKER,VERIFIER 并行: WORKER 写 WORKER-" "Write" "deliverables/TEST001/WORKER-apply-code-report-t1.md"
+assert_block "THINKER,VERIFIER 并行: ORCHESTRATOR 写 .engine/handoffs/" "Write" "deliverables/TEST001/.engine/handoffs/h.md"
 cleanup_state
 
 echo ""
 setup_state "WORKER,VERIFIER"
-assert_allow "WORKER,VERIFIER 并行: WORKER 写 output/" "Write" "deliverables/TEST001/output/app.js"
-assert_allow "WORKER,VERIFIER 并行: VERIFIER 写 verifier/" "Write" "deliverables/TEST001/verifier/report.md"
-assert_allow "WORKER,VERIFIER 并行: WORKER 写 code-report" "Write" "deliverables/TEST001/worker/code-report-t1.md"
-assert_block "WORKER,VERIFIER 并行: THINKER 写 thinker/" "Write" "deliverables/TEST001/thinker/design.md"
-assert_block "WORKER,VERIFIER 并行: ORCHESTRATOR 写 state" "Write" "deliverables/TEST001/.state.md"
+assert_allow "WORKER,VERIFIER 并行: WORKER 写 src/" "Write" "deliverables/TEST001/src/app.js"
+assert_allow "WORKER,VERIFIER 并行: VERIFIER 写 VERIFIER-" "Write" "deliverables/TEST001/VERIFIER-apply-report.md"
+assert_allow "WORKER,VERIFIER 并行: WORKER 写 WORKER-" "Write" "deliverables/TEST001/WORKER-apply-code-report-t1.md"
+assert_block "WORKER,VERIFIER 并行: THINKER 写 THINKER-" "Write" "deliverables/TEST001/THINKER-propose-design.md"
+assert_block "WORKER,VERIFIER 并行: ORCHESTRATOR 写 .engine/.state.md" "Write" "deliverables/TEST001/.engine/.state.md"
 cleanup_state
 
 # --- 3. 边界条件 ---
@@ -175,7 +175,7 @@ fi
 # current_role 为空（应放行）
 setup_state ""
 TOTAL=$((TOTAL + 1))
-output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"deliverables/TEST001/thinker/design.md"}}' | bash scripts/role-guard.sh 2>&1)
+output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"deliverables/TEST001/THINKER-propose-design.md"}}' | bash scripts/role-guard.sh 2>&1)
 code=$?
 if [ $code -eq 0 ]; then
   echo -e "  ${GREEN}PASS${NC}: current_role 为空时放行"
@@ -189,7 +189,7 @@ cleanup_state
 # 非 Write/Edit 工具（应放行）
 setup_state "THINKER"
 TOTAL=$((TOTAL + 1))
-output=$(echo '{"tool_name":"Read","tool_input":{"file_path":"deliverables/TEST001/verifier/report.md"}}' | bash scripts/role-guard.sh 2>&1)
+output=$(echo '{"tool_name":"Read","tool_input":{"file_path":"deliverables/TEST001/VERIFIER-apply-report.md"}}' | bash scripts/role-guard.sh 2>&1)
 code=$?
 if [ $code -eq 0 ]; then
   echo -e "  ${GREEN}PASS${NC}: Read 工具不拦截"
@@ -201,7 +201,7 @@ fi
 
 # Edit 工具也应拦截
 TOTAL=$((TOTAL + 1))
-output=$(echo '{"tool_name":"Edit","tool_input":{"file_path":"deliverables/TEST001/verifier/report.md"}}' | bash scripts/role-guard.sh 2>&1)
+output=$(echo '{"tool_name":"Edit","tool_input":{"file_path":"deliverables/TEST001/VERIFIER-apply-report.md"}}' | bash scripts/role-guard.sh 2>&1)
 code=$?
 if [ $code -eq 2 ]; then
   echo -e "  ${GREEN}PASS${NC}: Edit 工具同样拦截越权"
@@ -216,13 +216,16 @@ cleanup_state
 echo ""
 echo "--- 4. ORCHESTRATOR 归档阶段特权测试 ---"
 
+# CR-010: 取消根 output/ 目录，ORCHESTRATOR 不再有 archive 阶段 output/docs/ 特权
 setup_state "ORCHESTRATOR" "archive"
-assert_allow "ORCHESTRATOR archive 阶段写 output/docs/" "Write" "output/docs/spec.md"
-assert_block "ORCHESTRATOR archive 阶段写 output/app.js (非 docs)" "Write" "deliverables/TEST001/output/app.js"
+assert_block "ORCHESTRATOR archive 阶段写 src/app.js (非白名单)" "Write" "deliverables/TEST001/src/app.js"
+assert_allow "ORCHESTRATOR archive 阶段写 ORCHESTRATOR-" "Write" "deliverables/TEST001/ORCHESTRATOR-init-proposal.md"
+assert_allow "ORCHESTRATOR archive 阶段写 .engine/.state.md" "Write" "deliverables/TEST001/.engine/.state.md"
 cleanup_state
 
 setup_state "ORCHESTRATOR" "apply"
-assert_block "ORCHESTRATOR apply 阶段写 output/docs/ (非 archive)" "Write" "output/docs/spec.md"
+assert_allow "ORCHESTRATOR apply 阶段写 ORCHESTRATOR-" "Write" "deliverables/TEST001/ORCHESTRATOR-init-proposal.md"
+assert_block "ORCHESTRATOR apply 阶段写 src/ (非白名单)" "Write" "deliverables/TEST001/src/app.js"
 cleanup_state
 
 # --- 5. 旧角色值容错（AX-02） ---
@@ -230,27 +233,27 @@ echo ""
 echo "--- 5. 旧角色值容错测试 (AX-02) ---"
 
 setup_state "SA"
-assert_block "旧角色 SA → BLOCKED" "Write" "deliverables/TEST001/thinker/design.md"
+assert_block "旧角色 SA → BLOCKED" "Write" "deliverables/TEST001/THINKER-propose-design.md"
 cleanup_state
 
 setup_state "DE"
-assert_block "旧角色 DE → BLOCKED" "Write" "deliverables/TEST001/output/app.js"
+assert_block "旧角色 DE → BLOCKED" "Write" "deliverables/TEST001/WORKER-apply-code-report-t1.md"
 cleanup_state
 
 setup_state "TE"
-assert_block "旧角色 TE → BLOCKED" "Write" "deliverables/TEST001/verifier/report.md"
+assert_block "旧角色 TE → BLOCKED" "Write" "deliverables/TEST001/VERIFIER-apply-report.md"
 cleanup_state
 
 setup_state "BA"
-assert_block "旧角色 BA → BLOCKED" "Write" "deliverables/TEST001/thinker/spec.md"
+assert_block "旧角色 BA → BLOCKED" "Write" "deliverables/TEST001/THINKER-propose-spec.md"
 cleanup_state
 
 setup_state "UX"
-assert_block "旧角色 UX → BLOCKED" "Write" "deliverables/TEST001/thinker/wireframes/page1.html"
+assert_block "旧角色 UX → BLOCKED" "Write" "deliverables/TEST001/THINKER-propose-wireframes/page1.html"
 cleanup_state
 
 setup_state "PM"
-assert_block "旧角色 PM → BLOCKED" "Write" "deliverables/TEST001/.state.md"
+assert_block "旧角色 PM → BLOCKED" "Write" "deliverables/TEST001/.engine/.state.md"
 cleanup_state
 
 # --- 6. mh-dev 状态隔离 ---
@@ -296,7 +299,7 @@ if [ $code -eq 0 ]; then echo -e "  ${GREEN}PASS${NC}: mh-dev 终态残留时无
 setup_mhdev_state "develop"
 setup_state "THINKER"
 TOTAL=$((TOTAL + 1))
-output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"deliverables/TEST001/thinker/design.md"}}' | bash scripts/role-guard.sh 2>&1)
+output=$(echo '{"tool_name":"Write","tool_input":{"file_path":"deliverables/TEST001/THINKER-propose-design.md"}}' | bash scripts/role-guard.sh 2>&1)
 code=$?
 if [ $code -eq 0 ]; then echo -e "  ${GREEN}PASS${NC}: 外部 deliverable 存在时按角色白名单放行"; PASS=$((PASS + 1)); else echo -e "  ${RED}FAIL${NC}: 外部 deliverable 存在时应按角色放行 (got exit=$code)"; FAIL=$((FAIL + 1)); fi
 cleanup_state

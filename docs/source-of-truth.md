@@ -25,8 +25,7 @@
 | 修复收敛机制 | skills/mh-repair/SKILL.md "决策"节 | docs/design.md §6 |
 | repair_history schema | templates/state-template.md | skills/mh-repair/SKILL.md 示例 |
 | repair_snapshots schema | templates/state-template.md | skills/mh-repair/SKILL.md "修复派发"节 |
-| 硬校验规则 | scripts/*.sh | docs/design.md §7.4 |
-| PPT track 规则 | skills/mh-slideflow/SKILL.md（扩展） | docs/design.md §6 |
+| 硬校验规则 | scripts/*.sh | docs/design.md §7.4 || PPT track 规则 | skills/mh-slideflow/SKILL.md（扩展） | docs/design.md §6 |
 | PPT 视觉约束 | skills/mh-slideflow/SKILL.md "PPT 视觉约束"节 | templates/ppt-quality-rules.md |
 | PPT 实现品质要求 | skills/mh-slideflow/SKILL.md "PPT 实现品质要求"节 | templates/ppt-quality-rules.md |
 | 经验采集规则 | skills/mh-deliver/SKILL.md "经验采集规则"节 | — |
@@ -77,6 +76,7 @@
 - 新增模板文件后，更新本文件的映射表
 - 新增 scripts 检查项后，更新 design.md §6
 - 发现映射表与实际不符时，以实际文件为准，更新映射表
+- `scripts/role-guard.sh` WORKER 角色可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`、`.archiveignore` 外的所有路径（项目代码路径放行）；全局路径穿越检测拒绝包含 `..` 组件的写入路径
 
 ---
 
@@ -89,5 +89,5 @@
 - [ ] `grep -r "A/B/C/D" .` → 确认所有引用已更新为 A/B/C/D/E（如适用）
 - [ ] `find skills/ -name '*.md' -not -path '*/SKILL.md'` → 确认无扁平 skill 文件残留
 - [ ] `bash scripts/check-harness.sh` → 框架完整性通过
-- [ ] 对比 state-template.md 与最近的 deliverables/*/.state.md → schema 一致
+- [ ] 对比 state-template.md 与最近的 deliverables/*/.engine/.state.md → schema 一致
 - [ ] 检查 CHANGELOG.md 是否已更新

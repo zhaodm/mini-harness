@@ -1,7 +1,7 @@
 # .state.md Schema（权威参考）
 
-本文件定义 `deliverables/{REQ-ID}/.state.md` 的完整字段 schema。
-所有 Skill 在初始化或更新 .state.md 时必须以此为准。
+本文件定义 `deliverables/{REQ-ID}/.engine/.state.md` 的完整字段 schema。
+所有 Skill 在初始化或更新 .engine/.state.md 时必须以此为准。
 
 ---
 
@@ -30,7 +30,7 @@ repair_task: ""                # 当前修复的任务标识（如 Task-1）
 repair_history: []             # 修复历史（每轮追加，通过后清空）
 # 格式: [{round: 1, error_type: "test_failure", failed_count: 3, summary: "API返回500", root_cause_hypothesis: "...", action_taken: "..."}]
 repair_snapshots: []           # 修复快照（每轮追加，通过后清空）
-# 格式: [{round: 1, output_hash: "md5", code_report: "worker/code-report-r1.md"}]
+# 格式: [{round: 1, output_hash: "md5", code_report: "WORKER-apply-code-report-r1.md"}]
 
 # === 任务计时 ===
 task_started_at: ""            # 当前任务开始时间（Orchestrator 派发时写入，完成后清空）
@@ -80,7 +80,7 @@ last_updated: ""               # ISO 8601 UTC 时间戳，每次更新必须同�
 | apply | BATCH-CONFIRM | 批次人工确认 |
 | archive | ARC-1 | 需求归档 |
 | archive | ARC-2 | 设计归档 |
-| archive | ARC-3 | 产出物归档 |
+| archive | ARC-3 | 产出物归档 | ~~取消~~ |
 | archive | ARC-4 | 参考资料归档 |
 | archive | ARC-5 | 测试用例沉淀 |
 | archive | ARC-6 | 执行指标生成 |
@@ -105,7 +105,7 @@ last_updated: ""               # ISO 8601 UTC 时间戳，每次更新必须同�
 
 ## 全局指针文件
 
-`deliverables/.state.md` 仅包含当前活跃需求的指针：
+`deliverables/.state.md` 仅包含当前活跃需求的指针（全局指针，不在 .engine/ 下）：
 
 ```yaml
 req_id: REQ{NNN}
@@ -124,7 +124,7 @@ req_id: REQ{NNN}
 | DE | WORKER |
 | TE | VERIFIER |
 
-映射在 mh-clarify Step 1（初始化任务目录时重写 .state.md）执行。若用户 RESUME 一个旧 .state.md，clarify 检测到旧枚举时提示"检测到旧角色 schema，将自动迁移"并映射。
+映射在 mh-intake Step 1（初始化任务目录时重写 .engine/.state.md）执行。若用户 RESUME 一个旧 .state.md，intake 检测到旧枚举时提示"检测到旧角色 schema，将自动迁移"并映射。
 
 ---
 

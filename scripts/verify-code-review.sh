@@ -27,12 +27,12 @@ fi
 
 REQ_DIR="$DELIVERABLES_DIR/$req_id"
 
-if [ ! -f "$REQ_DIR/.state.md" ]; then
-    echo "WARN: $REQ_DIR/.state.md 不存在，跳过"
+if [ ! -f "$REQ_DIR/.engine/.state.md" ]; then
+    echo "WARN: $REQ_DIR/.engine/.state.md 不存在，跳过"
     exit 0
 fi
 
-track=$(grep "^track:" "$REQ_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+track=$(grep "^track:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 
 # ppt track 非代码产出，Code Review 可跳过
 if [[ "$track" == "ppt" ]]; then
@@ -44,7 +44,7 @@ echo "=== Code Review 报告校验: $req_id ==="
 
 # 查找 Verifier 报告
 REPORT=""
-for r in "$REQ_DIR"/verifier/final-test-report.md "$REQ_DIR"/verifier/temp-test-report.md; do
+for r in "$REQ_DIR"/VERIFIER-apply-final-test-report.md "$REQ_DIR"/VERIFIER-apply-temp-test-report.md; do
     [ -f "$r" ] && REPORT="$r" && break
 done
 

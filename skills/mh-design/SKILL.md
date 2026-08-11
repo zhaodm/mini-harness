@@ -14,8 +14,8 @@ Thinker 需求分析 → 技术设计/视觉设计 → 计划编排 → SR1 方�
 ## 前置检查
 
 1. 读取 `deliverables/.state.md` 获取当前 req_id
-2. 验证 `deliverables/{REQ-ID}/.state.md` 中 phase=init 且 current_step=INIT-DONE
-3. 验证 `deliverables/{REQ-ID}/proposal.md` 存在且非空
+2. 验证 `deliverables/{REQ-ID}/.engine/.state.md` 中 phase=init 且 current_step=INIT-DONE
+3. 验证 `deliverables/{REQ-ID}/ORCHESTRATOR-init-proposal.md` 存在且非空
 4. 不满足则阻塞，提示用户先完成 clarify 阶段
 
 ---
@@ -30,20 +30,20 @@ Thinker 需求分析 → 技术设计/视觉设计 → 计划编排 → SR1 方�
 3. **生成 Thinker handoff 内容**（按 templates/handoff-template.md 格式）：
    - to: THINKER
    - thinker_phase: needs
-   - 白名单: `deliverables/{REQ-ID}/proposal.md` + reference/ 参考资料
-   - 期望输出: `deliverables/{REQ-ID}/thinker/requirement-spec.md`
+   - 白名单: `deliverables/{REQ-ID}/ORCHESTRATOR-init-proposal.md` + reference/ 参考资料
+   - 期望输出: `deliverables/{REQ-ID}/THINKER-propose-requirement-spec.md`
 
 4. **更新 state 并调用 Workflow**：
-   - 更新 `.state.md`: current_step=THINK-NEEDS, current_role=THINKER
+   - 更新 `.engine/.state.md`: current_step=THINK-NEEDS, current_role=THINKER
    - 写入 handoff 文件
    - 调用 Workflow `thinker-design`（Thinker needs 相位）
 
 5. **Workflow 返回后，执行质量门禁**（见 `templates/orchestrator-quality-gate.md` Thinker needs 验收清单）：
-   - `deliverables/{REQ-ID}/thinker/requirement-spec.md` 存在且非空
+   - `deliverables/{REQ-ID}/THINKER-propose-requirement-spec.md` 存在且非空
    - 通过 → 继续
    - 不通过 → 生成驳回 handoff（新轮次），重新调用 Workflow
 
-6. 更新 `.state.md`: current_handoff="", current_role=ORCHESTRATOR
+6. 更新 `.engine/.state.md`: current_handoff="", current_role=ORCHESTRATOR
 
 ---
 
@@ -64,8 +64,8 @@ Thinker needs 相位完成后，设一个人工门（合并入 SR1）。审批�
 2. 生成 Thinker handoff：
    - to: THINKER
    - thinker_phase: design
-   - 白名单: `deliverables/{REQ-ID}/thinker/requirement-spec.md`
-   - 期望输出: `thinker/design.md` + `thinker/verify-strategy.md` + `.archiveignore`
+   - 白名单: `deliverables/{REQ-ID}/THINKER-propose-requirement-spec.md`
+   - 期望输出: `THINKER-propose-design.md` + `THINKER-propose-verify-strategy.md` + `.archiveignore`
 3. 调用 Workflow `thinker-design`
 4. 质量门禁（见 `templates/orchestrator-quality-gate.md` Thinker design 验收清单）
 
@@ -75,8 +75,8 @@ Thinker needs 相位完成后，设一个人工门（合并入 SR1）。审批�
 2. 生成 Thinker handoff：
    - to: THINKER
    - thinker_phase: visual
-   - 白名单: `proposal.md`, `thinker/requirement-spec.md` + ppt 模板文件
-   - 期望输出: `thinker/slide-spec.md` + `thinker/wireframes/`
+   - 白名单: `ORCHESTRATOR-init-proposal.md`, `THINKER-propose-requirement-spec.md` + ppt 模板文件
+   - 期望输出: `THINKER-propose-slide-spec.md` + `THINKER-propose-wireframes/`
 3. 调用 Workflow `thinker-design`
 4. 质量门禁（见 `templates/orchestrator-quality-gate.md` Thinker visual 验收清单）
 5. **Wireframe 审批**（WIREFRAME-PENDING 暂停点）：
@@ -89,9 +89,9 @@ Thinker needs 相位完成后，设一个人工门（合并入 SR1）。审批�
 ## Step 3: Orchestrator 计划编排
 
 1. `[Orchestrator] 启动计划编排`
-2. 读取 design.md 中的 Tasks 清单 + 验收标准
-3. 编排执行计划，写入 `deliverables/{REQ-ID}/plan-action.md`
-4. 更新 `.state.md`: current_step=REQ-4
+2. 读取 THINKER-propose-design.md 中的 Tasks 清单 + 验收标准
+3. 编排执行计划，写入 `deliverables/{REQ-ID}/.engine/plan-action.md`
+4. 更新 `.engine/.state.md`: current_step=REQ-4
 
 ---
 
@@ -105,7 +105,7 @@ Thinker needs 相位完成后，设一个人工门（合并入 SR1）。审批�
    - 验收标准覆盖核心功能和关键边界
 3. 向用户呈现决策上下文
 4. 等待用户决策：
-   - **通过**: 更新 `.state.md`: phase=propose, current_step=PROPOSE-DONE, sr_status.SR1=approved
+   - **通过**: 更新 `.engine/.state.md`: phase=propose, current_step=PROPOSE-DONE, sr_status.SR1=approved
    - **驳回**: 记录驳回原因，回退到对应步骤重新执行
 
 ---

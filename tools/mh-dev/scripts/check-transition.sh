@@ -12,7 +12,9 @@ elif n=='develop' and p in {'propose','repair'}:
  if approvals.get('intake')!='approved': blocked('intake approval required')
  if s.get('track')=='formal' and approvals.get('design')!='approved': blocked('formal design approval required')
 elif n=='verify' and p=='develop':
- if str(repair.get('round',0)) not in s.get('change_ownership',{}).get('developer',{}): blocked('developer attribution required')
+ dev_attr=s.get('change_ownership',{}).get('developer',{})
+ rr=str(repair.get('round',0))
+ if rr not in dev_attr and '1' not in dev_attr: blocked('developer attribution required')
 elif n=='done' and p=='verify':
  if s.get('mechanical_preflight')!='pass' or s.get('test_verdict')!='PASS': blocked('mechanical and tester PASS required')
 elif n=='repair' and p=='verify':

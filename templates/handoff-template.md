@@ -54,7 +54,7 @@ completed_at: ""
 
 ## 期望输出
 
-<!-- ⚠️ Orchestrator 自检: Worker 任务的输出路径必须以 deliverables/{REQ-ID}/output/ 开头，禁止直接指向根目录 output/ -->
+<!-- ⚠️ Orchestrator 自检: Worker 任务的输出路径必须以 deliverables/{REQ-ID}/ 开头，且符合 design.md "产出物目录结构" 章节规划的路径，禁止自行决定路径 -->
 - `{output_path}`
 
 ## 约束

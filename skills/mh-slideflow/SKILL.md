@@ -32,7 +32,7 @@ test_strategy 固定为 `manual`，Verifier 使用 `scripts/verify-ppt.sh` 校�
 ## Clarify 阶段
 
 1. 正常执行 mh-intake（需求澄清 + tech_stack 检测）
-2. 写入 `track: ppt` 到 `.state.md`
+2. 写入 `track: ppt` 到 `.engine/.state.md`
 3. 固定写入 `test_strategy: manual`
 4. **设计方案选择**（Proposal 确认后）：
 
@@ -51,7 +51,7 @@ test_strategy 固定为 `manual`，Verifier 使用 `scripts/verify-ppt.sh` 校�
 请选择（A/B）:
 ```
 
-选择结果写入 `.state.md`: `ppt_design_mode: system | creative`
+选择结果写入 `.engine/.state.md`: `ppt_design_mode: system | creative`
 
 ### A. 设计系统模式
 
@@ -71,16 +71,16 @@ test_strategy 固定为 `manual`，Verifier 使用 `scripts/verify-ppt.sh` 校�
 
 1. Thinker needs 相位（需求规格化）
 2. **Thinker visual 相位**（Wireframe 设计）
-   - 创建 `deliverables/{REQ-ID}/thinker/wireframes/`
+   - 创建 `deliverables/{REQ-ID}/THINKER-propose-wireframes/`
    - 写入 handoff，白名单按 ppt_design_mode 区分：
-     - **system**: proposal.md, thinker/requirement-spec.md, ppt-base.css, ppt-templates/layouts/
-     - **creative**: proposal.md, thinker/requirement-spec.md, frontend-design-skill.md
-   - 期望输出: thinker/slide-spec.md + thinker/wireframes/
+     - **system**: ORCHESTRATOR-init-proposal.md, THINKER-propose-requirement-spec.md, ppt-base.css, ppt-templates/layouts/
+     - **creative**: ORCHESTRATOR-init-proposal.md, THINKER-propose-requirement-spec.md, frontend-design-skill.md
+   - 期望输出: THINKER-propose-slide-spec.md + THINKER-propose-wireframes/
 3. **用户审批 Wireframe**（WIREFRAME-PENDING 暂停点）
    - 向用户呈现 wireframe 预览路径，请求确认
    - 通过 → 继续 apply
    - 修改 → 重新派发 Thinker visual（轮次+1）
-4. Orchestrator 编排 plan-action.md → SR1 方案确认
+4. Orchestrator 编排 .engine/plan-action.md → SR1 方案确认
 
 ---
 
@@ -99,8 +99,8 @@ test_strategy 固定为 `manual`，Verifier 使用 `scripts/verify-ppt.sh` 校�
 
 ## Archive 阶段
 
-1. 归档产出物到 output/
-2. 额外归档 thinker/wireframes/ → output/assets/wireframes/
+1. 归档产出物到 deliverables/{REQ-ID}/ 产品区
+2. 额外归档 THINKER-propose-wireframes/ → deliverables/{REQ-ID}/assets/wireframes/
 3. 流程结束
 
 ---
