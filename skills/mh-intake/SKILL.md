@@ -1,4 +1,9 @@
-# Skill: mh-clarify
+---
+name: mh-intake
+description: This skill should be used when the user starts a new project requirement, runs "/mh-clarify", or when in the init/clarify phase. Requirement initialization and clarification with track selection, tech stack detection, and test strategy recommendation.
+---
+
+# Skill: mh-intake
 
 需求初始化与澄清。Orchestrator 主导，人机协作打磨 Proposal。
 

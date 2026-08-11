@@ -43,7 +43,7 @@ Scripts + 人工 (SR1-4)   → 硬校验（强：退出码为唯一判据）
 |------|--------|--------|
 | 全局规则 | CLAUDE.md | 最高约束，精简纪律 |
 | 角色契约 | agents/*.md | 3 被派发角色(thinker/worker/verifier)+orchestrator 编排器 |
-| 执行规程 | skills/mh-*.md | 各阶段 SOP，track 感知裁剪 |
+| 执行规程 | skills/mh-*/SKILL.md | 各阶段 SOP，track 感知裁剪 |
 | 硬校验 | scripts/*.sh | 三层校验体系，退出码驱动 |
 | 模板体系 | templates/ | handoff/state/日志/示例/结构参考/设计指南 |
 | 文档 | docs/ | 本文件(地图) + source-of-truth(映射) |
@@ -128,7 +128,7 @@ mini-harness/
 
 ```
 身份 → 职责 → 输入 → 输出 → 阻塞条件 → 禁止事项
-     → 思考框架 → 质量标准 → 反模式 → 交付自检 → 模型建议
+     → 思考框架/质量标准/反模式/交付自检（下沉到 skill） → 模型建议
 ```
 
 ### Orchestrator 调度循环
@@ -138,7 +138,7 @@ mini-harness/
 → 接收回报 → 质量门禁 → 更新 .state.md → 循环
 ```
 
-详见：agents/orchestrator.md "调度协议"节
+详见：skills/mh-codeflow/SKILL.md "调度协议"节
 
 ### 并行编排层（Workflow）
 
@@ -189,8 +189,8 @@ clarify(track=ppt) → Thinker[needs→visual] → SR1(wireframe审批) → Work
 
 | Gate | 通过标准 | 详见 |
 |------|----------|------|
-| SR1 | 需求覆盖完整 + 设计覆盖所有需求 + 计划可执行 | skills/mh-propose.md |
-| SR3 | 全量测试通过 + 覆盖无遗漏 + 无 Critical/Major | skills/mh-apply.md |
+| SR1 | 需求覆盖完整 + 设计覆盖所有需求 + 计划可执行 | skills/mh-design/SKILL.md |
+| SR3 | 全量测试通过 + 覆盖无遗漏 + 无 Critical/Major | skills/mh-build/SKILL.md |
 
 > WIREFRAME-PENDING 是 SR1 在 ppt track 的具体形态（wireframe 审批）。
 
@@ -238,12 +238,12 @@ Orchestrator 启动时读取：本文件(orchestrator.md) + 当前 skill + .stat
 
 | 命令 | 职责 | Track | 权威源 |
 |------|------|-------|--------|
-| /mh-clarify | 需求初始化与澄清 | 共享 | skills/mh-clarify.md |
-| /mh-propose | Thinker 设计相位 | 共享 | skills/mh-propose.md |
-| /mh-apply | Worker 开发→Verifier 审计→审批 | 共享 | skills/mh-apply.md |
-| /mh-archive | 归档+经验沉淀+结项 | 共享 | skills/mh-archive.md |
-| /mh-run | code track 全流程自动推进 | code | skills/mh-run.md |
-| /mh-ppt | ppt track 全流程 | ppt | skills/mh-ppt.md |
+| /mh-clarify | 需求初始化与澄清 | 共享 | skills/mh-intake/SKILL.md |
+| /mh-propose | Thinker 设计相位 | 共享 | skills/mh-design/SKILL.md |
+| /mh-apply | Worker 开发→Verifier 审计→审批 | 共享 | skills/mh-build/SKILL.md |
+| /mh-archive | 归档+经验沉淀+结项 | 共享 | skills/mh-deliver/SKILL.md |
+| /mh-run | code track 全流程自动推进 | code | skills/mh-codeflow/SKILL.md |
+| /mh-ppt | ppt track 全流程 | ppt | skills/mh-slideflow/SKILL.md |
 
 ### PPT 双轨设计方案
 
@@ -254,7 +254,7 @@ ppt track 的 ppt_design_mode 在 clarify 阶段选择：
 | system（ppt-base.css） | 严格设计系统，统一风格 | 企业汇报、品牌一致性 |
 | creative（frontend-design） | 仅结构约束，视觉自由 | 创意提案、视觉冲击力 |
 
-详见：skills/mh-ppt.md
+详见：skills/mh-slideflow/SKILL.md
 
 ---
 
@@ -266,12 +266,12 @@ ppt track 的 ppt_design_mode 在 clarify 阶段选择：
 
 ### Orchestrator 质量门禁（流程层）
 
-Orchestrator 接收回报后逐项核对对应角色验收清单。详见 agents/orchestrator.md "质量门禁"节。
+Orchestrator 接收回报后逐项核对对应角色验收清单。详见 skills/mh-codeflow/SKILL.md "质量门禁"节。
 
 ### 修复收敛（机制层）
 
 根因分析 → 结构化修复上下文 → repair_history 追踪 → 发散时提前升级（≤5轮）。
-详见：skills/mh-apply-repair.md
+详见：skills/mh-repair/SKILL.md
 
 ### 硬校验（Scripts 层）
 
@@ -335,13 +335,13 @@ output/lessons-learned.md           ← 全量累积（跨 REQ 持久化）
 
 ```
 反复出现的经验 → 框架开发者识别 → 固化到对应层级
-├── 设计类 → agents/*.md 质量标准/反模式
+├── 设计类 → skills/mh-*/SKILL.md 质量标准/反模式
 ├── 验证类 → scripts/verify*.sh 检查项
-├── 流程类 → skills/*.md 步骤增强
+├── 流程类 → skills/mh-*/SKILL.md 步骤增强
 └── 模板类 → templates/ 新增/改进
 ```
 
-详见：skills/mh-archive.md ARC-6 + agents/orchestrator.md "经验采集规则"
+详见：skills/mh-deliver/SKILL.md ARC-6 + skills/mh-deliver/SKILL.md "经验采集规则"节
 
 ---
 

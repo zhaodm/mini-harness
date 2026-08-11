@@ -2,7 +2,7 @@
 
 核心纪律与 CLAUDE.md 完全一致，本文件仅补充 Cline 环境特有的协议。
 
-> 全局工程纪律见 CLAUDE.md "工程准则"节；工作流纪律（流程/隔离/保护）见 skills/mh-run.md "工作流纪律"节
+> 全局工程纪律见 CLAUDE.md "工程准则"节；工作流纪律（流程/隔离/保护）见 skills/mh-codeflow/SKILL.md "工作流纪律"节
 
 ---
 
@@ -12,12 +12,12 @@
 
 | 用户输入 | 读取文件 | 动作 |
 |---------|---------|------|
-| `/mh-clarify` | skills/mh-clarify.md | 需求初始化与澄清 + 产出类型选择 |
-| `/mh-propose` | skills/mh-propose.md | 分析→设计→用例→评审 |
-| `/mh-apply` | skills/mh-apply.md | 开发→审计→人工审批 |
-| `/mh-archive` | skills/mh-archive.md | 归档+结项 |
-| `/mh-run` | skills/mh-run.md | 全流程自动推进 |
-| `/mh-ppt` | skills/mh-ppt.md | PPT 快捷入口（output_type=ppt） |
+| `/mh-clarify` | skills/mh-intake/SKILL.md | 需求初始化与澄清 + 产出类型选择 |
+| `/mh-propose` | skills/mh-design/SKILL.md | 分析→设计→用例→评审 |
+| `/mh-apply` | skills/mh-build/SKILL.md | 开发→审计→人工审批 |
+| `/mh-archive` | skills/mh-deliver/SKILL.md | 归档+结项 |
+| `/mh-run` | skills/mh-codeflow/SKILL.md | 全流程自动推进 |
+| `/mh-ppt` | skills/mh-slideflow/SKILL.md | PPT 快捷入口（output_type=ppt） |
 
 ---
 
@@ -25,13 +25,13 @@
 
 Cline 环境下无 SubAgent 能力，角色隔离通过以下方式实现：
 
-1. PM 写入 handoff 文件后，输出角色切换指令：`[切换角色: {role}] 请读取 {handoff_path}`
+1. Orchestrator 写入 handoff 文件后，输出角色切换指令：`[切换角色: {role}] 请读取 {handoff_path}`
 2. 切换后严格以目标角色身份执行，仅读取 handoff 白名单文件
 3. 禁止引用切换前其他角色的推理内容
-4. 完成后输出：`[角色完成: {role}] 输出文件: {path}`，回到 PM 角色
-5. PM 读取输出文件进行校验，决定下一步
+4. 完成后输出：`[角色完成: {role}] 输出文件: {path}`，回到 Orchestrator 角色
+5. Orchestrator 读取输出文件进行校验，决定下一步
 
 ## 辅助 Skill
 
-- DE 编码后执行: skills/dev-test.md（根据 tech_stack 路由测试命令）
-- dev-test 通过后执行: skills/post-verify.md
+- DE 编码后执行: skills/mh-self-test/SKILL.md（根据 tech_stack 路由测试命令）
+- dev-test 通过后执行: skills/mh-verify/SKILL.md

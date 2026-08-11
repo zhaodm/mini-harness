@@ -72,7 +72,7 @@
 
 ## 6. 多角色工作流协议
 
-详见 `skills/mh-run.md`。仅在用户显式调用 `/mh-run`、`/mh-ppt` 或 `/mh-dev` 后生效，默认会话不启动任何多角色流程。核心铁律：
+详见 `skills/mh-codeflow/SKILL.md`。仅在用户显式调用 `/mh-run`、`/mh-ppt` 或 `/mh-dev` 后生效，默认会话不启动任何多角色流程。核心铁律：
 
 - Orchestrator 只做调度，不做专业判断
 - 三角色（Thinker/Worker/Verifier）职责严格分离

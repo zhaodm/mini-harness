@@ -191,7 +191,7 @@ init ──────> propose ──────> apply ──────> a
 
 ## 通用规则
 
-> 角色切换指令、Handoff 协议、心跳打印、过程日志、断点恢复、异常处理等通用规则见 skills/mh-run.md "工作流纪律"节 + `templates/logging-standard.md`。各阶段执行细节见 skills/*.md。
+> 角色切换指令、Handoff 协议、心跳打印、过程日志、断点恢复、异常处理等通用规则见 skills/mh-codeflow/SKILL.md "调度协议"节 + `templates/logging-standard.md`。各阶段执行细节见 skills/*/SKILL.md。
 
 ---
 
@@ -201,12 +201,12 @@ init ──────> propose ──────> apply ──────> a
 
 | 阶段 | 执行权威文件 | 概要 |
 |------|------------|------|
-| clarify | skills/mh-clarify.md | 场景检测 + 环境预检 + track 选择 + 需求澄清 + Proposal 定稿 |
-| propose | skills/mh-propose.md | Thinker needs → design/visual → Orchestrator 编排 → SR1 |
-| apply | skills/mh-apply.md | Worker 开发 → Verifier 审计（test_strategy 驱动）→ 修复循环 → SR2 → SR3 |
-| archive | skills/mh-archive.md | 需求归档 → 设计归档 → 产出物归档（track 感知）→ SR4（含 merge 策略） |
-| run | skills/mh-run.md | code track 全流程自动推进 |
-| ppt | skills/mh-ppt.md | ppt track 全流程（Thinker wireframe + verify-ppt.sh） |
+| clarify | skills/mh-intake/SKILL.md | 场景检测 + 环境预检 + track 选择 + 需求澄清 + Proposal 定稿 |
+| propose | skills/mh-design/SKILL.md | Thinker needs → design/visual → Orchestrator 编排 → SR1 |
+| apply | skills/mh-build/SKILL.md | Worker 开发 → Verifier 审计（test_strategy 驱动）→ 修复循环 → SR2 → SR3 |
+| archive | skills/mh-deliver/SKILL.md | 需求归档 → 设计归档 → 产出物归档（track 感知）→ SR4（含 merge 策略） |
+| run | skills/mh-codeflow/SKILL.md | code track 全流程自动推进 |
+| ppt | skills/mh-slideflow/SKILL.md | ppt track 全流程（Thinker wireframe + verify-ppt.sh） |
 
 **Workflow 脚本（并行编排层）：**
 

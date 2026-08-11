@@ -26,9 +26,13 @@ for role in thinker worker verifier orchestrator; do
 done
 
 printf '\n--- Skill 与命令面 ---\n'
-for skill in mh-run mh-ppt mh-dev mh-clarify mh-propose mh-apply mh-archive mh-apply-repair dev-test post-verify; do
-  require_file "skills/$skill.md"
+for skill in mh-codeflow mh-slideflow mh-intake mh-design mh-build mh-deliver mh-repair mh-self-test mh-verify; do
+  require_file "skills/$skill/SKILL.md"
 done
+require_file "tools/mh-dev/skills/mh-dev/SKILL.md"
+require_file "tools/mh-dev/skills/mh-dev-develop/SKILL.md"
+require_file "tools/mh-dev/skills/mh-dev-test/SKILL.md"
+require_file "tools/mh-dev/skills/mh-dev-audit/SKILL.md"
 for command in mh-run mh-ppt mh-dev; do
   require_file ".claude/commands/$command.md"
 done
@@ -42,7 +46,8 @@ printf '\n--- 框架目录与模板 ---\n'
 for dir in agents skills scripts templates workflows workflows/lib tests docs docs/designs docs/requirements docs/retrospectives templates/ppt-templates/layouts templates/examples templates/output-guides tools/mh-dev; do
   [[ -d "$dir" ]] && pass "$dir/" || fail "$dir/ 不存在"
 done
-for file in templates/handoff-template.md templates/logging-standard.md templates/state-template.md templates/output-structure.md templates/ppt-base.css templates/ppt-base.html; do
+for file in templates/handoff-template.md templates/logging-standard.md templates/state-template.md templates/output-structure.md templates/ppt-base.css templates/ppt-base.html \
+           templates/orchestrator-quality-gate.md templates/needs-spec-template.md templates/design-spec-template.md templates/ppt-slide-spec-template.md templates/ppt-quality-rules.md templates/code-report-template.md templates/test-report-template.md; do
   require_file "$file"
 done
 

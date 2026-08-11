@@ -1,3 +1,8 @@
+---
+name: mh-dev
+description: This skill should be used when the user runs "/mh-dev" for Mini-Harness self-development, governance, verification, or release preparation. Entry routing for mh-dev tool: development track and audit track.
+---
+
 # mh-dev
 
 `/mh-dev` 用于开发、治理、验证和准备发布 **Mini-Harness 自身**。它与 `/mh-run` 严格分离：`/mh-run` 使用框架交付外部项目；mh-dev 直接修改本仓库受版本控制的框架文件。

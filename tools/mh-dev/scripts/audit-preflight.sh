@@ -11,7 +11,7 @@ fail() { echo "FAIL: $*" >&2; FAILURES=$((FAILURES+1)); }
 
 # 1. 关键文件存在性
 echo "--- 1. 关键文件 ---"
-for f in .claude/commands/mh-dev.md skills/mh-dev.md tools/mh-dev/CLAUDE.md \
+for f in .claude/commands/mh-dev.md tools/mh-dev/skills/mh-dev/SKILL.md tools/mh-dev/CLAUDE.md \
          tools/mh-dev/templates/semantic-verdict.json tools/mh-dev/templates/acceptance-criteria.json \
          tools/mh-dev/templates/dispatch-prompts.md tools/mh-dev/templates/audit-report.md; do
   [[ -s "$f" ]] && pass "$f" || fail "$f 缺失或为空"

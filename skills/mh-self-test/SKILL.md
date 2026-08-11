@@ -1,4 +1,9 @@
-# Skill: dev-test
+---
+name: mh-self-test
+description: This skill should be used when Worker completes coding, before filling code-report, or when running dev-test. Worker self-test SOP with test execution, lint check, build verification, and self-check checklist.
+---
+
+# Skill: mh-self-test
 
 Worker 开发自测标准操作规程。编码完成后、提交回报前必须执行。
 
@@ -9,6 +14,7 @@ Worker 开发自测标准操作规程。编码完成后、提交回报前必须�
 ## 触发时机
 
 Worker 完成编码实现后，在填写 code-report.md 之前执行。
+
 ## 前置: 读取技术栈信息
 
 1. 读取 `deliverables/{REQ-ID}/.state.md` 中 tech_stack、test_strategy 字段
@@ -95,4 +101,4 @@ Worker 完成编码实现后，在填写 code-report.md 之前执行。
 
 - 任何一步失败：修复后从该步重新执行
 - Worker 内部自修最多 3 次（子循环）：超出后在 handoff 回报中标记 status=failed，附带错误日志
-- Orchestrator 层面的修复循环最多 5 轮（见 mh-apply.md）
+- Orchestrator 层面的修复循环最多 5 轮（见 mh-build skill）

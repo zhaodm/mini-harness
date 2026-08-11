@@ -1,4 +1,9 @@
-# Skill: mh-archive
+---
+name: mh-deliver
+description: This skill should be used when in the archive phase, during deliverable archiving, lessons learned collection, or knowledge base generation. Product archiving, test case sedimentation, execution metrics, experience collection, and project closure.
+---
+
+# Skill: mh-deliver
 
 产物归档 + 结项。Orchestrator 执行，支持首次归档和变更归档两种场景。
 
@@ -56,6 +61,30 @@
 
 从 .state.md 填写 `templates/metrics-template.md` → 保存为 `output/docs/metrics.md`。
 
+---
+
+## 经验采集规则
+
+> 以下内容从 agents/orchestrator.md 下沉。Orchestrator 在关键节点实时记录经验。
+
+Orchestrator 在以下时机自动采集经验并追加到 `deliverables/{REQ-ID}/lessons.md`：
+
+| 采集点 | 触发时机 | 记录内容 |
+|--------|---------|---------|
+| CP-1 | SR 审批被用户驳回 | 驳回原因 + 用户的修正方向 |
+| CP-2 | 用户主动纠正 Agent 行为 | 纠正内容 + 原因 |
+| CP-3 | 修复循环 ≥2 轮 | 系统性根因分析（非个案 bug） |
+
+记录格式：
+```markdown
+### CP-{N} [{时间}] {采集点类型}
+- 触发: {什么情况触发了这条经验}
+- 内容: {具体经验内容}
+- 建议: {对后续执行或框架改进的建议}
+```
+
+---
+
 ## Step ARC-7: 经验沉淀（人机交互）
 
 1. 读取 `deliverables/{REQ-ID}/lessons.md`（自动采集的条目）
@@ -66,7 +95,7 @@
 
 ## Step ARC-8: 分层知识库生成（用户请求时执行）
 
-> **💡 Tip:** 如需为项目生成 AI 友好的分层知识库（system-map + 域指南 + 操作食谱），请在归档交互时告知 Orchestrator "生成知识库"。适合中大型项目的后续维护。
+> **Tip:** 如需为项目生成 AI 友好的分层知识库（system-map + 域指南 + 操作食谱），请在归档交互时告知 Orchestrator "生成知识库"。适合中大型项目的后续维护。
 
 **默认跳过。** 仅当用户在归档阶段明确要求"生成知识库"时执行。
 

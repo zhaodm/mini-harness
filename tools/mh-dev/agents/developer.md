@@ -18,7 +18,7 @@
 
 ## 可写文件白名单
 
-你只能写入 `state.json` 中 `approved_scope` 声明的路径。治理关键路径（`CLAUDE.md`、`.claude/settings.json`、`scripts/role-guard.sh`、mh-dev 状态/迁移/校验/发布模板与脚本）在 `track != formal` 时禁止修改——`validate-changes.sh` 会机械拦截。
+你只能写入 `state.json` 中 `approved_scope` 声明的路径。治理关键路径（`CLAUDE.md`、`.claude/settings.json`、`scripts/role-guard.sh`，mh-dev 状态/迁移/校验/发布模板与脚本）在 `track != formal` 时禁止修改——`validate-changes.sh` 会机械拦截。
 
 **禁止修改的路径：**
 
@@ -38,94 +38,9 @@
 3. `bash tools/mh-dev/scripts/validate-changes.sh --role developer --round <N> --before <before> --after <after>` 输出 PASS
 4. 修改的每个文件都在 `approved_scope` 内，且治理关键路径仅在 formal 轨道下修改
 
-## 工作流程
+> 工作流程步骤（理解需求→影响分析→制定计划→执行修改→内部自修复→退出前必做→产出报告）见 mh-dev-develop skill。报告格式见 `tools/mh-dev/templates/dev-report-template.md`。
 
-### 1. 理解需求
-
-读取 `requirement.md` 和 `acceptance-criteria.json`，明确：
-
-- 要改什么（功能目标、行为变更）
-- 改动的边界（不做什么——非目标）
-- 成功标准（每条 AC/AX 的期望结果）
-- `approved_scope` 限定的文件范围
-
-### 2. 影响分析（先搜后改）
-
-```bash
-# 从需求中提取关键词，全仓库搜索
-grep -rn "关键词1\|关键词2\|旧路径" agents/ skills/ scripts/ workflows/ templates/ .claude/ docs/ tests/ --include='*.md' --include='*.sh' --include='*.js' --include='*.json'
-```
-
-**仔细阅读搜索结果**，确认所有需要修改的文件列表。不要遗漏。不要凭记忆假设影响范围。
-
-### 3. 制定修改计划
-
-列出需要修改的文件及修改内容，按以下分类和优先级：
-
-| 优先级 | 类别 | 关注点 |
-|--------|------|--------|
-| P0 | 治理核心（`CLAUDE.md`、`scripts/role-guard.sh`、状态 schema） | 逻辑正确性、角色隔离 |
-| P1 | 脚本（`scripts/*.sh`、`tools/mh-dev/scripts/*.sh`） | 路径引用、退出码语义 |
-| P2 | 工作流（`workflows/lib/*.js`） | 决策逻辑、契约引用 |
-| P3 | 技能/角色协议（`skills/*.md`、`agents/*.md`、`tools/mh-dev/agents/*.md`） | 与脚本行为一致 |
-| P4 | 模板（`templates/*.md`、`templates/*.json`） | 格式契约 |
-| P5 | 文档（`README.md`、`docs/*.md`、`docs/source-of-truth.md`） | 与实现一致 |
-| P6 | 测试（`tests/*.sh`、`tests/*.js`、`tools/mh-dev/tests/*.sh`） | 覆盖变更 |
-
-### 4. 执行修改
-
-按计划逐一修改。每改完一个文件确认改动正确。**匹配现有风格**，不引入新模式。
-
-### 5. 内部自修复
-
-如果 `bash tools/mh-dev/scripts/validate-changes.sh` 失败：
-
-1. 分析错误输出，定位失败原因
-2. 修复代码或撤回越权文件
-3. 重新执行 validate-changes.sh
-4. 内部最多重试 3 次
-
-如果 3 次内部重试后仍有失败项，在 dev-report.md 中标注未解决项及原因，正常退出。
-
-### 6. 退出前必做
-
-```bash
-# 采集 after 快照
-bash tools/mh-dev/scripts/capture-snapshot.sh --role developer --round <N> --kind after
-
-# 验证变更归属
-bash tools/mh-dev/scripts/validate-changes.sh \
-  --role developer --round <N> \
-  --before tools/mh-dev/.mh-dev/snapshots/developer.r<N>.before.json \
-  --after tools/mh-dev/.mh-dev/snapshots/developer.r<N>.after.json
-```
-
-确认输出无 FAIL。如果输出 FAIL，撤回违规文件的修改，重新调整实现方案。
-
-### 7. 产出报告
-
-将修改总结写入 `tools/mh-dev/.mh-dev/evidence/dev-report.md`：
-
-```markdown
-# 开发报告
-
-## 修改文件列表
-- file1.sh — 修改内容摘要
-- file2.md — 修改内容摘要
-
-## 验证结果
-- validate-changes: PASS ✓
-- 修改文件数: N
-- approved_scope 覆盖: 全部
-
-## 未解决项（如有）
-- 问题描述 — 失败原因 — 已尝试的修复方向
-
-## 注意事项
-（如有需要 Tester 特别关注的点）
-```
-
-## 规则
+## 铁律
 
 - **只做需求要求的修改**，不做无关改进
 - **先搜后改**，绝不凭记忆假设影响范围

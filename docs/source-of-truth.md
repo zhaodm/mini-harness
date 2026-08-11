@@ -12,27 +12,30 @@
 | 设计概念 | 权威源 | 辅助参考 |
 |---------|--------|---------|
 | 全局工程纪律 | CLAUDE.md "工程准则"节 | — |
-| 工作流纪律（流程/隔离/保护） | skills/mh-run.md "工作流纪律"节 | docs/design.md §4.1 |
+| 工作流纪律 | orchestrator.md + CLAUDE.md §6 + skills/mh-codeflow/SKILL.md | docs/design.md §4.1 |
 | 角色职责与禁止事项 | agents/*.md | docs/design.md §3 |
-| 角色质量标准与思考框架 | agents/*.md | — |
-| 流程步骤与 track 裁剪 | skills/mh-*.md | docs/design.md §4 |
-| Orchestrator 调度协议 | agents/orchestrator.md "调度协议"节 | docs/design.md §3 |
-| Orchestrator 质量门禁清单 | agents/orchestrator.md "质量门禁"节 | skills 中引用 |
-| SR Gate 通过标准 | skills/mh-propose.md, mh-apply.md, mh-archive.md | docs/design.md §4 |
+| 角色质量标准与思考框架 | skills/mh-design/SKILL.md + skills/mh-build/SKILL.md + skills/mh-verify/SKILL.md | — |
+| 流程步骤与 track 裁剪 | skills/mh-*/SKILL.md | docs/design.md §4 |
+| Orchestrator 调度协议 | skills/mh-codeflow/SKILL.md "调度协议"节 | docs/design.md §3 |
+| Orchestrator 质量门禁清单 | skills/mh-codeflow/SKILL.md "质量门禁"节 + templates/orchestrator-quality-gate.md | — |
+| SR Gate 通过标准 | skills/mh-design/SKILL.md, skills/mh-build/SKILL.md, skills/mh-deliver/SKILL.md | docs/design.md §4 |
 | 状态 schema | templates/state-template.md | docs/design.md §4.4 |
 | Handoff 协议与格式 | templates/handoff-template.md | docs/design.md §5.3 |
 | 日志格式 | templates/logging-standard.md | — |
-| 修复收敛机制 | skills/mh-apply-repair.md "决策"节 | docs/design.md §6 |
-| repair_history schema | templates/state-template.md | skills/mh-apply-repair.md 示例 |
-| repair_snapshots schema | templates/state-template.md | skills/mh-apply-repair.md "修复派发"节 |
+| 修复收敛机制 | skills/mh-repair/SKILL.md "决策"节 | docs/design.md §6 |
+| repair_history schema | templates/state-template.md | skills/mh-repair/SKILL.md 示例 |
+| repair_snapshots schema | templates/state-template.md | skills/mh-repair/SKILL.md "修复派发"节 |
 | 硬校验规则 | scripts/*.sh | docs/design.md §7.4 |
-| PPT track 补充规则 | skills/mh-ppt.md | docs/design.md §6 |
-| Mini-Harness 自身开发协议 | tools/mh-dev/CLAUDE.md | skills/mh-dev.md, tools/mh-dev/README.md |
+| PPT track 规则 | skills/mh-slideflow/SKILL.md（扩展） | docs/design.md §6 |
+| PPT 视觉约束 | skills/mh-slideflow/SKILL.md "PPT 视觉约束"节 | templates/ppt-quality-rules.md |
+| PPT 实现品质要求 | skills/mh-slideflow/SKILL.md "PPT 实现品质要求"节 | templates/ppt-quality-rules.md |
+| 经验采集规则 | skills/mh-deliver/SKILL.md "经验采集规则"节 | — |
+| Mini-Harness 自身开发协议 | tools/mh-dev/CLAUDE.md | tools/mh-dev/skills/mh-dev/SKILL.md |
 | mh-dev 自开发状态 schema | tools/mh-dev/templates/state.json.template | tools/mh-dev/.mh-dev/state.json |
 | mh-dev 转换、范围与发布硬门禁 | tools/mh-dev/scripts/*.sh | tools/mh-dev/CLAUDE.md |
 | 金标准示例 | templates/examples/*.md | — |
 | 产出结构参考 | templates/output-guides/*.md | — |
-| 执行指标模板 | templates/metrics-template.md | skills/mh-archive.md ARC-4 |
+| 执行指标模板 | templates/metrics-template.md | skills/mh-deliver/SKILL.md ARC-6 |
 
 ---
 
@@ -84,7 +87,7 @@
 - [ ] `grep -r "见 agents/orchestrator.md" skills/` → 确认引用描述与 orchestrator.md 实际内容一致
 - [ ] `grep -r "见 agents/pm.md\|见 agents/ba.md\|见 agents/sa.md\|见 agents/de.md\|见 agents/te.md\|见 agents/ux.md" skills/ docs/` → 确认无旧角色文件引用残留
 - [ ] `grep -r "A/B/C/D" .` → 确认所有引用已更新为 A/B/C/D/E（如适用）
-- [ ] `wc -l skills/mh-*.md` → 确认无文件超过 350 行（超过则规划拆分）
+- [ ] `find skills/ -name '*.md' -not -path '*/SKILL.md'` → 确认无扁平 skill 文件残留
 - [ ] `bash scripts/check-harness.sh` → 框架完整性通过
 - [ ] 对比 state-template.md 与最近的 deliverables/*/.state.md → schema 一致
 - [ ] 检查 CHANGELOG.md 是否已更新

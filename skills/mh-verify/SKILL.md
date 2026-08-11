@@ -1,4 +1,9 @@
-# Skill: post-verify
+---
+name: mh-verify
+description: This skill should be used when running post-verify checks, during Worker delivery verification, or when filling code-report self-check results. Worker delivery pre-check SOP with verify.sh execution, output completeness, unauthorized modification check, and regression check.
+---
+
+# Skill: mh-verify
 
 Worker 交付前校验标准操作规程。dev-test 通过后、填写回报前执行。
 
@@ -8,7 +13,7 @@ Worker 交付前校验标准操作规程。dev-test 通过后、填写回报前�
 
 ## 触发时机
 
-dev-test skill 全部通过后执行。这是 Worker 交付前的最后一道自检。
+mh-self-test skill 全部通过后执行。这是 Worker 交付前的最后一道自检。
 
 ## Step 1: 运行 verify.sh
 
@@ -51,4 +56,4 @@ dev-test skill 全部通过后执行。这是 Worker 交付前的最后一道自
 
 - verify.sh 退出码非 0：根据错误信息修复，重新执行
 - 发现越权修改：撤销后重新检查
-- 回归失败：修复回归问题，重新执行 dev-test + post-verify
+- 回归失败：修复回归问题，重新执行 mh-self-test + mh-verify
