@@ -67,7 +67,7 @@
 
 ### 阶段三：设计文档 + 影响分析
 
-formal 轨需产出设计文档（版本控制归档）：`docs/designs/CR-xxx-<slug>-design.md`。
+formal 轨需产出设计文档（版本控制归档）：`docs/designs/cr-designs/CR-xxx-<slug>-design.md`。
 
 ```bash
 bash tools/mh-dev/scripts/scope-scan.sh "关键词1" "关键词2" ...
@@ -155,7 +155,7 @@ bash tools/mh-dev/scripts/transition-state.sh done --actor planner --expected-re
 
 - `tools/mh-dev/.mh-dev/` 下的 `requirement.md`、`acceptance-criteria.json`、`acceptance-criteria.md`、`state.json`
 - `docs/requirements/CR-*.md` — CR 需求单（版本控制归档）
-- `docs/designs/CR-*-design.md` — 设计文档（版本控制归档）
+- `docs/designs/cr-designs/CR-*-design.md` — 设计文档（版本控制归档）
 
 ## 状态转移操作
 

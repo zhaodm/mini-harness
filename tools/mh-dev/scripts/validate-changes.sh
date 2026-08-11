@@ -84,8 +84,8 @@ if role == 'developer':
  state.setdefault('change_ownership',{}).setdefault(role,{})[str(round_)]=rel
  # 文档同步检查：改动脚本/角色/模板时检查对应文档是否同步
  doc_sync = {
-  'CLAUDE.md': ['README.md','docs/workflow.md','docs/source-of-truth.md'],
-  'scripts/role-guard.sh': ['CLAUDE.md','docs/source-of-truth.md'],
+  'CLAUDE.md': ['README.md','docs/designs/workflow.md','docs/designs/source-of-truth.md'],
+  'scripts/role-guard.sh': ['CLAUDE.md','docs/designs/source-of-truth.md'],
  }
  dev_paths = [x['path'] for x in changes if not x['path'].startswith('tools/mh-dev/.mh-dev/') and x['change'] != 'deleted']
  for path in dev_paths:

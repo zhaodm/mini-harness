@@ -36,7 +36,7 @@ grep -rn "关键词1\|关键词2\|旧路径" agents/ skills/ scripts/ workflows/
 | P2 | 工作流（`workflows/lib/*.js`） | 决策逻辑、契约引用 |
 | P3 | 技能/角色协议（`skills/*.md`、`agents/*.md`、`tools/mh-dev/agents/*.md`） | 与脚本行为一致 |
 | P4 | 模板（`templates/*.md`、`templates/*.json`） | 格式契约 |
-| P5 | 文档（`README.md`、`docs/*.md`、`docs/source-of-truth.md`） | 与实现一致 |
+| P5 | 文档（`README.md`、`docs/*.md`、`docs/designs/source-of-truth.md`） | 与实现一致 |
 | P6 | 测试（`tests/*.sh`、`tests/*.js`、`tools/mh-dev/tests/*.sh`） | 覆盖变更 |
 
 ## 4. 执行修改

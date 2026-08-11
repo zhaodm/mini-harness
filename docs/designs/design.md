@@ -2,7 +2,8 @@
 
 > 本文档是架构地图，不是百科全书。每个概念一句话 + 指向权威源。
 > 执行权威为 skills/*.md 和 agents/*.md，冲突时以它们为准。
-> 权威源完整映射见 `docs/source-of-truth.md`。
+> 权威源完整映射见 `docs/designs/source-of-truth.md`。
+> 各模块的详细运转机制、数据流、扩展方式，请查阅 `docs/kb/domains/` 下对应域指南。
 
 ---
 

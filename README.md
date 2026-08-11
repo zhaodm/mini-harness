@@ -124,9 +124,9 @@ role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}
 | 文档 | 说明 |
 |------|------|
 | CLAUDE.md | 全局规则（最高约束） |
-| docs/design.md | 架构设计文档 |
-| docs/workflow.md | 流程总览 + 状态机 |
-| docs/source-of-truth.md | 权威源映射 |
+| docs/designs/design.md | 架构设计文档 |
+| docs/designs/workflow.md | 流程总览 + 状态机 |
+| docs/designs/source-of-truth.md | 权威源映射 |
 | docs/retrospectives/ | 复盘报告（执行数据 + 问题分析） |
 | docs/requirements/ | 变更请求（框架改进方案） |
 | agents/*.md | 角色契约定义（thinker/worker/verifier/orchestrator） |
@@ -134,4 +134,4 @@ role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}
 
 ---
 
-> 详细架构设计见 `docs/design.md`
+> 详细架构设计见 `docs/designs/design.md`
