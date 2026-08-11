@@ -104,7 +104,7 @@ deliverables/{REQ-ID}/
 | verify-qa.sh | 内容质量校验（模糊词、测试结果、报告完整性） |
 | verify-ppt.sh | PPT 专项（字号底线、导航、视口） |
 
-role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；全局路径穿越检测拒绝包含 `..` 组件的写入路径。
+role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支在 `jq index()` 匹配前将绝对路径剥离仓库根前缀转为相对路径，与 `approved_scope` 精确匹配。
 
 ---
 
@@ -124,9 +124,9 @@ role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}
 | 文档 | 说明 |
 |------|------|
 | CLAUDE.md | 全局规则（最高约束） |
-| docs/design.md | 架构设计文档 |
-| docs/workflow.md | 流程总览 + 状态机 |
-| docs/source-of-truth.md | 权威源映射 |
+| docs/designs/design.md | 架构设计文档 |
+| docs/designs/workflow.md | 流程总览 + 状态机 |
+| docs/designs/source-of-truth.md | 权威源映射 |
 | docs/retrospectives/ | 复盘报告（执行数据 + 问题分析） |
 | docs/requirements/ | 变更请求（框架改进方案） |
 | agents/*.md | 角色契约定义（thinker/worker/verifier/orchestrator） |
@@ -134,4 +134,4 @@ role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}
 
 ---
 
-> 详细架构设计见 `docs/design.md`
+> 详细架构设计见 `docs/designs/design.md`

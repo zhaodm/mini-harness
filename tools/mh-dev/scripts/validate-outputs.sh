@@ -50,6 +50,9 @@ if phase in {'verify','audit'}:
   attribution=load(ref)
   if attribution.get('result')!='PASS' or attribution.get('role')!='tester' or attribution.get('round')!=round_: fail('tester attribution invalid')
   s.setdefault('change_ownership',{}).setdefault('tester',{})[str(round_)]=ref
+  # R5: tester verdict PASS 时回填 done 门禁字段
+  if v['verdict']=='PASS':
+   s['test_verdict']='PASS';s['mechanical_preflight']='pass'
   import tempfile
   fd,tmp=tempfile.mkstemp(dir=os.path.dirname(state_path),prefix='.state.',text=True)
   with os.fdopen(fd,'w',encoding='utf-8') as f: json.dump(s,f,ensure_ascii=False,indent=2); f.write('\n')

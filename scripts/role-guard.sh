@@ -32,17 +32,26 @@ MH_DEV_STATE="${MH_DEV_RUNTIME:-tools/mh-dev/.mh-dev}/state.json"
 if [[ -z "$STATE_FILE" && -f "$MH_DEV_STATE" ]] && jq -e '.workflow == "mh-dev" and (.phase | test("^(intake|propose|develop|verify|repair)$"))' "$MH_DEV_STATE" >/dev/null 2>&1; then
   [[ "$FILE_PATH" =~ tools/mh-dev/\.mh-dev/ ]] && exit 0
 
+  # 路径归一化：绝对路径剥离仓库根前缀，转为相对路径再与 approved_scope 精确匹配。
+  # 与 validate-changes.sh 的归一化口径对齐（见该脚本第 30 行注释）。
+  ROOT="$(pwd)"
+  if [[ "$FILE_PATH" == "$ROOT"/* ]]; then
+    NORM_PATH="${FILE_PATH#$ROOT/}"
+  else
+    NORM_PATH="$FILE_PATH"
+  fi
+
   MH_TRACK=$(jq -r '.track // empty' "$MH_DEV_STATE")
-  if jq -e --arg path "$FILE_PATH" '.approved_scope | index($path) != null' "$MH_DEV_STATE" >/dev/null 2>&1; then
-    case "$FILE_PATH" in
+  if jq -e --arg path "$NORM_PATH" '.approved_scope | index($path) != null' "$MH_DEV_STATE" >/dev/null 2>&1; then
+    case "$NORM_PATH" in
       CLAUDE.md|.claude/settings.json|scripts/role-guard.sh|templates/state-template.md)
-        [[ "$MH_TRACK" == "formal" ]] || { echo "BLOCKED: mh-dev 治理关键路径要求 formal 轨道: $FILE_PATH"; exit 2; }
+        [[ "$MH_TRACK" == "formal" ]] || { echo "BLOCKED: mh-dev 治理关键路径要求 formal 轨道: $NORM_PATH"; exit 2; }
         ;;
     esac
     exit 0
   fi
 
-  echo "BLOCKED: mh-dev 未批准写入路径 $FILE_PATH"
+  echo "BLOCKED: mh-dev 未批准写入路径 $NORM_PATH"
   exit 2
 fi
 

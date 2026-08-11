@@ -67,7 +67,7 @@
 
 ### 阶段三：设计文档 + 影响分析
 
-formal 轨需产出设计文档（版本控制归档）：`docs/designs/CR-xxx-<slug>-design.md`。
+formal 轨需产出设计文档（版本控制归档）：`docs/designs/cr-designs/CR-xxx-<slug>-design.md`。
 
 ```bash
 bash tools/mh-dev/scripts/scope-scan.sh "关键词1" "关键词2" ...
@@ -102,7 +102,9 @@ bash tools/mh-dev/scripts/validate-outputs.sh propose
 **开发-测试循环（最多 max_rounds 轮）：**
 
 ```
-for round in 1..max_rounds:
+# round 口径：首轮（非修复）repair.round=0；第 N 次修复 repair.round=N
+# 循环从 repair.round=0 开始，每次 repair 后 repair.round+1
+for round = 0..max_rounds:
   1. spawn Developer（首轮附 scope-scan 摘要，重试轮附上轮 test-verdict.json 失败详情）
   2. validate-changes.sh --role developer --round N   FAIL → 重新 spawn 要求撤回越权
   3. validate-dev-completion.sh                          FAIL → 让 Developer 继续修复
@@ -112,7 +114,7 @@ for round in 1..max_rounds:
   7. validate-outputs.sh verify                         FAIL → 重新 spawn 要求补齐产出
   8. verdict 分派：
        PASS             → transition-state.sh done → 收尾
-       FAIL_IMPL        → transition-state.sh repair → 下一轮
+       FAIL_IMPL        → transition-state.sh repair → 下一轮（repair.round+1）
        FAIL_DESIGN      → transition-state.sh repair → 回阶段二
        FAIL_REQUIREMENT → transition-state.sh blocked
        BLOCKED          → transition-state.sh blocked
@@ -155,7 +157,7 @@ bash tools/mh-dev/scripts/transition-state.sh done --actor planner --expected-re
 
 - `tools/mh-dev/.mh-dev/` 下的 `requirement.md`、`acceptance-criteria.json`、`acceptance-criteria.md`、`state.json`
 - `docs/requirements/CR-*.md` — CR 需求单（版本控制归档）
-- `docs/designs/CR-*-design.md` — 设计文档（版本控制归档）
+- `docs/designs/cr-designs/CR-*-design.md` — 设计文档（版本控制归档）
 
 ## 状态转移操作
 

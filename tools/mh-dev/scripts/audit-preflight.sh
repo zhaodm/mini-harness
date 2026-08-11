@@ -27,8 +27,8 @@ done
 echo "--- 3. 命令注册一致性 ---"
 grep -q 'mh-dev' README.md && pass "README.md 含 mh-dev" || fail "README.md 不含 mh-dev"
 grep -q 'mh-dev' CLAUDE.md && pass "CLAUDE.md 含 mh-dev" || fail "CLAUDE.md 不含 mh-dev"
-grep -q 'mh-dev' docs/workflow.md && pass "docs/workflow.md 含 mh-dev" || fail "docs/workflow.md 不含 mh-dev"
-grep -q 'mh-dev' docs/source-of-truth.md && pass "docs/source-of-truth.md 含 mh-dev" || fail "docs/source-of-truth.md 不含 mh-dev"
+grep -q 'mh-dev' docs/designs/workflow.md && pass "docs/designs/workflow.md 含 mh-dev" || fail "docs/designs/workflow.md 不含 mh-dev"
+grep -q 'mh-dev' docs/designs/source-of-truth.md && pass "docs/designs/source-of-truth.md 含 mh-dev" || fail "docs/designs/source-of-truth.md 不含 mh-dev"
 
 # 4. shell 语法
 echo "--- 4. Shell 语法 ---"

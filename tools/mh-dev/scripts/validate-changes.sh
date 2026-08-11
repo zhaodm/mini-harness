@@ -17,6 +17,9 @@ def atomically_write(path,data):
  with os.fdopen(fd,'w',encoding='utf-8') as f: json.dump(data,f,ensure_ascii=False,indent=2);f.write('\n')
  os.replace(tmp,path)
 state,before,after=load(state_path),load(before_path),load(after_path)
+# R4: repair.round 是 round 口径单一真相源，命令行 --round 必须与之一致
+state_round=state.get('repair',{}).get('round',0)
+if round_!=state_round: raise SystemExit(f'BLOCKED: --round {round_} != state.json repair.round {state_round}')
 if state.get('workflow')!='mh-dev': raise SystemExit('BLOCKED: invalid mh-dev state')
 for snap,point in [(before,'before'),(after,'after')]:
  if snap.get('role')!=role or snap.get('round')!=round_ or snap.get('point')!=point: raise SystemExit(f'BLOCKED: {point} snapshot provenance mismatch')
@@ -84,8 +87,8 @@ if role == 'developer':
  state.setdefault('change_ownership',{}).setdefault(role,{})[str(round_)]=rel
  # 文档同步检查：改动脚本/角色/模板时检查对应文档是否同步
  doc_sync = {
-  'CLAUDE.md': ['README.md','docs/workflow.md','docs/source-of-truth.md'],
-  'scripts/role-guard.sh': ['CLAUDE.md','docs/source-of-truth.md'],
+  'CLAUDE.md': ['README.md','docs/designs/workflow.md','docs/designs/source-of-truth.md'],
+  'scripts/role-guard.sh': ['CLAUDE.md','docs/designs/source-of-truth.md'],
  }
  dev_paths = [x['path'] for x in changes if not x['path'].startswith('tools/mh-dev/.mh-dev/') and x['change'] != 'deleted']
  for path in dev_paths:

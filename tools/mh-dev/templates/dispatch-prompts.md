@@ -4,6 +4,8 @@ Planner 调度 Developer/Tester/Auditor 时必须逐字取用以下模板，不�
 
 所有模板均包含中文输出要求，不做语言自动检测。
 
+> **`<N>` 取值规则：** 模板中所有 `<N>` 占位符统一取 `state.json` 的 `repair.round` 值。首轮（非修复）repair.round=0，第 N 次修复 repair.round=N。
+
 ---
 
 ## Developer — 首轮

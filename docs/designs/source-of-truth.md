@@ -12,20 +12,21 @@
 | 设计概念 | 权威源 | 辅助参考 |
 |---------|--------|---------|
 | 全局工程纪律 | CLAUDE.md "工程准则"节 | — |
-| 工作流纪律 | orchestrator.md + CLAUDE.md §6 + skills/mh-codeflow/SKILL.md | docs/design.md §4.1 |
-| 角色职责与禁止事项 | agents/*.md | docs/design.md §3 |
+| 工作流纪律 | orchestrator.md + CLAUDE.md §6 + skills/mh-codeflow/SKILL.md | docs/designs/design.md §4.1 |
+| 角色职责与禁止事项 | agents/*.md | docs/designs/design.md §3 |
 | 角色质量标准与思考框架 | skills/mh-design/SKILL.md + skills/mh-build/SKILL.md + skills/mh-verify/SKILL.md | — |
-| 流程步骤与 track 裁剪 | skills/mh-*/SKILL.md | docs/design.md §4 |
-| Orchestrator 调度协议 | skills/mh-codeflow/SKILL.md "调度协议"节 | docs/design.md §3 |
+| 流程步骤与 track 裁剪 | skills/mh-*/SKILL.md | docs/designs/design.md §4 |
+| Orchestrator 调度协议 | skills/mh-codeflow/SKILL.md "调度协议"节 | docs/designs/design.md §3 |
 | Orchestrator 质量门禁清单 | skills/mh-codeflow/SKILL.md "质量门禁"节 + templates/orchestrator-quality-gate.md | — |
-| SR Gate 通过标准 | skills/mh-design/SKILL.md, skills/mh-build/SKILL.md, skills/mh-deliver/SKILL.md | docs/design.md §4 |
-| 状态 schema | templates/state-template.md | docs/design.md §4.4 |
-| Handoff 协议与格式 | templates/handoff-template.md | docs/design.md §5.3 |
+| SR Gate 通过标准 | skills/mh-design/SKILL.md, skills/mh-build/SKILL.md, skills/mh-deliver/SKILL.md | docs/designs/design.md §4 |
+| 状态 schema | templates/state-template.md | docs/designs/design.md §4.4 |
+| Handoff 协议与格式 | templates/handoff-template.md | docs/designs/design.md §5.3 |
 | 日志格式 | templates/logging-standard.md | — |
-| 修复收敛机制 | skills/mh-repair/SKILL.md "决策"节 | docs/design.md §6 |
+| 修复收敛机制 | skills/mh-repair/SKILL.md "决策"节 | docs/designs/design.md §6 |
 | repair_history schema | templates/state-template.md | skills/mh-repair/SKILL.md 示例 |
 | repair_snapshots schema | templates/state-template.md | skills/mh-repair/SKILL.md "修复派发"节 |
-| 硬校验规则 | scripts/*.sh | docs/design.md §7.4 || PPT track 规则 | skills/mh-slideflow/SKILL.md（扩展） | docs/design.md §6 |
+| 硬校验规则 | scripts/*.sh | docs/designs/design.md §7.4 |
+| PPT track 规则 | skills/mh-slideflow/SKILL.md（扩展） | docs/designs/design.md §6 |
 | PPT 视觉约束 | skills/mh-slideflow/SKILL.md "PPT 视觉约束"节 | templates/ppt-quality-rules.md |
 | PPT 实现品质要求 | skills/mh-slideflow/SKILL.md "PPT 实现品质要求"节 | templates/ppt-quality-rules.md |
 | 经验采集规则 | skills/mh-deliver/SKILL.md "经验采集规则"节 | — |
@@ -35,6 +36,7 @@
 | 金标准示例 | templates/examples/*.md | — |
 | 产出结构参考 | templates/output-guides/*.md | — |
 | 执行指标模板 | templates/metrics-template.md | skills/mh-deliver/SKILL.md ARC-6 |
+| 框架知识库 | docs/kb/system-map.md + domains/*.md | docs/designs/design.md |
 
 ---
 
@@ -62,8 +64,8 @@
 
 ## 冲突解决规则
 
-1. **skills/*.md vs docs/design.md** → 以 skills 为准（skills 是执行权威）
-2. **agents/*.md vs docs/design.md** → 以 agents 为准（agents 是角色契约）
+1. **skills/*.md vs docs/designs/design.md** → 以 skills 为准（skills 是执行权威）
+2. **agents/*.md vs docs/designs/design.md** → 以 agents 为准（agents 是角色契约）
 3. **CLAUDE.md vs 其他所有文件** → 以 CLAUDE.md 为准（最高约束）
 4. **templates/ vs skills/** → templates 定义格式，skills 定义何时使用
 5. **scripts/*.sh vs Agent 自述** → 以 scripts 退出码为准（硬校验 > 自述）
@@ -72,11 +74,11 @@
 
 ## 维护规则
 
-- 修改 skills/agents 后，检查 design.md 对应章节是否需要同步
+- 修改 skills/agents 后，检查 docs/designs/design.md 对应章节是否需要同步
 - 新增模板文件后，更新本文件的映射表
-- 新增 scripts 检查项后，更新 design.md §6
+- 新增 scripts 检查项后，更新 docs/designs/design.md §6
 - 发现映射表与实际不符时，以实际文件为准，更新映射表
-- `scripts/role-guard.sh` WORKER 角色可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`、`.archiveignore` 外的所有路径（项目代码路径放行）；全局路径穿越检测拒绝包含 `..` 组件的写入路径
+- `scripts/role-guard.sh` WORKER 角色可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`、`.archiveignore` 外的所有路径（项目代码路径放行）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支在 `jq index()` 匹配前将绝对路径剥离仓库根前缀转为相对路径，与 `approved_scope` 精确匹配
 
 ---
 

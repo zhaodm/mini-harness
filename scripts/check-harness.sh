@@ -43,7 +43,7 @@ for script in verify.sh baseline.sh check-harness.sh verify-ppt.sh verify-archiv
 done
 
 printf '\n--- 框架目录与模板 ---\n'
-for dir in agents skills scripts templates workflows workflows/lib tests docs docs/designs docs/requirements docs/retrospectives templates/ppt-templates/layouts templates/examples templates/output-guides tools/mh-dev; do
+for dir in agents skills scripts templates workflows workflows/lib tests docs docs/designs docs/designs/modules docs/designs/cr-designs docs/requirements docs/retrospectives templates/ppt-templates/layouts templates/examples templates/output-guides tools/mh-dev; do
   [[ -d "$dir" ]] && pass "$dir/" || fail "$dir/ 不存在"
 done
 for file in templates/handoff-template.md templates/logging-standard.md templates/state-template.md templates/output-structure.md templates/ppt-base.css templates/ppt-base.html \
