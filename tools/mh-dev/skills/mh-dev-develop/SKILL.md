@@ -63,8 +63,8 @@ bash tools/mh-dev/scripts/capture-snapshot.sh --role developer --round <N> --kin
 # 验证变更归属
 bash tools/mh-dev/scripts/validate-changes.sh \
   --role developer --round <N> \
-  --before tools/mh-dev/.mh-dev/snapshots/developer.r<N>.before.json \
-  --after tools/mh-dev/.mh-dev/snapshots/developer.r<N>.after.json
+  --before tools/mh-dev/.mh-dev/snapshots/developer.<N>.before.json \
+  --after tools/mh-dev/.mh-dev/snapshots/developer.<N>.after.json
 ```
 
 确认输出无 FAIL。如果输出 FAIL，撤回违规文件的修改，重新调整实现方案。

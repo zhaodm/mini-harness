@@ -85,17 +85,22 @@ bash tools/mh-dev/scripts/scope-scan.sh "关键词1" "关键词2" ...
 ```bash
 bash tools/mh-dev/scripts/precondition-check.sh
 bash tools/mh-dev/scripts/validate-outputs.sh propose
+bash tools/mh-dev/scripts/audit-preflight.sh
 ```
 必须全部 PASS 才能继续。
+
+⛔ **`audit-preflight.sh` 是 `mechanical_preflight` 的唯一证据源**（落盘 `evidence/audit-preflight.json`，含实际 `exit_code`）。它与 tester verdict 是 done 门禁的两道独立门禁，Planner 须在每轮 `validate-outputs.sh verify` **之前**执行——verify 只在证据存在且 `exit_code==0` 时回填 `mechanical_preflight=pass`，否则字段保持 `pending` 并在 done 处阻断。
 
 **基线捕获规则：**
 
 | 文件 | 时机 | 用途 |
 |------|------|------|
-| `snapshots/developer.r<N>.before.json` | 每轮 Developer 开发**前** | Developer 差集基线 |
-| `snapshots/developer.r<N>.after.json` | 每轮 Developer 完成**后** | Developer 增量 + Tester 基线 |
-| `snapshots/tester.r<N>.before.json` | 每轮 Tester 测试**前** | Tester 差集基线 |
-| `snapshots/tester.r<N>.after.json` | 每轮 Tester 完成**后** | Tester 增量 |
+| `snapshots/developer.<N>.before.json` | 每轮 Developer 开发**前** | Developer 差集基线 |
+| `snapshots/developer.<N>.after.json` | 每轮 Developer 完成**后** | Developer 增量 + Tester 基线 |
+| `snapshots/tester.<N>.before.json` | 每轮 Tester 测试**前** | Tester 差集基线 |
+| `snapshots/tester.<N>.after.json` | 每轮 Tester 完成**后** | Tester 增量 |
+
+`<N>` 即 `repair.round`（首轮为 0），与 `state.snapshots` 键 `developer.<N>`、归属证据 `change-attribution.developer.<N>.json` 命名形态一致，均不带 `r` 前缀。
 
 ⛔ **Developer before 快照不得在重试轮复用首轮的。** 重试轮必须重新采集，否则上轮 Developer 的越权会被纳入基线。`validate-changes.sh` 以 before/after SHA-256 差集计算增量，预先存在但本轮未变化的脏文件不归属当前角色。
 
@@ -142,9 +147,9 @@ bash tools/mh-dev/scripts/transition-state.sh done --actor planner --expected-re
 
 用户通过 `/mh-dev audit` 触发审计轨。审计轨不修改开发轨 state.json 的 phase，流程：
 
-1. 前置检查：`bash tools/mh-dev/scripts/validate-outputs.sh audit`（校验 test-verdict.json 存在且 PASS）
-2. 通过 Agent tool 调度 Auditor SubAgent
-3. Auditor 产出 `docs/audits/<YYYY-MM-DD>-<topic>-verdict.json` + `docs/audits/<YYYY-MM-DD>-<topic>-report.md`
+1. 通过 Agent tool 调度 Auditor SubAgent
+2. Auditor 产出 `docs/audits/<YYYY-MM-DD>-<topic>-verdict.json` + `docs/audits/<YYYY-MM-DD>-<topic>-report.md`
+3. Planner 把该 verdict 的仓库相对路径登记到 state.json 的 `audit_verdict_path`，再执行 `bash tools/mh-dev/scripts/validate-outputs.sh audit` 校验它
 4. Planner 报告摘要 + "如需修复，请另开会话执行 /mh-dev"
 
 审计轨不触发 repair 循环，不修改开发轨 phase。
@@ -163,7 +168,7 @@ bash tools/mh-dev/scripts/transition-state.sh done --actor planner --expected-re
 
 每次状态转移前必须执行 `bash tools/mh-dev/scripts/transition-state.sh <next-phase> --actor planner --expected-revision <N>`，它内部调用 `check-transition.sh` 验证后原子更新 phase、revision、timestamps、repair 信息。`check-transition.sh <phase>` 仅用于只读预检。
 
-`phase_timestamps` 为纯记录用途（阶段耗时可观测），不参与任何门禁判定。
+`phase_timestamps` 主要用于阶段耗时观测，同时参与 `intake → propose` 的残留会话检测：其中含 `develop`/`verify`/`done` 任一即视为跨 CR 复用的残留 state，转移被阻断，须先执行 `reset-session.sh`。除该项残留检测外不参与其他门禁判定。
 
 ## 可用脚本
 

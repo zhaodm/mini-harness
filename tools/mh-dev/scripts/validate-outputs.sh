@@ -5,9 +5,13 @@ ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"; RUNTIME="${MH_DEV_RUNTIME:-$
 python3 - "$ROOT_DIR" "$RUNTIME" "$STATE" "$PHASE" <<'PY'
 import json,os,re,sys
 root,runtime,state_path,phase=sys.argv[1:]
-def load(name):
- with open(os.path.join(runtime,name),encoding='utf-8') as f:return json.load(f)
 def fail(msg): raise SystemExit('BLOCKED: '+msg)
+def load(name):
+ # 任何缺失/畸形输入都转 BLOCKED，不向上抛 traceback
+ try:
+  with open(os.path.join(runtime,name),encoding='utf-8') as f:return json.load(f)
+ except FileNotFoundError: fail('required runtime file missing: '+name)
+ except json.JSONDecodeError as e: fail('malformed JSON in %s: %s'%(name,e))
 def nonempty(v): return isinstance(v,str) and v.strip() and not re.search(r'\b(TBD|TODO|待补充)\b',v,re.I)
 s=load('state.json'); track=s.get('track'); round_=s.get('repair',{}).get('round',0)
 criteria_path=os.path.join(runtime,'acceptance-criteria.json')
@@ -35,7 +39,7 @@ def validate_verdict(name,role):
  actual={x.get('id') for x in v.get('acceptance',[])}
  if actual!=required or len(actual)!=len(v.get('acceptance',[])): fail(f'{role} acceptance coverage incomplete')
  return v
-if phase in {'verify','audit'}:
+if phase=='verify':
  v=validate_verdict('evidence/test-verdict.json','tester'); commands={x.get('id'):x for x in v.get('commands',[])}
  if not commands: fail('tester command evidence missing')
  for cmd in commands.values():
@@ -50,9 +54,17 @@ if phase in {'verify','audit'}:
   attribution=load(ref)
   if attribution.get('result')!='PASS' or attribution.get('role')!='tester' or attribution.get('round')!=round_: fail('tester attribution invalid')
   s.setdefault('change_ownership',{}).setdefault('tester',{})[str(round_)]=ref
-  # R5: tester verdict PASS 时回填 done 门禁字段
+  # R5: tester verdict PASS 时回填 test_verdict
   if v['verdict']=='PASS':
-   s['test_verdict']='PASS';s['mechanical_preflight']='pass'
+   s['test_verdict']='PASS'
+   # R6: mechanical_preflight 有独立证据源，仅在证据存在且 exit_code==0 时回填。
+   # 缺失或非零时保持 pending，交由 done 门禁阻断；此处不 fail（机械预检是 Planner 职责）。
+   pf=os.path.join(runtime,'evidence/audit-preflight.json')
+   if os.path.isfile(pf):
+    try:
+     with open(pf,encoding='utf-8') as f: pfd=json.load(f)
+     if pfd.get('exit_code')==0: s['mechanical_preflight']='pass'
+    except json.JSONDecodeError: pass
   import tempfile
   fd,tmp=tempfile.mkstemp(dir=os.path.dirname(state_path),prefix='.state.',text=True)
   with os.fdopen(fd,'w',encoding='utf-8') as f: json.dump(s,f,ensure_ascii=False,indent=2); f.write('\n')
@@ -62,15 +74,22 @@ if phase in {'verify','audit'}:
   if tc_required:
    import subprocess
    changed=subprocess.check_output(['git','-C',root,'diff','--name-only','HEAD'],text=True).splitlines()+subprocess.check_output(['git','-C',root,'ls-files','--others','--exclude-standard'],text=True).splitlines()
-   has_test=any('test' in p for p in changed if p)
+   # R15: 路径前缀语义，与 role-guard.sh 的 Tester 放行、validate-changes.sh 的 tester_scope 同口径。
+   # 旧实现 'test' in p 是任意位置子串，docs/latest-notes.md 之类路径可误满足。
+   has_test=any(p.startswith('tests/') or p.startswith('tools/mh-dev/tests/') for p in changed if p)
    if not has_test: fail('testcase_adding_required=true but no test file changes detected')
   print('PASS: tester verdict complete');raise SystemExit(0)
 if phase=='audit':
- # Auditor writes to docs/audits/<date>-<topic>-verdict.json, not evidence/semantic-verdict.json
- import glob
- audit_files=sorted(glob.glob(os.path.join(root,'docs/audits','*-verdict.json')))
- if not audit_files: fail('no audit verdict found in docs/audits/')
- with open(audit_files[-1],encoding='utf-8') as f:a=json.load(f)
+ # 登记制：校验对象由 state.json 的 audit_verdict_path 指定（相对仓库根），
+ # 不猜「最新文件」——否则本次结论会受目录内历史文件影响。
+ # audit 分支完全不读 evidence/test-verdict.json：审计已提交范围时开发轨运行态证据不参与判定。
+ rel=s.get('audit_verdict_path','')
+ if not rel: fail('audit_verdict_path not registered in state.json')
+ target=os.path.join(root,rel)
+ if not os.path.isfile(target): fail('registered audit verdict not found: '+rel)
+ try:
+  with open(target,encoding='utf-8') as f:a=json.load(f)
+ except json.JSONDecodeError as e: fail('malformed JSON in %s: %s'%(rel,e))
  if a.get('role')!='auditor' or a.get('verdict') not in {'PASS','FAIL','BLOCKED'} or not nonempty(a.get('generated_at','')): fail('invalid auditor verdict header')
  if a.get('tester_verdict_ref')!='evidence/test-verdict.json' or a.get('mechanical_preflight',{}).get('exit_code')!=0: fail('auditor prerequisites invalid')
  evidence={x.get('id') for x in a.get('evidence',[]) if nonempty(x.get('id',''))}

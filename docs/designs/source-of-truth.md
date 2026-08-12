@@ -78,7 +78,7 @@
 - 新增模板文件后，更新本文件的映射表
 - 新增 scripts 检查项后，更新 docs/designs/design.md §6
 - 发现映射表与实际不符时，以实际文件为准，更新映射表
-- `scripts/role-guard.sh` WORKER 角色可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`、`.archiveignore` 外的所有路径（项目代码路径放行）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支在 `jq index()` 匹配前将绝对路径剥离仓库根前缀转为相对路径，与 `approved_scope` 精确匹配
+- `scripts/role-guard.sh` WORKER 角色可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`、`.archiveignore` 外的所有路径（项目代码路径放行）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd，`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行（与 `tools/mh-dev/scripts/validate-changes.sh` 的 tester_scope 同口径）
 
 ---
 

@@ -398,6 +398,11 @@ setup_mhdev_state_r45() {
   cat > "$MH_DEV_RUNTIME/state.json" << EOF
 {"workflow":"mh-dev","phase":"$phase","revision":1,"approved_scope":["scripts/role-guard.sh"],"track":"formal","testcase_adding_required":false,"mechanical_preflight":"pending","test_verdict":"pending","repair":{"round":$round,"max_rounds":3,"status":"active","reason":"","source_verdict":""},"snapshots":{},"change_ownership":{},"approvals":{"intake":"approved","design":"approved","delivery":"pending"}}
 EOF
+  # CR-013 R6: mechanical_preflight 有独立证据源，回填条件为证据存在且 exit_code==0。
+  # 夹具须显式提供该证据，否则 verify 不再回填（CR-012 的无条件回填已废弃）。
+  cat > "$MH_DEV_RUNTIME/evidence/audit-preflight.json" << 'EOF'
+{"schema_version":1,"exit_code":0,"checked_at":"2026-08-11T00:00:00Z","pass":40,"fail":0}
+EOF
 }
 
 # 确保无 deliverable 状态干扰
@@ -463,15 +468,15 @@ cat > "$MH_DEV_RUNTIME/acceptance-criteria.json" << 'CRITEOF'
 {"schema_version":1,"cr_id":"CR-011","items":[{"id":"AC-01","kind":"AC","statement":"test","required_evidence":"test"},{"id":"AX-01","kind":"AX","statement":"boundary","required_evidence":"test"}]}
 CRITEOF
 cat > "$MH_DEV_RUNTIME/evidence/test-verdict.json" << 'TVEOF'
-{"schema_version":1,"role":"tester","round":1,"verdict":"PASS","generated_at":"2026-08-11T00:00:00Z","delta_ref":"snapshots/developer.r1.after.json","commands":[{"id":"cmd-01","command":"bash tests/run-all-tests.sh","cwd":"/tmp","started_at":"2026-08-11T00:00:00Z","ended_at":"2026-08-11T00:00:01Z","exit_code":0,"summary":"passed"}],"acceptance":[{"id":"AC-01","status":"PASS","evidence":["cmd-01"],"summary":"passed"},{"id":"AX-01","status":"PASS","evidence":["cmd-01"],"summary":"passed"}],"failures":[],"summary":"passed"}
+{"schema_version":1,"role":"tester","round":1,"verdict":"PASS","generated_at":"2026-08-11T00:00:00Z","delta_ref":"snapshots/developer.1.after.json","commands":[{"id":"cmd-01","command":"bash tests/run-all-tests.sh","cwd":"/tmp","started_at":"2026-08-11T00:00:00Z","ended_at":"2026-08-11T00:00:01Z","exit_code":0,"summary":"passed"}],"acceptance":[{"id":"AC-01","status":"PASS","evidence":["cmd-01"],"summary":"passed"},{"id":"AX-01","status":"PASS","evidence":["cmd-01"],"summary":"passed"}],"failures":[],"summary":"passed"}
 TVEOF
 cat > "$MH_DEV_RUNTIME/evidence/change-attribution.tester.1.json" << 'ATTEOF'
-{"schema_version":1,"role":"tester","round":1,"before_snapshot":"snapshots/tester.r1.before.json","after_snapshot":"snapshots/tester.r1.after.json","changed":[],"violations":[],"result":"PASS","validated_at":"2026-08-11T00:00:00Z"}
+{"schema_version":1,"role":"tester","round":1,"before_snapshot":"snapshots/tester.1.before.json","after_snapshot":"snapshots/tester.1.after.json","changed":[],"violations":[],"result":"PASS","validated_at":"2026-08-11T00:00:00Z"}
 ATTEOF
 python3 -c "
 import json
 s=json.load(open('$MH_DEV_RUNTIME/state.json'))
-s['snapshots']={'tester.1':{'before':'snapshots/tester.r1.before.json','after':'snapshots/tester.r1.after.json','attribution':'evidence/change-attribution.tester.1.json'}}
+s['snapshots']={'tester.1':{'before':'snapshots/tester.1.before.json','after':'snapshots/tester.1.after.json','attribution':'evidence/change-attribution.tester.1.json'}}
 json.dump(s,open('$MH_DEV_RUNTIME/state.json','w'),indent=2)
 "
 TOTAL=$((TOTAL + 1))
@@ -511,6 +516,69 @@ else
   FAIL=$((FAIL + 1))
 fi
 
+# CR-013 R6 负例: 删除机械预检证据后 verify 不回填 mechanical_preflight，done 门禁须阻断
+rm -f "$MH_DEV_RUNTIME/evidence/audit-preflight.json"
+python3 -c "
+import json
+s=json.load(open('$MH_DEV_RUNTIME/state.json'))
+s['mechanical_preflight']='pending'; s['test_verdict']='pending'
+json.dump(s,open('$MH_DEV_RUNTIME/state.json','w'),indent=2)
+"
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/validate-outputs.sh verify 2>&1)
+code=$?
+mech_preflight=$(python3 -c "import json;s=json.load(open('$MH_DEV_RUNTIME/state.json'));print(s.get('mechanical_preflight',''))")
+if [ "$mech_preflight" = "pending" ]; then
+  echo -e "  ${GREEN}PASS${NC}: CR-013: 证据缺失时 mechanical_preflight 保持 pending"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: CR-013: 证据缺失仍回填 mechanical_preflight=$mech_preflight"
+  FAIL=$((FAIL + 1))
+fi
+
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/check-transition.sh done 2>&1)
+code=$?
+if [ $code -ne 0 ] && echo "$output" | grep -q "mechanical and tester PASS required"; then
+  echo -e "  ${GREEN}PASS${NC}: CR-013: 证据缺失时 check-transition.sh done → BLOCKED"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: CR-013: done 门禁应阻断 (got exit=$code)"
+  echo "        output: $output"
+  FAIL=$((FAIL + 1))
+fi
+
+# CR-013 R6 负例: 证据 exit_code=1 时同样不回填
+setup_mhdev_state_r45 1
+cat > "$MH_DEV_RUNTIME/evidence/audit-preflight.json" << 'EOF'
+{"schema_version":1,"exit_code":1,"checked_at":"2026-08-11T00:00:00Z","pass":38,"fail":2}
+EOF
+cat > "$MH_DEV_RUNTIME/acceptance-criteria.json" << 'CRITEOF'
+{"schema_version":1,"cr_id":"CR-011","items":[{"id":"AC-01","kind":"AC","statement":"test","required_evidence":"test"},{"id":"AX-01","kind":"AX","statement":"boundary","required_evidence":"test"}]}
+CRITEOF
+cat > "$MH_DEV_RUNTIME/evidence/test-verdict.json" << 'TVEOF'
+{"schema_version":1,"role":"tester","round":1,"verdict":"PASS","generated_at":"2026-08-11T00:00:00Z","delta_ref":"snapshots/developer.1.after.json","commands":[{"id":"cmd-01","command":"bash tests/run-all-tests.sh","cwd":"/tmp","started_at":"2026-08-11T00:00:00Z","ended_at":"2026-08-11T00:00:01Z","exit_code":0,"summary":"passed"}],"acceptance":[{"id":"AC-01","status":"PASS","evidence":["cmd-01"],"summary":"passed"},{"id":"AX-01","status":"PASS","evidence":["cmd-01"],"summary":"passed"}],"failures":[],"summary":"passed"}
+TVEOF
+cat > "$MH_DEV_RUNTIME/evidence/change-attribution.tester.1.json" << 'ATTEOF'
+{"schema_version":1,"role":"tester","round":1,"before_snapshot":"snapshots/tester.1.before.json","after_snapshot":"snapshots/tester.1.after.json","changed":[],"violations":[],"result":"PASS","validated_at":"2026-08-11T00:00:00Z"}
+ATTEOF
+python3 -c "
+import json
+s=json.load(open('$MH_DEV_RUNTIME/state.json'))
+s['snapshots']={'tester.1':{'before':'snapshots/tester.1.before.json','after':'snapshots/tester.1.after.json','attribution':'evidence/change-attribution.tester.1.json'}}
+json.dump(s,open('$MH_DEV_RUNTIME/state.json','w'),indent=2)
+"
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/validate-outputs.sh verify 2>&1)
+mech_preflight=$(python3 -c "import json;s=json.load(open('$MH_DEV_RUNTIME/state.json'));print(s.get('mechanical_preflight',''))")
+if [ "$mech_preflight" = "pending" ]; then
+  echo -e "  ${GREEN}PASS${NC}: CR-013: 证据 exit_code=1 时 mechanical_preflight 不为 pass"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: CR-013: exit_code=1 仍回填 mechanical_preflight=$mech_preflight"
+  FAIL=$((FAIL + 1))
+fi
+
 # AX-05: transition-state.sh repair 后 repair.round+1
 setup_mhdev_state_r45 0 verify
 TOTAL=$((TOTAL + 1))
@@ -530,6 +598,262 @@ else
   echo "        output: $output"
   FAIL=$((FAIL + 1))
 fi
+
+# --- 9. CR-013 R11: Tester 专属路径放行与前缀伪造 ---
+echo ""
+echo "--- 9. CR-013 R11: tests/ 放行口径 ---"
+rm -rf deliverables/TEST001 deliverables/.state.md
+setup_mhdev_state_r45 1
+# approved_scope 仅含 scripts/role-guard.sh，不含任何 tests/ 条目
+assert_guard() {
+  local expected=$1 path=$2 desc=$3
+  TOTAL=$((TOTAL + 1))
+  local out code
+  out=$(echo "{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"$path\"}}" | bash scripts/role-guard.sh 2>&1)
+  code=$?
+  if [ "$code" = "$expected" ]; then
+    echo -e "  ${GREEN}PASS${NC}: $desc"
+    PASS=$((PASS + 1))
+  else
+    echo -e "  ${RED}FAIL${NC}: $desc (exit=$code want=$expected)"
+    echo "        output: $out"
+    FAIL=$((FAIL + 1))
+  fi
+}
+assert_guard 0 "tests/x.sh"                    "AC-20: tests/x.sh 放行（无需列入 approved_scope）"
+assert_guard 0 "$SCRIPT_DIR/tests/x.sh"        "AC-20: tests/x.sh 绝对形态放行"
+assert_guard 0 "tools/mh-dev/tests/y.sh"       "AC-20: tools/mh-dev/tests/y.sh 放行"
+assert_guard 0 "$SCRIPT_DIR/tools/mh-dev/tests/y.sh" "AC-20: tools/mh-dev/tests/y.sh 绝对形态放行"
+assert_guard 2 "tests-evil/x.sh"               "AX-20: tests-evil/x.sh 前缀伪造拦截"
+assert_guard 2 "mytests/x.sh"                  "AX-20: mytests/x.sh 拦截"
+assert_guard 2 "tools/mh-dev/tests-evil/x.sh"  "AX-20: tools/mh-dev/tests-evil/x.sh 拦截"
+assert_guard 2 "tests"                         "AX-20: 裸文件名 tests 拦截"
+assert_guard 2 "src/x.js"                      "AX-20: src/x.js 仍需 approved_scope"
+assert_guard 2 "/tmp/tests/x.sh"               "AX-20: 仓库外 /tmp/tests/x.sh 拦截"
+assert_guard 2 "tests/../CLAUDE.md"            "AX-20: tests/../CLAUDE.md 穿越拦截"
+
+# --- 10. CR-013 R10: 违规判定先于归属落盘 ---
+echo ""
+echo "--- 10. CR-013 R10: doc_sync 违规不写归属 ---"
+mksnap_r10() {
+  local point=$1 out=$2; shift 2
+  python3 - "$out" "$point" "$@" << 'PY'
+import json,sys
+out,point=sys.argv[1:3]; paths=sys.argv[3:]
+entries=[{'path':p,'old_path':None,'porcelain_status':' M',
+          'sha256':('a'*64 if point=='before' else 'b'*64),'tracked':True} for p in paths]
+json.dump({'schema_version':1,'workflow':'mh-dev','role':'developer','round':1,'point':point,
+           'captured_at':'2026-08-11T00:00:00Z','repo_head':'x'*40,'entries':entries},
+          open(out,'w'),indent=2)
+PY
+}
+setup_mhdev_state_r45 1 develop
+python3 -c "
+import json
+s=json.load(open('$MH_DEV_RUNTIME/state.json'))
+s['approved_scope']=['scripts/role-guard.sh','CLAUDE.md','README.md',
+ 'docs/designs/workflow.md','docs/designs/source-of-truth.md','docs/kb/domains/guards.md']
+json.dump(s,open('$MH_DEV_RUNTIME/state.json','w'),indent=2)
+"
+# 改 role-guard.sh 但不同步 guards.md 等 → 必须 BLOCKED 且不写 change_ownership
+mksnap_r10 before "$MH_DEV_RUNTIME/snapshots/r10.before.json" scripts/role-guard.sh
+mksnap_r10 after  "$MH_DEV_RUNTIME/snapshots/r10.after.json"  scripts/role-guard.sh
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/validate-changes.sh --role developer --round 1 \
+  --before "$MH_DEV_RUNTIME/snapshots/r10.before.json" \
+  --after "$MH_DEV_RUNTIME/snapshots/r10.after.json" 2>&1)
+code=$?
+co=$(python3 -c "import json;print(json.dumps(json.load(open('$MH_DEV_RUNTIME/state.json')).get('change_ownership',{})))")
+if [ $code -ne 0 ] && echo "$output" | grep -q "doc sync required" && [ "$co" = "{}" ]; then
+  echo -e "  ${GREEN}PASS${NC}: AC-19: doc_sync 违规 BLOCKED 且不写 change_ownership"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-19: doc_sync 违规处置异常 (exit=$code change_ownership=$co)"
+  echo "        output: $output"
+  FAIL=$((FAIL + 1))
+fi
+
+TOTAL=$((TOTAL + 1))
+att="$MH_DEV_RUNTIME/evidence/change-attribution.developer.1.json"
+res=$(python3 -c "
+import json,os
+p='$att'
+print(json.load(open(p)).get('result','') if os.path.exists(p) else 'ABSENT')")
+if [ "$res" = "FAIL" ] || [ "$res" = "ABSENT" ]; then
+  echo -e "  ${GREEN}PASS${NC}: AC-19: 落盘归属不记 result=PASS (result=$res)"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-19: 落盘归属 result=$res 应为 FAIL 或不落盘"
+  FAIL=$((FAIL + 1))
+fi
+
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/check-transition.sh verify 2>&1)
+code=$?
+if [ $code -ne 0 ] && echo "$output" | grep -q "developer attribution required"; then
+  echo -e "  ${GREEN}PASS${NC}: AC-19: doc_sync 阻断后 develop→verify 门禁仍拦"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-19: develop→verify 门禁被绕过 (exit=$code)"
+  echo "        output: $output"
+  FAIL=$((FAIL + 1))
+fi
+
+# 归属一律不可变：FAIL 归属同样不可被同轮重跑覆盖
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/validate-changes.sh --role developer --round 1 \
+  --before "$MH_DEV_RUNTIME/snapshots/r10.before.json" \
+  --after "$MH_DEV_RUNTIME/snapshots/r10.after.json" 2>&1)
+code=$?
+if [ $code -ne 0 ] && echo "$output" | grep -q "immutable attribution exists"; then
+  echo -e "  ${GREEN}PASS${NC}: 归属一律不可变：FAIL 归属亦不可覆盖"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: FAIL 归属被覆盖 (exit=$code)"
+  echo "        output: $output"
+  FAIL=$((FAIL + 1))
+fi
+
+# 真实越权 FAIL 后，用省略越权文件的快照对重跑不得洗白为 PASS
+setup_mhdev_state_r45 1 develop
+python3 -c "
+import json
+s=json.load(open('$MH_DEV_RUNTIME/state.json'))
+s['approved_scope']=['README.md']
+json.dump(s,open('$MH_DEV_RUNTIME/state.json','w'),indent=2)
+"
+mksnap_r10 before "$MH_DEV_RUNTIME/snapshots/ev.before.json" README.md evil/backdoor.sh
+mksnap_r10 after  "$MH_DEV_RUNTIME/snapshots/ev.after.json"  README.md evil/backdoor.sh
+bash tools/mh-dev/scripts/validate-changes.sh --role developer --round 1 \
+  --before "$MH_DEV_RUNTIME/snapshots/ev.before.json" \
+  --after "$MH_DEV_RUNTIME/snapshots/ev.after.json" > /dev/null 2>&1
+mksnap_r10 before "$MH_DEV_RUNTIME/snapshots/wash.before.json" README.md
+mksnap_r10 after  "$MH_DEV_RUNTIME/snapshots/wash.after.json"  README.md
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/validate-changes.sh --role developer --round 1 \
+  --before "$MH_DEV_RUNTIME/snapshots/wash.before.json" \
+  --after "$MH_DEV_RUNTIME/snapshots/wash.after.json" 2>&1)
+code=$?
+res=$(python3 -c "import json;print(json.load(open('$att')).get('result',''))")
+if [ $code -ne 0 ] || [ "$res" != "PASS" ]; then
+  echo -e "  ${GREEN}PASS${NC}: 越权 FAIL 归属不可被省略越权文件的快照对洗白"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: 越权 FAIL 归属被洗白为 PASS，审计追溯丢失 (exit=$code result=$res)"
+  echo "        output: $output"
+  FAIL=$((FAIL + 1))
+fi
+
+echo -e "\n--- 11. CR-013 R13/R16: 双来源违规历史与残留判据 ---"
+
+# AX-22: 归属校验 fail-closed —— 缺 result 键 / result=null / 畸形 JSON 三种情形均不得解锁覆盖
+att013="$MH_DEV_RUNTIME/evidence/change-attribution.developer.1.json"
+for cse in missing null malformed; do
+  setup_mhdev_state_r45 1 develop
+  python3 -c "
+import json
+s=json.load(open('$MH_DEV_RUNTIME/state.json'))
+s['approved_scope']=['README.md']
+json.dump(s,open('$MH_DEV_RUNTIME/state.json','w'),indent=2)
+"
+  mksnap_r10 before "$MH_DEV_RUNTIME/snapshots/fc.before.json" README.md
+  mksnap_r10 after  "$MH_DEV_RUNTIME/snapshots/fc.after.json"  README.md
+  case "$cse" in
+    missing)   echo '{"schema_version":1,"role":"developer","round":1}' > "$att013" ;;
+    null)      echo '{"schema_version":1,"role":"developer","round":1,"result":null}' > "$att013" ;;
+    malformed) printf '{ not json' > "$att013" ;;
+  esac
+  TOTAL=$((TOTAL + 1))
+  output=$(bash tools/mh-dev/scripts/validate-changes.sh --role developer --round 1 \
+    --before "$MH_DEV_RUNTIME/snapshots/fc.before.json" \
+    --after "$MH_DEV_RUNTIME/snapshots/fc.after.json" 2>&1)
+  code=$?
+  if [ $code -ne 0 ] && echo "$output" | grep -q "immutable attribution exists"; then
+    echo -e "  ${GREEN}PASS${NC}: AX-22: 归属 $cse 情形拒绝覆盖（fail-closed）"
+    PASS=$((PASS + 1))
+  else
+    echo -e "  ${RED}FAIL${NC}: AX-22: 归属 $cse 情形未拒绝覆盖 (exit=$code)"
+    echo "        output: $output"
+    FAIL=$((FAIL + 1))
+  fi
+done
+
+# AX-21: 手工把 result 改成 FAIL 不解锁覆盖（jsonl 历史无对应 validated_at 条目）
+setup_mhdev_state_r45 1 develop
+python3 -c "
+import json
+s=json.load(open('$MH_DEV_RUNTIME/state.json'))
+s['approved_scope']=['README.md']
+json.dump(s,open('$MH_DEV_RUNTIME/state.json','w'),indent=2)
+"
+mksnap_r10 before "$MH_DEV_RUNTIME/snapshots/tp.before.json" README.md
+mksnap_r10 after  "$MH_DEV_RUNTIME/snapshots/tp.after.json"  README.md
+bash tools/mh-dev/scripts/validate-changes.sh --role developer --round 1 \
+  --before "$MH_DEV_RUNTIME/snapshots/tp.before.json" \
+  --after "$MH_DEV_RUNTIME/snapshots/tp.after.json" > /dev/null 2>&1
+python3 -c "
+import json
+a=json.load(open('$att013')); a['result']='FAIL'
+json.dump(a,open('$att013','w'),indent=2)
+"
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/validate-changes.sh --role developer --round 1 \
+  --before "$MH_DEV_RUNTIME/snapshots/tp.before.json" \
+  --after "$MH_DEV_RUNTIME/snapshots/tp.after.json" 2>&1)
+code=$?
+if [ $code -ne 0 ] && echo "$output" | grep -q "immutable attribution exists"; then
+  echo -e "  ${GREEN}PASS${NC}: AX-21: 手改 result=FAIL 不解锁覆盖"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AX-21: 手改 result 获得了覆盖权限 (exit=$code)"
+  echo "        output: $output"
+  FAIL=$((FAIL + 1))
+fi
+
+# 残留检测：已登记 approved_scope 的干净会话须放行（scope 非残留信号）
+setup_mhdev_state_r45 0 intake
+python3 -c "
+import json
+tpl=json.load(open('tools/mh-dev/templates/state.json.template'))
+tpl['approved_scope']=['CLAUDE.md','scripts/role-guard.sh']
+json.dump(tpl,open('$MH_DEV_RUNTIME/state.json','w'),indent=2)
+"
+TOTAL=$((TOTAL + 1))
+output=$(bash tools/mh-dev/scripts/check-transition.sh propose 2>&1)
+code=$?
+if [ $code -eq 0 ]; then
+  echo -e "  ${GREEN}PASS${NC}: 已登记 approved_scope 的干净会话不被误拦"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: 干净会话被误拦 (exit=$code)"
+  echo "        output: $output"
+  FAIL=$((FAIL + 1))
+fi
+
+# AC-24: 两份 SKILL.md 的快照路径示例不含 r<N> 形态
+TOTAL=$((TOTAL + 1))
+if ! grep -qE '(developer|tester)\.r[0-9N]+\.' \
+     tools/mh-dev/skills/mh-dev-develop/SKILL.md tools/mh-dev/skills/mh-dev-test/SKILL.md; then
+  echo -e "  ${GREEN}PASS${NC}: AC-24: 两份 SKILL.md 无 r<N> 快照路径"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-24: SKILL.md 仍含 r<N> 快照路径"
+  FAIL=$((FAIL + 1))
+fi
+
+# AC-25: testcase_adding_required 路径前缀语义 —— 含 test 子串的非测试路径不满足
+TOTAL=$((TOTAL + 1))
+if grep -q "p.startswith('tests/')" tools/mh-dev/scripts/validate-outputs.sh \
+   && ! grep -qE "has_test=any\('test' in p" tools/mh-dev/scripts/validate-outputs.sh; then
+  echo -e "  ${GREEN}PASS${NC}: AC-25: testcase 判定为路径前缀语义，非子串"
+  PASS=$((PASS + 1))
+else
+  echo -e "  ${RED}FAIL${NC}: AC-25: testcase 判定仍为子串语义"
+  FAIL=$((FAIL + 1))
+fi
+
+rm -rf deliverables/TEST001 deliverables/.state.md
+
 # === 结果汇总 ===
 echo ""
 echo "========================"

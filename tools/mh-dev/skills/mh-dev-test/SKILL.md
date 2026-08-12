@@ -92,8 +92,8 @@ bash tools/mh-dev/scripts/capture-snapshot.sh --role tester --round <N> --kind a
 # 验证 Tester 变更归属
 bash tools/mh-dev/scripts/validate-changes.sh \
   --role tester --round <N> \
-  --before tools/mh-dev/.mh-dev/snapshots/tester.r<N>.before.json \
-  --after tools/mh-dev/.mh-dev/snapshots/tester.r<N>.after.json
+  --before tools/mh-dev/.mh-dev/snapshots/tester.<N>.before.json \
+  --after tools/mh-dev/.mh-dev/snapshots/tester.<N>.after.json
 ```
 
 确认 Tester 只修改了测试文件和专属 evidence。如果输出 FAIL，撤回违规文件的修改。
@@ -111,7 +111,7 @@ bash tools/mh-dev/scripts/validate-changes.sh \
   "round": 1,
   "verdict": "PASS",
   "generated_at": "{timestamp}",
-  "delta_ref": "snapshots/developer.r1.after.json",
+  "delta_ref": "snapshots/developer.1.after.json",
   "commands": [
     {
       "id": "cmd-01",

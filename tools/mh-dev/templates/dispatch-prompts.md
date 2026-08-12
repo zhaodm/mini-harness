@@ -24,9 +24,9 @@ Planner 调度 Developer/Tester/Auditor 时必须逐字取用以下模板，不�
 ## 步骤
 1. 读取 developer.md 了解你的角色协议、可写白名单和完成条件
 2. 读取 requirement.md 和 acceptance-criteria.json，明确要改什么
-3. 开发前执行 capture-snapshot.sh --role developer --round <N> --kind before
+3. 开发前执行 capture-snapshot.sh --role developer --round <N> --kind before（产出 snapshots/developer.<N>.before.json）
 4. 在 approved_scope 范围内执行修改
-5. 开发后执行 capture-snapshot.sh --role developer --round <N> --kind after
+5. 开发后执行 capture-snapshot.sh --role developer --round <N> --kind after（产出 snapshots/developer.<N>.after.json）
 6. 执行 validate-changes.sh --role developer --round <N> 确认归属 PASS
 7. 执行 validate-dev-completion.sh 确认质量门禁 PASS
 8. 将修改总结写入 tools/mh-dev/.mh-dev/evidence/dev-report.md
@@ -104,7 +104,7 @@ dev-report.md 在你运行期间已被隔离，不可读取。不读 requirement
 
 ## 步骤
 1. 读取 tester.md 了解你的角色协议、可写白名单和完成条件
-2. 执行 capture-snapshot.sh --role tester --round <N> --kind before
+2. 执行 capture-snapshot.sh --role tester --round <N> --kind before（产出 snapshots/tester.<N>.before.json）
 3. 逐条验证 AC 条目（功能验收）
 4. 逐条探测 AX 条目（对抗性验收）
 5. 自由探索（超出 AC/AX 的发现）

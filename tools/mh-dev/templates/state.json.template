@@ -25,6 +25,7 @@
   "mechanical_preflight": "pending",
   "test_verdict": "pending",
   "semantic_audit": "pending",
+  "audit_verdict_path": "",
   "repair": {
     "round": 0,
     "max_rounds": 3,

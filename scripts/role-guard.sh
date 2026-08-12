@@ -22,27 +22,49 @@ if [[ "$FILE_PATH" =~ \.\.[/] ]]; then
   exit 2
 fi
 
+# 仓库根从脚本自身位置推导，不依赖调用方 cwd
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 # 定位活跃需求的 .engine/.state.md
-STATE_FILE=$(find deliverables -maxdepth 3 -name ".state.md" -path "*/.engine/.state.md" 2>/dev/null | head -1)
+STATE_FILE=$(find "$ROOT/deliverables" -maxdepth 3 -name ".state.md" -path "*/.engine/.state.md" 2>/dev/null | head -1)
 
 # mh-dev 仅在没有外部项目流程时治理框架根目录写入。运行态文件始终允许；
 # phase 正则仅匹配活跃开发阶段；done/blocked 为终态，不激活治理（避免残留状态污染 /mh-run）：
 # 框架文件必须被 approved_scope 精确列出，且治理关键路径只允许 formal 轨道。
-MH_DEV_STATE="${MH_DEV_RUNTIME:-tools/mh-dev/.mh-dev}/state.json"
+MH_DEV_STATE="${MH_DEV_RUNTIME:-$ROOT/tools/mh-dev/.mh-dev}/state.json"
 if [[ -z "$STATE_FILE" && -f "$MH_DEV_STATE" ]] && jq -e '.workflow == "mh-dev" and (.phase | test("^(intake|propose|develop|verify|repair)$"))' "$MH_DEV_STATE" >/dev/null 2>&1; then
   [[ "$FILE_PATH" =~ tools/mh-dev/\.mh-dev/ ]] && exit 0
 
-  # 路径归一化：绝对路径剥离仓库根前缀，转为相对路径再与 approved_scope 精确匹配。
-  # 与 validate-changes.sh 的归一化口径对齐（见该脚本第 30 行注释）。
-  ROOT="$(pwd)"
-  if [[ "$FILE_PATH" == "$ROOT"/* ]]; then
-    NORM_PATH="${FILE_PATH#$ROOT/}"
-  else
-    NORM_PATH="$FILE_PATH"
-  fi
+  # 路径归一化：仓库内绝对路径剥离仓库根前缀；仓库外绝对路径直接拦截
+  # （否则会被当作相对路径带进后续判定，配合仓库根目录条目可放行整个文件系统）。
+  case "$FILE_PATH" in
+    "$ROOT"/*) NORM_PATH="${FILE_PATH#$ROOT/}" ;;
+    /*)        echo "BLOCKED: mh-dev 拒绝仓库外绝对路径: $FILE_PATH"; exit 2 ;;
+    *)         NORM_PATH="$FILE_PATH" ;;
+  esac
 
+  # Tester 专属路径放行：tests/ 与 tools/mh-dev/tests/ 在 validate-changes.sh 的
+  # tester_scope 内无条件认可，此处同口径放行，否则两道门禁对同一路径结论相反、
+  # Tester 无法落盘任何测试。必须是目录前缀语义（case 的 */ 锚定），
+  # 不能退化为子串匹配：tests-evil/x.sh、mytests/x.sh 须继续被拦截。
+  # 放在归一化之后、scope 匹配之前：绝对与相对两种写入形态结论一致，
+  # 且仓库外绝对路径已在上一步拦下，/tmp/tests/x.sh 不会由此放行。
+  case "$NORM_PATH" in
+    tests/*|tools/mh-dev/tests/*) exit 0 ;;
+  esac
+
+  # scope 匹配：把 approved_scope 条目与目标路径一并转为绝对形态后比较，
+  # 对 scope 的相对/绝对两种存储形态都正确；以 / 结尾的条目按目录前缀匹配。
+  # jq 陷阱：目录前缀判定必须先用 `. as $s` 绑定当前条目，
+  # 写成 `any($abs[]; endswith("/") and ($ap | startswith(.)))` 会因管道把 `.`
+  # 重绑定为 $ap 而恒真，放行任意越权路径。
   MH_TRACK=$(jq -r '.track // empty' "$MH_DEV_STATE")
-  if jq -e --arg path "$NORM_PATH" '.approved_scope | index($path) != null' "$MH_DEV_STATE" >/dev/null 2>&1; then
+  if jq -e --arg p "$NORM_PATH" --arg root "$ROOT" '
+        ([.approved_scope[] | if startswith("/") then . else $root + "/" + . end]) as $abs
+        | ($root + "/" + $p) as $ap
+        | ($abs | index($ap) != null)
+          or any($abs[]; . as $s | ($s | endswith("/")) and ($ap | startswith($s)))
+     ' "$MH_DEV_STATE" >/dev/null 2>&1; then
     case "$NORM_PATH" in
       CLAUDE.md|.claude/settings.json|scripts/role-guard.sh|templates/state-template.md)
         [[ "$MH_TRACK" == "formal" ]] || { echo "BLOCKED: mh-dev 治理关键路径要求 formal 轨道: $NORM_PATH"; exit 2; }

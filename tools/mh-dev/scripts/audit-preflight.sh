@@ -3,10 +3,12 @@
 # 检查：文件存在性、脚本可执行性、命令注册一致性、文档引用、shell 语法、陈旧引用
 set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/../../.." && pwd)"
+RUNTIME="${MH_DEV_RUNTIME:-$ROOT_DIR/tools/mh-dev/.mh-dev}"
 cd "$ROOT_DIR"
 
 FAILURES=0
-pass() { echo "PASS: $*"; }
+PASSES=0
+pass() { echo "PASS: $*"; PASSES=$((PASSES+1)); }
 fail() { echo "FAIL: $*" >&2; FAILURES=$((FAILURES+1)); }
 
 # 1. 关键文件存在性
@@ -73,8 +75,20 @@ done
 echo ""
 if [[ $FAILURES -eq 0 ]]; then
   echo "PASS: mh-dev mechanical preflight passed"
-  exit 0
+  EXIT_CODE=0
 else
   echo "FAIL: mh-dev mechanical preflight failed: $FAILURES issue(s)" >&2
-  exit 1
+  EXIT_CODE=1
 fi
+
+# 落盘独立证据供 done 门禁的 mechanical_preflight 字段使用（exit_code 取实际结果，不硬编码）
+EVIDENCE="$RUNTIME/evidence/audit-preflight.json"
+mkdir -p "$(dirname "$EVIDENCE")"
+python3 - "$EVIDENCE" "$EXIT_CODE" "$PASSES" "$FAILURES" <<'PY'
+import json,sys,datetime
+out,code,p,f=sys.argv[1],int(sys.argv[2]),int(sys.argv[3]),int(sys.argv[4])
+data={"schema_version":1,"exit_code":code,"checked_at":datetime.datetime.now(datetime.timezone.utc).isoformat(),"pass":p,"fail":f}
+with open(out,'w',encoding='utf-8') as fh: json.dump(data,fh,ensure_ascii=False,indent=2); fh.write('\n')
+PY
+
+exit $EXIT_CODE

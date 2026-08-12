@@ -68,7 +68,7 @@
 
 - 任何文件写入后必须验证文件存在且非空
 - **脚本硬约束优先于自然语言软约束**：以脚本退出码为准，Agent 自述不作为通过依据
-- `scripts/role-guard.sh` 强制引擎态与产品产出分离：`/mh-run` 运行态文件（`.state.md`、`handoffs/`、`process.log` 等）须写入 `deliverables/{REQ-ID}/.engine/`，产品区文档须遵循 `<ROLE>-<phase>-<name>.md` 命名；WORKER 可写产品区下的项目代码路径（src/、tests/、deploy/ 等），但不可写 `.engine/` 引擎态和其他角色产出；全局路径穿越检测拒绝包含 `..` 组件的写入路径，WORKER 排除规则大小写不敏感（防止 `.ENGINE/` 绕过）；mh-dev 分支在 `jq index()` 匹配前将绝对路径剥离仓库根前缀转为相对路径，与 `approved_scope` 精确匹配
+- `scripts/role-guard.sh` 强制引擎态与产品产出分离：`/mh-run` 运行态文件（`.state.md`、`handoffs/`、`process.log` 等）须写入 `deliverables/{REQ-ID}/.engine/`，产品区文档须遵循 `<ROLE>-<phase>-<name>.md` 命名；WORKER 可写产品区下的项目代码路径（src/、tests/、deploy/ 等），但不可写 `.engine/` 引擎态和其他角色产出；全局路径穿越检测拒绝包含 `..` 组件的写入路径，WORKER 排除规则大小写不敏感（防止 `.ENGINE/` 绕过）；mh-dev 分支采用双向归一化匹配 `approved_scope`（目标路径与 scope 条目一并转绝对形态后比较，故 scope 存相对或绝对路径均正确），以 `/` 结尾的条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd，`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行（与归属校验的 tester_scope 同口径，`tests-evil/` 不命中）
 - 修改框架后运行 `bash scripts/check-harness.sh` 确认框架完整性
 
 ## 6. 多角色工作流协议

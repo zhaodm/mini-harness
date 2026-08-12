@@ -104,7 +104,7 @@ deliverables/{REQ-ID}/
 | verify-qa.sh | 内容质量校验（模糊词、测试结果、报告完整性） |
 | verify-ppt.sh | PPT 专项（字号底线、导航、视口） |
 
-role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支在 `jq index()` 匹配前将绝对路径剥离仓库根前缀转为相对路径，与 `approved_scope` 精确匹配。
+role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd；`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行，无需列入 `approved_scope`。
 
 ---
 

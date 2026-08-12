@@ -8,7 +8,7 @@ if [[ $# -eq 1 && "$1" != --* ]]; then OUT="$1"; ROLE="legacy"; ROUND=0; KIND="c
 else
   while [[ $# -gt 0 ]]; do case "$1" in --role) ROLE="$2"; shift 2;; --round) ROUND="$2"; shift 2;; --kind) KIND="$2"; shift 2;; *) echo "Usage: $0 --role developer|tester --round N --kind before|after" >&2; exit 2;; esac; done
   [[ "$ROLE" =~ ^(developer|tester)$ && "$ROUND" =~ ^[0-9]+$ && "$KIND" =~ ^(before|after)$ ]] || { echo "BLOCKED: invalid snapshot arguments" >&2; exit 2; }
-  OUT="$RUNTIME/snapshots/$ROLE.r$ROUND.$KIND.json"
+  OUT="$RUNTIME/snapshots/$ROLE.$ROUND.$KIND.json"
 fi
 [[ ! -e "$OUT" ]] || { echo "BLOCKED: snapshot already exists: $OUT" >&2; exit 1; }
 mkdir -p "$(dirname "$OUT")"

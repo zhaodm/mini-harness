@@ -71,24 +71,18 @@ for path in paths:
    violations.append(f'unauthorized tester path: {path}')
   else: item['allowed_by']='tester_scope'
  changes.append(item)
-result='PASS' if not violations else 'FAIL'
-rel=f'evidence/change-attribution.{role}.{round_}.json'; out=os.path.join(runtime,rel)
-os.makedirs(os.path.dirname(out),exist_ok=True)
-if os.path.exists(out): raise SystemExit(f'BLOCKED: immutable attribution exists: {rel}')
-artifact={'schema_version':1,'role':role,'round':round_,'before_snapshot':os.path.relpath(before_path,runtime),'after_snapshot':os.path.relpath(after_path,runtime),'changed':changes,'violations':violations,'result':result,'validated_at':datetime.datetime.now(datetime.timezone.utc).isoformat()}
-with open(out,'w',encoding='utf-8') as f:json.dump(artifact,f,ensure_ascii=False,indent=2);f.write('\n')
-if violations:
- if any('formal track required' in x for x in violations):
-  state.setdefault('track_escalations',[]).append({'round':round_,'reason_codes':['GOVERNANCE_PATH'],'paths':[x.split(': ',1)[1] for x in violations if 'formal track required' in x],'at':artifact['validated_at']})
- atomically_write(state_path,state)
- raise SystemExit('BLOCKED: '+'; '.join(violations))
-state.setdefault('snapshots',{})[f'{role}.{round_}']={'before':artifact['before_snapshot'],'after':artifact['after_snapshot'],'attribution':rel}
-if role == 'developer':
- state.setdefault('change_ownership',{}).setdefault(role,{})[str(round_)]=rel
+# R10: doc_sync 判定须在归属落盘与 state 写入之前完成，与 scope 越权同一处置。
+# 早前实现把它放在 change_ownership 写入之后，doc_sync 违规时归属记 PASS 且门禁被绕过。
+# 仅当此前无违规时才评估 doc_sync，保持既有的「一次只报一类违规」处置。
+if role=='developer' and not violations:
  # 文档同步检查：改动脚本/角色/模板时检查对应文档是否同步
+ # 定点查表，不做前缀通配；不纳入本脚本/快照/预检/模板，避免自指循环
  doc_sync = {
   'CLAUDE.md': ['README.md','docs/designs/workflow.md','docs/designs/source-of-truth.md'],
-  'scripts/role-guard.sh': ['CLAUDE.md','docs/designs/source-of-truth.md'],
+  'scripts/role-guard.sh': ['CLAUDE.md','docs/designs/source-of-truth.md','docs/kb/domains/guards.md'],
+  'tools/mh-dev/scripts/check-transition.sh': ['docs/kb/domains/mh-dev.md'],
+  'tools/mh-dev/scripts/validate-outputs.sh': ['docs/kb/domains/mh-dev.md'],
+  'tools/mh-dev/scripts/transition-state.sh': ['docs/kb/domains/mh-dev.md'],
  }
  dev_paths = [x['path'] for x in changes if not x['path'].startswith('tools/mh-dev/.mh-dev/') and x['change'] != 'deleted']
  for path in dev_paths:
@@ -96,10 +90,27 @@ if role == 'developer':
    for doc in doc_sync[path]:
     if doc not in dev_paths:
      violations.append(f'doc sync required: {path} changed but {doc} not in same delta')
- if violations:
-  state.setdefault('track_escalations',[]).append({'round':round_,'reason_codes':['DOC_SYNC'],'paths':violations,'at':artifact['validated_at']})
-  atomically_write(state_path,state)
-  raise SystemExit('BLOCKED: '+'; '.join(violations))
+result='PASS' if not violations else 'FAIL'
+rel=f'evidence/change-attribution.{role}.{round_}.json'; out=os.path.join(runtime,rel)
+os.makedirs(os.path.dirname(out),exist_ok=True)
+# 归属文件一律不可变：任何轮次的归属一旦落盘就不允许覆盖。
+# 曾尝试按 result 分级（FAIL 可覆盖以支持同轮修正），但「可覆盖」派生出洗白链与
+# 合法修复顺序死锁两类缺陷，且每次修补又长出新缺陷。违规后重开一轮是更简单的处置。
+if os.path.exists(out): raise SystemExit(f'BLOCKED: immutable attribution exists: {rel}')
+now=datetime.datetime.now(datetime.timezone.utc).isoformat()
+artifact={'schema_version':1,'role':role,'round':round_,'before_snapshot':os.path.relpath(before_path,runtime),'after_snapshot':os.path.relpath(after_path,runtime),'changed':changes,'violations':violations,'result':result,'validated_at':now}
+with open(out,'w',encoding='utf-8') as f:json.dump(artifact,f,ensure_ascii=False,indent=2);f.write('\n')
+if violations:
+ gov=[x.split(': ',1)[1] for x in violations if 'formal track required' in x]
+ if gov: state.setdefault('track_escalations',[]).append({'round':round_,'reason_codes':['GOVERNANCE_PATH'],'paths':gov,'at':artifact['validated_at']})
+ docsync_v=[x for x in violations if x.startswith('doc sync required')]
+ if docsync_v: state.setdefault('track_escalations',[]).append({'round':round_,'reason_codes':['DOC_SYNC'],'paths':docsync_v,'at':artifact['validated_at']})
+ atomically_write(state_path,state)
+ raise SystemExit('BLOCKED: '+'; '.join(violations))
+state.setdefault('snapshots',{})[f'{role}.{round_}']={'before':artifact['before_snapshot'],'after':artifact['after_snapshot'],'attribution':rel}
+# R8: 归属对称就地写入，两个角色都不依赖后续 verify 回填
+# （R10 起该语句位于全部违规判定之后，scope 越权与 doc_sync 违规均不写）
+state.setdefault('change_ownership',{}).setdefault(role,{})[str(round_)]=rel
 atomically_write(state_path,state)
 print(f'PASS: {role} delta validated: {len(changes)} change(s)')
 PY
