@@ -4,7 +4,10 @@
 
 ## Step 0: 白名单校验（所有角色通用）
 
-- [ ] 对比 handoff 回报中 `read_files` 与白名单
+核对来源是落盘的回报文件 `deliverables/{REQ-ID}/.engine/reports/{handoff-basename}.report.md`（由角色自己写入，可 diff、可留痕），不依赖 SubAgent 返回值。
+
+- [ ] 回报文件存在（缺失 → 任务视为未完成，驳回或按兜底代填处置）
+- [ ] 对比回报文件中 `read_files` 与 handoff 文件中的白名单
 - [ ] 出现白名单外的文件 → 驳回，标注信息泄露风险
 - [ ] read_files 为空或缺失 → 提醒角色补填（非阻塞）
 

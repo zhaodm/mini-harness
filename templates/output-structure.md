@@ -12,7 +12,8 @@
 deliverables/{REQ-ID}/
 ├── .engine/                          ← 引擎运行态（平铺，文件名保持原样）
 │   ├── .state.md
-│   ├── handoffs/
+│   ├── handoffs/                     ← Orchestrator 独占（任务+白名单+约束）
+│   ├── reports/                      ← 被派发角色写入完成回报（<handoff-basename>.report.md）
 │   ├── process.log
 │   ├── lessons.md
 │   ├── SR{N}-record.md
@@ -53,6 +54,7 @@ deliverables/{REQ-ID}/
 | 目录 | 放什么 | 谁生成 | 说明 |
 |------|--------|--------|------|
 | .engine/ | 引擎运行态 | Orchestrator/框架 | 不归档，运行态文件 |
+| .engine/reports/ | 各棒完成回报 | 被派发角色（Orchestrator 兜底） | 唯一由执行角色写入的引擎态目录，回报名由 handoff basename 派生 |
 | docs/ | 供人/AI 阅读的文档 | 框架 ARC 步骤 | 不可执行，纯知识载体 |
 | docs/spec/ | 需求规格 + 技术设计 | ARC-1, ARC-2 | change 模式走 merge 流程 |
 | src/ | 可执行的项目源代码 | Worker | 按 output-guide 组织 |

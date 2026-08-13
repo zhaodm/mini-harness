@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.10.0] - 2026-08-13
+
+CR-017: 完成回报归属 — 协议要求执行角色填写回报、守卫却禁止它写，这一矛盾自 hook 落地首日潜伏至今。
+
+### 修复
+
+- **回报独立落盘（R1/R2/R3）**: `templates/handoff-template.md` 自 `f150a4c`（CR-003）即规定完成回报「执行角色必填」，而 `handoffs/` 是 role-guard 的 ORCHESTRATOR 独占路径，三角色写入一律 `exit 2`——协议强制要求的动作被守卫结构性禁止，潜伏十余个 CR。它不阻塞流程（Orchestrator 收回持权代填即可绕过），故真实代价不是流程中断而是**证据链失效**：代填后回报变为「Orchestrator 撰写、Orchestrator 审计」，质量门禁 Step 0 核对 `read_files` 的判定对象不再是真实对象，退化为依赖 SubAgent 进程内返回值。现回报移出 handoff，落 `deliverables/{REQ-ID}/.engine/reports/<handoff-basename>.report.md`，THINKER/WORKER/VERIFIER/ORCHESTRATOR 四分支均放行该路径（ORCHESTRATOR 保留以支持驳回轮次与失联兜底代填）。`handoffs/*.md` 写权不变，仍 ORCHESTRATOR 独占——**放开三角色对 handoff 的写权是被否决方案**，那会让执行角色同时掌握被比较的两侧（改白名单即可自洽），比现状更糟。目录即权限边界，不在 `handoffs/` 内按后缀区分写权（`x.report.md` 与 `x.md` 的正则会互相咬边）。回报名由 handoff basename 机械派生，门禁据此关联，不靠内容里的自述指针（自述指针可被改写，路径派生不能）
+- **回报放行条无内容判据（有意的设计选择）**: 内容判据是 CR-016 两个 P0 的共同载体（存在性量词、`Edit` 片段与合并态分歧），回报不承载流程状态故不引入——**无多行判据即无排列可反转**，AX-06 的排列次序对抗在此条上结构性不适用。路径正则 `^…$` 双向锚定（拒 `.report.md.evil`/`.report.mdX`/`.report.md/child.md` 后缀伪造与 `x/deliverables/…` 嵌套伪造），`${req}` 取自当前 state 故不跨需求，不放大到 `handoffs/`、`plan-action.md` 等其他引擎态文件。写权由「当前谁持权」而非「文件名声称的角色」约束：三角色共用同一条正则不按角色前缀细分，加前缀判据会引入「文件名声称的角色」与「state 里的角色」两个主体，正是本 CR 要消除的那类不一致
+- **门禁读取位置与回报位置同源（R4）**: `scripts/verify.sh` 与 `scripts/verify-qa.sh` QA-4 改为从 handoff 路径派生回报路径读取字段，不各自硬编码。回报位置变更而门禁不改会使字段永不出现、门禁**永久静默通过**（比硬失败更危险）。新增「handoff 存在但回报缺失」的 WARN：旧结构下「回报未填」表现为字段为空，新结构下表现为文件不存在，不补则漏。保持 WARN 级不升 FAIL——本 CR 只改读取位置，升级严格度是独立决策
+- **scripts/verify.sh 在 `set -u` 下自第 9 行即崩溃（顺带修复）**: `SPEC_DIR`/`OUTPUT_DIR` 引用 `$req_id` 而该变量在第 14 行才赋值，`set -euo pipefail` 下脚本 `exit 1` 且无任何输出，A~E 全部检查从不执行。R4 要求回报门禁不得静默失效，而门禁所在脚本跑不起来即最彻底的静默失效，故一并修正（仅移动两行位置，取值与用法不变）。该缺陷自 `f35ce3a`（CR-010）存在
+
+### 未落地（须另开 CR 决策）
+
+- **R5 / D3 mh-dev 分支角色维度校验**: 设计指定判据取 `tools/mh-dev/.mh-dev/state.json` 的 `current_role`，实测该字段**恒为 `planner`**——`transition-state.sh:19` 每次转移硬写 `'planner'`，模板初值同样是 `planner`，仓库内无任何代码路径会写成 `developer`/`tester`。按 D3 表实现的直接后果是 Developer 全程锁死：其运行期间字段值是 `planner`，而 `planner` 行只允许运行态与 `CR-*.md`，故 `approved_scope` 内每个框架文件都 `exit 2`，**包括 `scripts/role-guard.sh` 自身**（实测中该实现改到一半即自锁）。设计称判据与 `validate-changes.sh` 同源亦不成立：那边的 `role` 来自命令行 `--role` 入参，取值域与 `current_role` 不同，故 D 原则 1 在此条上未被满足。更根本地，即使字段被如实维护，它仍在被治理方自己可写的文件里——Planner 写 `state.json` 即自己签发通行证，CR-016 DEV-01 那次越权若发生在有 D3 之后，把字段改成 `developer` 即可照旧穿过。故 D3 的收益上限是防误撞而非防越权，R5 若期望后者则期望本身不成立。三条可行方向与各自代价见 `docs/kb/domains/guards.md`
+
+### 文档更新
+
+- **docs/kb/domains/guards.md**: 新增「归属层面：判定对象与真实对象不一致的第三个实例」——含元教训「协议文本与守卫实现分处两个文件、无交叉校验，矛盾可潜伏十余个 CR」（`f150a4c` 引入独占规则时模板已写「执行角色必填」，两处从未对照；无任何门禁检查两者一致性）与外部项目 `~/Code/mini-agent` EXP-2 归档（框架缺陷由下游使用者先撞到，说明自检维度缺了「协议与实现的一致性」这一格）；新增「mh-dev 分支的角色维度校验为何未落地」记录 D3 的四条阻塞事实与自授权局限
+- **口径同步**: `templates/handoff-template.md`（回报节改为指向派生路径 + 协议规则 0）、`templates/handoff-examples.md`（示例改为独立回报文件形态）、`templates/orchestrator-quality-gate.md` 与 `skills/mh-codeflow/SKILL.md`（Step 0 核对来源改为落盘回报、调度循环第 6 步）、`templates/output-structure.md`（目录树加 `reports/`）、`agents/orchestrator.md`（写权清单 + 输入 + 「不得代笔」）、`docs/designs/source-of-truth.md`、`docs/designs/workflow.md`
+
 ## [0.9.0] - 2026-08-13
 
 CR-016: role-guard 授权模型修正 — 授权判据从「谁在写」改为「这次写入是否是协议允许的状态迁移」。

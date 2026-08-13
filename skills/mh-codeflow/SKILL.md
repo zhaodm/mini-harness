@@ -55,10 +55,12 @@ code track 全流程自动推进。Orchestrator 主导，一次性执行 clarify
 3. 检查停止条件           → 触发则暂停等待用户
 4. 更新 .engine/.state.md         → current_step/current_role/current_handoff/task_started_at（派发：一次完整写入）
 5. 派发 SubAgent          → 注入角色契约 + handoff + 白名单文件
-6. 接收回报               → SubAgent 填写 handoff 完成回报
+6. 接收回报               → SubAgent 写入 .engine/reports/{handoff-basename}.report.md
 7. 执行质量门禁           → 按对应角色的检查清单逐项核对（见 templates/orchestrator-quality-gate.md）
 8. 推进或驳回             → 通过则更新 .engine/.state.md（交还：一次完整写入）；不通过则写新 handoff 驳回
 ```
+
+**第 6 步的回报落在独立文件，不写进 handoff。** `handoffs/*.md` 是 ORCHESTRATOR 独占（任务描述+白名单+约束），执行角色写入一律 `exit 2`；回报写 `deliverables/{REQ-ID}/.engine/reports/{handoff-basename}.report.md`，role-guard 对 THINKER/WORKER/VERIFIER/ORCHESTRATOR 四者均放行该路径（无内容判据，路径正则 `^…$` 双向锚定，不跨需求）。两者分处两套写权，故质量门禁比较的两侧（白名单 vs `read_files`）无法被执行角色自洽伪造。回报文件名由 handoff basename 机械派生，门禁据此关联，不依赖内容里的自述指针。
 
 **第 4/8 步的 state 写入必须是一次完整写入。** 派发后 `current_role` 已是 SubAgent 角色，此时 role-guard 只在「该次写入把流程交还给 ORCHESTRATOR」时放行 `.engine/.state.md`——判据取本次写入的新内容，要求其**首个** `current_role:` 行的值恰为 `ORCHESTRATOR`（与读取端同源；写多行 `current_role` 而首行是别的角色一律拒）。**且必须用 `Write` 工具**——交还例外只接受 Write，`Edit` 写 `.engine/.state.md` 一律 `exit 2`（Edit 片段判据无法覆盖合并结果，曾可被用于提权，见 `docs/kb/domains/guards.md`）。
 
@@ -105,7 +107,10 @@ Orchestrator 接收角色回报后，按以下顺序执行。检查清单骨架�
 
 ### Step 0: 白名单校验（所有角色通用）
 
-- 对比 handoff 回报中 `read_files` 与白名单
+核对输入是落盘的回报文件 `deliverables/{REQ-ID}/.engine/reports/{handoff-basename}.report.md`，可 diff、可留痕，不依赖 SubAgent 进程内返回值。
+
+- 回报文件不存在 → 任务视为未完成（驳回；SubAgent 失联时 Orchestrator 兜底代填）
+- 对比回报文件中 `read_files` 与 handoff 文件中的白名单
 - 出现白名单外的文件 → 驳回，标注信息泄露风险
 - read_files 为空或缺失 → 提醒角色补填（非阻塞）
 

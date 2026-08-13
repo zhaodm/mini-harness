@@ -1,4 +1,5 @@
 <!-- 协议规则：
+  0. 本文件由 ORCHESTRATOR 独占写入；执行角色的完成回报写入独立文件（见文末「完成回报」节）
   1. 本文件一旦创建不可修改 — 重试时创建新文件（追加轮次后缀 R2, R3...）
   2. 白名单必须逐文件列出，禁止使用通配符（如 *.md）
   3. 执行角色仅可读取白名单中的文件，禁止读取其他任何文件
@@ -105,12 +106,22 @@ completed_at: ""
 
 ## 完成回报（执行角色必填 — 未填写则任务视为未完成）
 
-<!-- ⚠️ SubAgent 必须在结束前填写本节，否则 Orchestrator 将驳回 -->
-- status: {done | failed}
-- output_files: ["{file_path}"]
-- read_files: ["{实际读取的文件路径}"]
-- summary: "{一句话描述完成内容}"
-- issues: "{错误信息或 N/A}"
+<!-- ⚠️ 回报不写在本文件内。本文件是 ORCHESTRATOR 独占（任务描述+白名单+约束+修复上下文），
+     执行角色写入一律被 role-guard 拒绝。回报写入下方派生路径的独立文件。 -->
 
+- 回报文件: `deliverables/{REQ-ID}/.engine/reports/{本 handoff 的文件名去掉 .md}.report.md`
+- 填写者: 本 handoff `to` 字段声明的角色（THINKER / WORKER / VERIFIER）。SubAgent 失联或驳回轮次时 ORCHESTRATOR 兜底代填
+- 回报文件内容（五个字段，均须行首无缩进，门禁按行首锚定读取）:
+
+```
+status: {done | failed}
+output_files: ["{file_path}"]
+read_files: ["{实际读取的文件路径}"]
+summary: "{一句话描述完成内容}"
+issues: "{错误信息或 N/A}"
+```
+
+> 回报文件名由本 handoff 的 basename 机械派生，门禁与守卫据此关联两者，不依赖内容里的自述指针（自述指针可被改写，路径派生不能）。
 > 回报格式示例见 `templates/handoff-examples.md`
-> Orchestrator 验收时将 read_files 与白名单对比，不匹配则驳回。
+> Orchestrator 验收时将回报文件的 read_files 与本文件的白名单对比，不匹配则驳回。
+> 两侧分处两个文件、两套写权（回报执行角色可写，白名单不可写），故执行角色无法改写被比较的一侧使越权自洽。

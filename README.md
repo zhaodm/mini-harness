@@ -82,7 +82,7 @@ mh-dev 使用 fast/light/formal 轨道、开发者变更快照、机械预检、
 
 ```
 deliverables/{REQ-ID}/
-├── .engine/                引擎运行态（.state.md、handoffs/、process.log 等）
+├── .engine/                引擎运行态（.state.md、handoffs/、reports/、process.log 等）
 ├── ORCHESTRATOR-init-*.md  Orchestrator 产出
 ├── THINKER-propose-*.md    Thinker 产出（需求规格、技术设计）
 ├── WORKER-apply-*.md       Worker 产出（代码报告）
@@ -104,7 +104,7 @@ deliverables/{REQ-ID}/
 | verify-qa.sh | 内容质量校验（模糊词、测试结果、报告完整性） |
 | verify-ppt.sh | PPT 专项（字号底线、导航、视口） |
 
-role-guard.sh 覆盖 `Write`/`Edit`/`NotebookEdit`，归一化后按路径归属路由：`deliverables/`（目录前缀语义）归角色白名单，其余归 mh-dev 框架治理，无活跃 mh-dev 授权时框架路径放行（默认会话透明）。角色白名单：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；THINKER/WORKER/VERIFIER 另有交还例外，写本需求 `.engine/.state.md` 且该次写入内容的首个 `current_role:` 行值恰为 `ORCHESTRATOR` 时放行（判据与读取端同源，非存在性量词；且只接受 `Write`——`Edit` 只暴露片段，守卫看不到合并结果）（须单次完整写入；路径正则双向锚定 `.state.md` 全名，后缀/嵌套伪造路径不命中；不放大到其他引擎态文件）。全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd；`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行，无需列入 `approved_scope`。守卫判据存放在被治理方可写的文件中（自授权），`Bash` 通道不受覆盖，定位是防误撞而非安全边界。
+role-guard.sh 覆盖 `Write`/`Edit`/`NotebookEdit`，归一化后按路径归属路由：`deliverables/`（目录前缀语义）归角色白名单，其余归 mh-dev 框架治理，无活跃 mh-dev 授权时框架路径放行（默认会话透明）。角色白名单：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；THINKER/WORKER/VERIFIER 另有交还例外，写本需求 `.engine/.state.md` 且该次写入内容的首个 `current_role:` 行值恰为 `ORCHESTRATOR` 时放行（判据与读取端同源，非存在性量词；且只接受 `Write`——`Edit` 只暴露片段，守卫看不到合并结果）（须单次完整写入；路径正则双向锚定 `.state.md` 全名，后缀/嵌套伪造路径不命中；不放大到其他引擎态文件）。完成回报独立落盘到 `deliverables/{REQ-ID}/.engine/reports/<handoff-basename>.report.md`，THINKER/WORKER/VERIFIER/ORCHESTRATOR 四者均可写本需求的回报，`handoffs/` 仍 ORCHESTRATOR 独占——白名单与回报分处两套写权，质量门禁比较的两侧无法自洽伪造。全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd；`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行，无需列入 `approved_scope`。守卫判据存放在被治理方可写的文件中（自授权），`Bash` 通道不受覆盖，定位是防误撞而非安全边界。
 
 ---
 

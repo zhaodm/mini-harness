@@ -145,6 +145,27 @@ REQ_ID=$(grep "^req_id:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')
 # 首行语义同时承担了原三段锚定的职责：缩进/注释/引号形态不被 `^current_role:` 命中，
 # `current_role_backup:` 同理；`ORCHESTRATORX` 与 `THINKER,ORCHESTRATOR` 作为 $2 整体值不等于
 # ORCHESTRATOR。`current_role:ORCHESTRATOR`（无空格）两端一致解析为空值，故一致拒绝。
+# CR-017 D1：完成回报独立落盘。回报从 handoff 文件内移出，落到
+# .engine/reports/<handoff-basename>.report.md —— 被派发角色可写，handoffs/ 仍 ORCHESTRATOR 独占。
+# 目录即权限边界：不在 handoffs/ 内按后缀区分写权，后缀区分会让 handoffs/x.report.md 与
+# handoffs/x.md 的正则互相咬边。R2 由此满足——白名单在 handoff（角色不可写）、
+# read_files 在回报（角色可写），比较的两侧落在两套写权，无法自洽伪造。
+#
+# **本条无内容判据**，且这是有意的：内容判据是 CR-016 两个 P0 的共同载体（存在性量词
+# 与 Edit 片段/合并态分歧），能不引入就不引入。回报不承载流程状态，不需要 is_handback
+# 那类检查；无多行判据即无排列可反转，故 AX-06 的排列对抗在本条上不适用。
+# 因此四个分支共用同一条，也不按角色前缀细分：回报文件名由 handoff basename 派生，
+# 同一时刻只有一个 handoff 在派发，current_role 即该棒执行者。加角色前缀判据会引入
+# 「文件名声称的角色」与「state 里的角色」两个主体，正是本 CR 要消除的那类不一致。
+#
+# 正则口径与交还例外一致：`^…$` 双向锚定（左锚拒 x/deliverables/… 嵌套伪造，右锚拒
+# .report.md.evil / .report.mdX / .report.md/child.md）；`${req}` 取自当前 state 的 req_id
+# 故不跨需求；`.report.md` 双段后缀与 handoffs/ 下的命名形态显式区分。
+is_report() {
+  local file=$1 req=$2
+  [[ "$file" =~ ^deliverables/${req}/\.engine/reports/.*\.report\.md$ ]]
+}
+
 is_handback() {
   # 交还例外只接受 Write（audit F-01）。Edit 载荷只有 new_string 片段，守卫看不到
   # old_string 也看不到合并结果，故它判「片段的首行生效值」而落盘生效值由「合并后文件」决定。
@@ -169,6 +190,9 @@ check_permission() {
     ORCHESTRATOR)
       [[ "$file" =~ deliverables/${req}/\.engine/\.state\.md ]] && return 0
       [[ "$file" =~ deliverables/${req}/\.engine/handoffs/.*\.md ]] && return 0
+      # 回报路径（CR-017 D1）：驳回轮次与 SubAgent 失联时的兜底代填仍需此权限。
+      # 代填由此不再是绕过守卫，而是显式兜底。
+      is_report "$file" "$req" && return 0
       [[ "$file" =~ deliverables/${req}/\.engine/plan-action\.md ]] && return 0
       [[ "$file" =~ deliverables/${req}/\.engine/SR.*-record\.md ]] && return 0
       [[ "$file" =~ deliverables/${req}/\.engine/lessons\.md ]] && return 0
@@ -186,6 +210,9 @@ check_permission() {
       # 本角色将无法写入自己前缀的 notebook。只放开本角色前缀，不跨角色边界。
       [[ "$file" =~ deliverables/${req}/THINKER-.*\.(md|ipynb) ]] && return 0
       [[ "$file" =~ deliverables/${req}/\.archiveignore ]] && return 0
+      # 完成回报（CR-017 D1）：本需求 .engine/reports/*.report.md。无内容判据，
+      # 不放大到 handoffs/ 等其他引擎态文件——它们不在此正则内。
+      is_report "$file" "$req" && return 0
       # 交还例外：仅本需求的 .state.md，且本次写入把流程交还给 ORCHESTRATOR。
       # 不放大为引擎态直通——handoffs/、plan-action.md 等不在此正则内，
       # 即使写入内容含交还标记也落到原有拒绝路径。
@@ -197,6 +224,9 @@ check_permission() {
       ;;
     WORKER)
       [[ "$file" =~ deliverables/${req}/WORKER-.*\.md ]] && return 0
+      # 完成回报（CR-017 D1），口径同 THINKER 分支。须显式放行：下方项目代码放行块
+      # 整体排除 .engine/（大小写不敏感），回报落在 .engine/reports/ 内不会由那条命中。
+      is_report "$file" "$req" && return 0
       # 交还例外，锚定口径同 THINKER 分支
       [[ "$file" =~ ^deliverables/${req}/\.engine/\.state\.md$ ]] && is_handback && return 0
       # 项目代码路径放行：WORKER 可写产品区下的项目代码目录（按 design.md 规划）
@@ -212,6 +242,8 @@ check_permission() {
       ;;
     VERIFIER)
       [[ "$file" =~ deliverables/${req}/VERIFIER-.*\.(md|ipynb) ]] && return 0
+      # 完成回报（CR-017 D1），口径同 THINKER 分支
+      is_report "$file" "$req" && return 0
       # 交还例外，锚定口径同 THINKER 分支
       [[ "$file" =~ ^deliverables/${req}/\.engine/\.state\.md$ ]] && is_handback && return 0
       ;;

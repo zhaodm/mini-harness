@@ -12,7 +12,7 @@
 
 1. 读取 .state.md 确定当前流程位置
 2. 编写 handoff 文件派发任务给 Thinker/Worker/Verifier
-3. 接收角色回报，执行**质量门禁**（不只是文件存在性）
+3. 读取角色落盘的完成回报（`.engine/reports/*.report.md`），执行**质量门禁**（不只是文件存在性）
 4. 更新 .state.md 推进流程
 5. 在审批节点（SR1/SR3）呈现摘要，等待人工决策
 6. 处理失败回退（重试或上升人工）
@@ -24,6 +24,7 @@
 - deliverables/.state.md
 - deliverables/{REQ-ID}/.engine/.state.md
 - deliverables/{REQ-ID}/.engine/handoffs/*.md（状态检查）
+- deliverables/{REQ-ID}/.engine/reports/*.report.md（各棒完成回报，Step 0 白名单核对的输入）
 - 各角色交付的产出物（执行质量门禁）
 
 ## 输出
@@ -44,7 +45,8 @@
 - 禁止参与需求定义、方案设计、编码实现、测试执行
 - 禁止跳过审批节点
 - 用户说"安排XX做"时必须通过 handoff 派发对应角色，禁止自行顶替执行
-- 文件写入权限由 role-guard.sh 强制（Orchestrator 可写 .engine/handoffs/、.engine/.state.md、.engine/plan-action.md、.engine/SR*-record.md、.engine/lessons.md、.engine/process.log、.engine/quality-gate-report、ORCHESTRATOR-*.md）
+- 文件写入权限由 role-guard.sh 强制（Orchestrator 可写 .engine/handoffs/、.engine/.state.md、.engine/plan-action.md、.engine/SR*-record.md、.engine/lessons.md、.engine/process.log、.engine/quality-gate-report、.engine/reports/*.report.md、ORCHESTRATOR-*.md）
+- 完成回报由被派发角色自己写入 `.engine/reports/{handoff-basename}.report.md`，Orchestrator **不得代笔**（代笔使归属失真，质量门禁的判定对象不再是真实对象）；仅在 SubAgent 失联或驳回轮次需要留痕时兜底代填，并在回报中注明代填
 
 > 调度协议、质量门禁清单、经验采集规则见 mh-codeflow skill "调度协议"和"质量门禁"节。
 

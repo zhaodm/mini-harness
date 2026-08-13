@@ -147,6 +147,34 @@ new_string = "current_role: ORCHESTRATOR\ncurrent_role: THINKER,ORCHESTRATOR"
 
 判据只取本次写入的**新内容**（`Write` 的 `.tool_input.content`），**不读磁盘**：磁盘上的 `current_role` 恒为派发角色，用它判定等于永不成立。交还例外只接受 `Write`（理由见下节），故一次逻辑状态迁移对应一次守卫判定，且判定对象与落盘内容同一。`.ipynb` 不承载流程状态，`NotebookEdit` 不参与交还例外；`Edit` 写 `.engine/.state.md` 一律拒绝。
 
+### 归属层面：判定对象与真实对象不一致的第三个实例（CR-017）
+
+CR-016 在**量词**（存在性 vs 首行）与**判定对象**（片段 vs 合并态）两个层面各修一次，CR-017 修剩下的**归属**层面。三者同源：授权判定的主体与真实主体不一致。
+
+`templates/handoff-template.md` 自 `f150a4c`（CR-003，hook 落地首日）即规定完成回报「执行角色必填」，而 `handoffs/` 是守卫的 ORCHESTRATOR 独占路径 —— 三角色写入一律 `exit 2`。**协议强制要求的动作，守卫结构性禁止。**
+
+潜伏十余个 CR 未被发现，因为它不阻塞流程：Orchestrator 收回持权代填即可绕过。**真实代价不是流程阻塞，是证据链失效** —— 代填后回报变成「Orchestrator 撰写、Orchestrator 审计」，质量门禁 Step 0 核对 `read_files` 的判定对象（回报）不再是真实对象（角色实际读了什么），退化为依赖 SubAgent 进程内返回值的诚实性，无落盘证据。
+
+处置：回报移出 handoff，落到 `.engine/reports/<handoff-basename>.report.md`。
+
+- **目录即权限边界。** 不在 `handoffs/` 内按后缀区分写权 —— `handoffs/x.report.md` 与 `handoffs/x.md` 的正则会互相咬边，是锚定类缺陷的温床。
+- **派生命名而非自由命名。** 门禁要能从 handoff 路径机械算出回报路径，不靠内容里的自述指针：**自述指针可被改写，路径派生不能。**
+- **写权分离即 R2。** 白名单在 handoff（角色不可写），`read_files` 在回报（角色可写）。比较的两侧落在两个文件、两套写权，故执行角色无法改写被比较的一侧使越权自洽。放开三角色对 `handoffs/*.md` 的写权是被否决的方案，因为那让执行角色同时掌握两侧，比现状更糟。
+- **本条无内容判据，且这是有意的。** 内容判据是 CR-016 两个 P0 的共同载体，能不引入就不引入。回报不承载流程状态，无需 `is_handback` 那类检查；**无多行判据即无排列可反转**，排列次序对抗在此条上不适用。
+- 路径正则锚定要求与交还例外同源（见下文两节）：`^…$` 双向锚定，`${req}` 取自当前 state 故不跨需求。
+
+**能力边界（R6）：本改动提升的是落盘可追溯性，不是身份认证。** 守卫仍无法证明 `reports/x.report.md` 是 Thinker 写的 —— 载荷不含 `agent_type`。回报由谁写仍不可验证，只是现在**有了可 diff、可留痕的落盘物**，而非进程内返回值。
+
+回报写权按「当前谁持权」而非「文件名声称的角色」约束：三角色共用同一条正则，不按角色前缀细分。加角色前缀判据会引入「文件名声称的角色」与「state 里的角色」两个主体 —— 正是本 CR 要消除的那类不一致。故 THINKER 持权时写 `…-DEV1-T1-R1.report.md` 是 `exit 0`，这是设计选择而非缺口。
+
+#### 元教训：协议文本与守卫实现分处两个文件、无交叉校验，矛盾可潜伏十余个 CR
+
+`f150a4c` 引入 `handoffs/` 独占规则时，模板已写着「执行角色必填」。**两处从未对照。** 十余个 CR 里每一次都有人读过模板、也有人读过守卫，没有一次把两者并排看。
+
+这不是疏忽而是结构问题：没有任何门禁检查「协议文本声明的写入者」与「守卫放行的角色」是否一致。`docs/audits/` 的历次审计也未覆盖 —— 审计对象是守卫行为，不是守卫与协议的一致性。凡「规范说 A 必须做 X」而「机制禁止 A 做 X」的矛盾，都只能靠人在两个文件间主动串联才能发现。**验收须交叉验证两侧文本 + 一条守卫断言，而不是只测守卫自身自洽。**
+
+同源归档：外部项目 `~/Code/mini-agent` 使用本框架时撞到同一矛盾（其 `lessons.md` EXP-2）。该 lessons 出不了那个仓库，但教训是框架级的 —— **框架缺陷由下游使用者先撞到，说明框架自身的自检维度缺了「协议与实现的一致性」这一格。**
+
 ### 交还例外不得放大为引擎态直通
 
 放行条件是「路径为本需求的 `.engine/.state.md`」**且**「本次写入交还给 ORCHESTRATOR」。`handoffs/`、`plan-action.md`、`SR*-record.md`、`lessons.md`、`process.log` 不在放行正则内，内容含交还标记也照旧拒绝。`${req}` 取自当前 state 的 `req_id`，故跨需求（REQ001 持权写 `deliverables/REQ002/.engine/.state.md`）不命中。放行落在 `check_permission()` 的 `THINKER`/`WORKER`/`VERIFIER` 三个分支内而非函数外，多角色形态（`THINKER,VERIFIER`）由「任一分支命中即放行」自动继承，ORCHESTRATOR 分支无须改动。
@@ -168,6 +196,21 @@ new_string = "current_role: ORCHESTRATOR\ncurrent_role: THINKER,ORCHESTRATOR"
 `Write`/`Edit` 取 `.tool_input.file_path`，`NotebookEdit` 取 `.tool_input.notebook_path`——沿用 `file_path` 会取到空值而整条通道静默绕过。路径参数缺失时 `exit 0` 并向 stderr 打印 `WARN: <tool> 缺少路径参数，守卫跳过`，不 `exit 2`：此处硬阻断会把任何上游载荷契约变动变成全局阻断，且与真实越权无法区分，代价高于收益（守卫定位为防误撞）。这是对 CR-016 R5「不得默认放行」的一处有意偏离，已审批记录在案。
 
 ## 约束与陷阱
+
+### mh-dev 分支的角色维度校验为何未落地（CR-017 D3，实现受阻）
+
+需求 R5 要求守卫按写入者角色收窄 mh-dev 分支放行集，设计 D3 指定判据取 `tools/mh-dev/.mh-dev/state.json` 的 `current_role`。**该判据不可用，D3 未实现**，`approved_scope` 仍是 mh-dev 分支的唯一判据。
+
+阻塞事实（均已实测）：
+
+1. **`current_role` 恒为 `planner`。** `transition-state.sh:19` 每次状态转移都硬写 `'planner'`，`state.json.template:6` 初值同样是 `planner`，仓库内**没有任何代码路径**会把它写成 `developer` 或 `tester`。该字段表达的是「谁在驱动流程」（Planner 始终是主会话），不是「谁在写这个文件」。
+2. **按 D3 表实现即 Developer 全程锁死。** Developer 运行期间字段值是 `planner`，而 `planner` 行只允许运行态与 `CR-*.md`，故 `approved_scope` 内的每个框架文件都 `exit 2` —— 包括 `scripts/role-guard.sh` 自身。实测中该实现把守卫改到一半即自锁，此后连修回来都要绕过 hook。
+3. **判据与 `validate-changes.sh` 并非同源。** 那边的 `role` 来自命令行 `--role`（Planner 调用时显式传入），不读 `current_role`。设计称两者「同源」，实际一个是入参、一个是状态字段，取值域都不同。**D 原则 1（判据与读取端同源）在此条上未被满足，而这正是设计自己立下的纪律。**
+4. **修 `transition-state.sh` 不在本 CR 范围。** 让字段真实反映写入者需要在每次 spawn 前后改写它，而它由 Planner 独占、且 `transition-state.sh` 不在 `approved_scope` 内。
+
+更根本的是：**即使字段被如实维护，它仍在被治理方自己可写的文件里** —— 与本节开头「自授权机制」同一局限。Planner 写 `state.json`，也就自己签发自己的通行证；CR-016 DEV-01 那次越权若发生在有 D3 之后，Planner 把字段改成 `developer` 即可照旧穿过。故 D3 的收益上限是**防误撞**（提醒角色「这不是你的路径」），不是防越权，需求 R5 若期望后者则期望本身不成立。
+
+可行方向须另开 CR 决策，三条各有代价：hook 载荷无 `agent_type`，故（a）由 Planner 在每次 spawn 前后显式改写 `current_role`（软约束，仍自授权，但能挡误撞）；（b）在 `validate-changes.sh` 侧加严（已是事后校验，挡不住落盘）；（c）接受 mh-dev 轨的角色分离只有软约束，改为在 CI 阶段用 `git diff` 比对角色声明（离线、不阻断写入）。
 
 ### role-guard.sh mh-dev 分支的 scope 匹配口径
 

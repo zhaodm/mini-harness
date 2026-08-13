@@ -106,29 +106,35 @@ check_verifier_conclusion() {
 # QA-4: Handoff 完成报告 — 4字段非空
 # ─────────────────────────────────────────────
 check_handoff_completion() {
-    echo "--- QA-4: Handoff 完成报告完整性 ---"
+    echo "--- QA-4: 完成报告完整性 ---"
     local checked=0
 
+    # CR-017 D2：回报落在 .engine/reports/<handoff-basename>.report.md（守卫放行给执行角色），
+    # handoff 本身仍是 ORCHESTRATOR 独占。读取位置从 handoff 路径派生，与守卫同源。
+    local report_dir="$REQ_DIR/.engine/reports"
     for hf in "$REQ_DIR"/.engine/handoffs/*.md; do
         [ -f "$hf" ] || continue
-        # 只检查已完成的 handoff（含 status: done/completed）
-        if ! grep -qi "status:.*done\|status:.*completed" "$hf" 2>/dev/null; then
+        local rp="$report_dir/$(basename "$hf" .md).report.md"
+        # 回报文件不存在 → 该棒尚未回报，与旧结构下「handoff 无 done 状态」同义，跳过不计
+        [ -f "$rp" ] || continue
+        # 只检查已完成的回报（含 status: done/completed）
+        if ! grep -qi "status:.*done\|status:.*completed" "$rp" 2>/dev/null; then
             continue
         fi
         checked=$((checked + 1))
 
         local missing=""
-        grep -qi "output_files:" "$hf" 2>/dev/null || missing="$missing output_files"
-        grep -qi "summary:" "$hf" 2>/dev/null || missing="$missing summary"
+        grep -qi "output_files:" "$rp" 2>/dev/null || missing="$missing output_files"
+        grep -qi "summary:" "$rp" 2>/dev/null || missing="$missing summary"
 
         if [ -n "$missing" ]; then
-            echo "WARN: $(basename "$hf") 缺少字段:$missing"
+            echo "WARN: $(basename "$rp") 缺少字段:$missing"
             WARNS=$((WARNS + 1))
         fi
     done
 
     if [ $checked -eq 0 ]; then
-        echo "INFO: 无已完成的 handoff，跳过"
+        echo "INFO: 无已完成的回报，跳过"
     else
         echo "PASS: 检查了 $checked 个完成报告"
     fi

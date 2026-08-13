@@ -6,8 +6,6 @@
 set -euo pipefail
 
 DELIVERABLES_DIR="deliverables"
-SPEC_DIR="deliverables/$req_id/docs/spec"
-OUTPUT_DIR="deliverables/$req_id"
 ERRORS=0
 
 check_type="${1:-all}"
@@ -17,6 +15,13 @@ req_id="${2:-}"
 if [ -z "$req_id" ]; then
     req_id=$(grep "^req_id:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 fi
+
+# req_id 解析之后再派生路径：这两行原先位于 req_id 赋值之前，`set -u` 下引用未绑定变量
+# 使整个脚本在第 9 行即退出（exit 1、无任何输出），所有检查从不执行。
+# CR-017 R4 要求回报门禁不得静默失效，而门禁所在脚本本身跑不起来即最彻底的静默失效，
+# 故一并修正——仅移动位置，两个变量的取值与用法不变。
+SPEC_DIR="deliverables/$req_id/docs/spec"
+OUTPUT_DIR="deliverables/$req_id"
 
 if [ -z "$req_id" ]; then
     echo "WARN: 未指定 REQ-ID 且无法从 .state.md 读取，部分检查将跳过"
@@ -209,26 +214,38 @@ check_c() {
             echo "WARN: phase=done 但 handoff 数量不足（期望 ≥2，实际 $handoff_count）"
         fi
 
-        # Handoff 完成回报非空检查（phase=done 时所有 handoff 应已完成）
+        # 完成回报非空检查（phase=done 时所有 handoff 应已完成）
+        # CR-017 D2：回报已从 handoff 内移出，落在 .engine/reports/<handoff-basename>.report.md。
+        # 回报路径由 handoff 路径派生而非各自硬编码，故门禁读取位置与守卫放行位置同源；
+        # 若仍读 handoff 内的字段，字段永不出现、门禁永久静默通过（比硬失败更危险，R4）。
         if [ "$phase" = "done" ]; then
+            local report_dir="$REQ_DIR/.engine/reports"
             local empty_report_count=0
             for handoff in "$handoff_dir"/*.md; do
                 [ -f "$handoff" ] || continue
-                if grep -q "^status: pending" "$handoff" 2>/dev/null; then
-                    echo "WARN: $(basename "$handoff") 仍为 pending（完成回报未填写）"
+                local report="$report_dir/$(basename "$handoff" .md).report.md"
+                # 回报缺失是新结构下「回报未填」的表现形态：旧结构下表现为字段为空，
+                # 文件不存在时若不检查则整组字段检查被 continue 跳过，漏报。
+                if [ ! -f "$report" ]; then
+                    echo "WARN: $(basename "$handoff") 无对应完成回报文件（期望 .engine/reports/$(basename "$report")）"
+                    empty_report_count=$((empty_report_count + 1))
+                    continue
+                fi
+                if grep -q "^status: pending" "$report" 2>/dev/null; then
+                    echo "WARN: $(basename "$report") 仍为 pending（完成回报未填写）"
                     empty_report_count=$((empty_report_count + 1))
                 fi
-                if grep -q '^summary: ""' "$handoff" 2>/dev/null || grep -q "^summary: $" "$handoff" 2>/dev/null; then
-                    echo "WARN: $(basename "$handoff") summary 为空"
+                if grep -q '^summary: ""' "$report" 2>/dev/null || grep -q "^summary: $" "$report" 2>/dev/null; then
+                    echo "WARN: $(basename "$report") summary 为空"
                     empty_report_count=$((empty_report_count + 1))
                 fi
-                if grep -q 'output_files: \[\]' "$handoff" 2>/dev/null || grep -q '^output_files: $' "$handoff" 2>/dev/null; then
-                    echo "WARN: $(basename "$handoff") output_files 为空"
+                if grep -q 'output_files: \[\]' "$report" 2>/dev/null || grep -q '^output_files: $' "$report" 2>/dev/null; then
+                    echo "WARN: $(basename "$report") output_files 为空"
                     empty_report_count=$((empty_report_count + 1))
                 fi
             done
             if [ "$empty_report_count" -eq 0 ]; then
-                echo "PASS: 所有 handoff 完成回报已填写"
+                echo "PASS: 所有完成回报已填写"
             fi
         fi
     fi
