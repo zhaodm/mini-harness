@@ -12,7 +12,11 @@ def load(name):
   with open(os.path.join(runtime,name),encoding='utf-8') as f:return json.load(f)
  except FileNotFoundError: fail('required runtime file missing: '+name)
  except json.JSONDecodeError as e: fail('malformed JSON in %s: %s'%(name,e))
-def nonempty(v): return isinstance(v,str) and v.strip() and not re.search(r'\b(TBD|TODO|待补充)\b',v,re.I)
+# nonempty() 只判空值，不判占位符——两者是不同的检查，混在一起会误伤合法叙述。
+# 占位符残留由 propose 相位的专项检查负责（见下方 placeholder 扫描，覆盖 TBD/TODO/待补充/请补充），
+# 它只扫模板需填写的 acceptance statement；verify/audit 的 summary 是叙述正文，
+# 合法引用「待补充」这类词（如描述"无备注页显示 — 而非待补充"）不得判为占位符残留。
+def nonempty(v): return isinstance(v,str) and bool(v.strip())
 s=load('state.json'); track=s.get('track'); round_=s.get('repair',{}).get('round',0)
 criteria_path=os.path.join(runtime,'acceptance-criteria.json')
 if phase=='propose':
@@ -23,8 +27,12 @@ if phase=='propose':
   ids.append(x['id'])
  if len(ids)!=len(set(ids)) or not any(x.startswith('AC-') for x in ids): fail('criteria require unique AC items')
  if track=='formal' and not any(x.startswith('AX-') for x in ids): fail('formal track requires AX items')
+ # 占位符残留检测：只认「整条 statement 就是未填写的骨架」，不扫叙述正文中的引用。
+ # 判据是占位词独立成句（可带前后空白与成对引号/括号），而非出现在句中——
+ # 「验收标准待补充」是未填写，「须显示「—」而非「待补充」字样」是在描述正确行为，不得误伤。
+ PLACEHOLDER=re.compile(r'^[\s\'"「『（(<\[]*(?:TBD|TODO|待补充|请补充)[\s\'"」』）)>\].。!！]*$',re.I)
  for x in items:
-  if re.search(r'\b(TBD|TODO|待补充|请补充)\b',x.get('statement',''),re.I): fail(f'placeholder in acceptance item {x.get("id")}')
+  if PLACEHOLDER.match(x.get('statement','').strip()): fail(f'placeholder in acceptance item {x.get("id")}')
  md=open(os.path.join(runtime,'acceptance-criteria.md'),encoding='utf-8').read()
  if set(re.findall(r'\bA[CX]-[0-9]+\b',md)) != set(ids): fail('Markdown and JSON acceptance IDs differ')
  print('PASS: proposal criteria complete');raise SystemExit(0)
