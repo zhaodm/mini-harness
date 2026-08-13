@@ -69,6 +69,9 @@
 - 任何文件写入后必须验证文件存在且非空
 - **脚本硬约束优先于自然语言软约束**：以脚本退出码为准，Agent 自述不作为通过依据
 - `scripts/role-guard.sh` 强制引擎态与产品产出分离：`/mh-run` 运行态文件（`.state.md`、`handoffs/`、`process.log` 等）须写入 `deliverables/{REQ-ID}/.engine/`，产品区文档须遵循 `<ROLE>-<phase>-<name>.md` 命名；WORKER 可写产品区下的项目代码路径（src/、tests/、deploy/ 等），但不可写 `.engine/` 引擎态和其他角色产出；全局路径穿越检测拒绝包含 `..` 组件的写入路径，WORKER 排除规则大小写不敏感（防止 `.ENGINE/` 绕过）；mh-dev 分支采用双向归一化匹配 `approved_scope`（目标路径与 scope 条目一并转绝对形态后比较，故 scope 存相对或绝对路径均正确），以 `/` 结尾的条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd，`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行（与归属校验的 tester_scope 同口径，`tests-evil/` 不命中）
+- `scripts/role-guard.sh` 覆盖 `Write`/`Edit`/`NotebookEdit` 三种写入工具（`NotebookEdit` 的路径参数是 `notebook_path`；路径参数缺失时保守放行并向 stderr 打印 `WARN`）。归一化后**按路径归属路由**，不再以「是否存在活跃需求」作为分支条件：`deliverables/` 前缀（目录前缀语义，`deliverables-evil/` 不命中）归 `/mh-run` 角色白名单，其余归 mh-dev 框架治理；无活跃 mh-dev 授权时框架路径放行（默认会话透明，见 §6），有授权则 `approved_scope` 不可被空/畸形/终态的需求 state 绕过。两条流水线路径集不相交，互不阻断
+- **交还例外**：THINKER/WORKER/VERIFIER 持权时写本需求 `.engine/.state.md`，若该次写入内容的**首个** `current_role:` 行其值恰为 `ORCHESTRATOR` 则放行，使调度循环可收尾。判据与守卫读取端同源（`grep '^current_role:' | head -1 | awk '{print $2}'`）——**存在性量词（任一行匹配即放行）曾导致横向夺权**，见 `docs/kb/domains/guards.md`。判据取本次写入的**新内容**而非磁盘旧值。**交还例外只接受 `Write`**：`Edit` 只暴露 `new_string` 片段，守卫看不到合并结果，跨行 `old_string` 可使片段判据与落盘生效值分歧而提权（audit F-01），故 `Edit` 写 `.engine/.state.md` 一律 `exit 2`——**交还必须用 Write 一次完整写入**。例外不放大到 `handoffs/`、`plan-action.md`、`SR*-record.md`、`lessons.md`、`process.log`，也不跨需求生效；例外的路径正则 `^…$` 双向锚定到 `.state.md` 全名，`.state.md.evil`、`.state.mdX`、`.state.md/child.md` 等后缀伪造与 `x/deliverables/.../.state.md` 等嵌套伪造均不命中
+- role-guard 的判据存放在被治理方自己可写的文件中，故为**自授权机制**；`Bash` 通道不在 hook matcher 内、不受守卫覆盖；其定位是防误撞而非安全边界（详见 `docs/kb/domains/guards.md`「授权模型与能力边界」）
 - 修改框架后运行 `bash scripts/check-harness.sh` 确认框架完整性
 
 ## 6. 多角色工作流协议

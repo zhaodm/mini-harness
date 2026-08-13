@@ -193,7 +193,7 @@ init ──────> propose ──────> apply ──────> a
 
 > 角色切换指令、Handoff 协议、心跳打印、过程日志、断点恢复、异常处理等通用规则见 skills/mh-codeflow/SKILL.md "调度协议"节 + `templates/logging-standard.md`。各阶段执行细节见 skills/*/SKILL.md。
 
-> role-guard.sh 按角色限制写入路径：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd；`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行，无需列入 `approved_scope`。
+> role-guard.sh 覆盖 `Write`/`Edit`/`NotebookEdit`，归一化后按路径归属路由：`deliverables/`（目录前缀语义）归角色白名单，其余归 mh-dev 框架治理，无活跃 mh-dev 授权时框架路径放行。角色白名单：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；THINKER/WORKER/VERIFIER 另有交还例外，写本需求 `.engine/.state.md` 且该次写入内容的首个 `current_role:` 行值恰为 `ORCHESTRATOR` 时放行（判据与读取端同源，非存在性量词——旧的存在性判定曾导致横向夺权；且只接受 `Write`，`Edit` 因片段判据无法覆盖合并结果而一律拒）——**交还须一次完整写入**（判据取本次写入新内容，拆分成不覆盖该行的 Edit 会被拒），路径正则 `^…$` 双向锚定 `.state.md` 全名（`.state.md.evil`、`.state.mdX`、`.state.md/child.md` 等后缀伪造与嵌套伪造路径均不命中），且不放大到 `handoffs/`、`plan-action.md` 等其他引擎态文件。全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd；`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行，无需列入 `approved_scope`。守卫为自授权机制、`Bash` 通道不受覆盖，定位是防误撞而非安全边界（详见 `docs/kb/domains/guards.md`）。
 
 ---
 

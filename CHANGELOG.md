@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.9.0] - 2026-08-13
+
+CR-016: role-guard 授权模型修正 — 授权判据从「谁在写」改为「这次写入是否是协议允许的状态迁移」。
+
+### 修复
+
+- **scripts/role-guard.sh 交还例外**: 非 ORCHESTRATOR 角色持权时写本需求 `.engine/.state.md`，若该次写入内容含行首锚定的 `current_role: ORCHESTRATOR` 则放行，修复「Orchestrator 派发后永久丧失状态机写入权、调度循环无法收尾」。判据取本次写入的新内容（`Write` 的 `content` / `Edit` 的 `new_string`），不读磁盘旧值；交还须一次完整写入。例外的路径正则 `^…$` 双向锚定 `.state.md` 全名，后缀伪造（`.state.md.evil`、`.state.mdX`、`.state.md/child.md`）与嵌套伪造路径均不命中；例外不放大到 `handoffs/`、`plan-action.md`、`SR*-record.md`、`lessons.md`、`process.log`，不跨需求生效
+- **scripts/role-guard.sh 按路径归属路由**: 取消 mh-dev 分支的 `-z "$STATE_FILE"` 进入条件，改由归一化路径的 `deliverables/` 目录前缀选择分支。修复两个反向缺陷——活跃/终态需求 state 存在即永久关闭框架治理入口；空/畸形需求 state 又使 `approved_scope` 被整体绕过（`CURRENT_ROLES` 空 → 无条件 `exit 0`）。路径归一化与仓库外绝对路径拦截上移至路由之前，两分支共用；`CURRENT_ROLES` 空则放行收敛在 `/mh-run` 分支内。顺带修复：活跃需求存在时 mh-dev Tester 写不了 `tests/` 的不对称
+- **scripts/role-guard.sh + .claude/settings.json 覆盖 NotebookEdit**: matcher 由 `Write|Edit` 扩为 `Write|Edit|NotebookEdit`，路径参数按工具取 `file_path` / `notebook_path`，封堵一条完全绕过守卫的写入通道。路径参数缺失时保守放行并打印 `WARN`（有意偏离需求 R5 的硬阻断，理由见 guards.md）。三角色白名单同步接受 `.ipynb` 扩展名（仅本角色前缀，不跨角色边界）
+
+### 审计后修复（repair round 2）
+
+- **scripts/role-guard.sh 交还谓词改为与读取端同源（P0，横向夺权）**: 旧实现 `grep -qE '^current_role:...'` 是存在性量词（任一行匹配即放行），而读取端取首行首值（`head -1`）。多行内容上两端分歧：载荷「首行 `current_role: THINKER,ORCHESTRATOR` + 末行 `current_role: ORCHESTRATOR`」被放行，落盘生效角色为首行值，持权角色随即取得 ORCHESTRATOR 的整个 `.engine/` 写权（`handoffs/`、`plan-action.md`、`SR*-record.md`、`lessons.md`、`process.log`、全局 `.state.md`）；`Edit` 仅追加一行即可完成，无须触碰原派发行。谓词改为直接复用读取端解析（`grep '^current_role:' | head -1 | awk '{print $2}'`），两端同源则结构上无从分歧。基线 `156c49a` 对该载荷 `exit 2`，属本 CR 新开的例外口子在多行内容上开得过宽
+- **docs/kb/domains/guards.md 不变量由单向收紧为双向（P0 根因）**: 原文写「谓词接受集 ⊇ 读取端接受集」，存在性量词满足该单向包含却仍是缺陷——**只防单侧的不变量放过了另一侧**，且顺利通过设计评审、Developer 自检与 Tester 两轮 217 项断言。现表述为等价（`=`）。同时记录 `Edit` 片段判据管不到合并结果这一固有局限（枚举确认为 fail-safe 侧，无提权路径）与「加断言数量不等于补维度」的测试教训
+- **scripts/role-guard.sh ORCHESTRATOR 分支补 `.ipynb`（P2）**: `.ipynb` 放开时三处角色分支已改、ORCHESTRATOR 分支漏改，现补齐
+- **口径同步**: `CLAUDE.md`、`README.md`、`docs/designs/workflow.md`、`docs/designs/source-of-truth.md`、`docs/designs/design.md`、`templates/state-template.md`、`skills/mh-codeflow/SKILL.md`、`skills/mh-design/SKILL.md` 八份文档的「含行首锚定的 `current_role: ORCHESTRATOR` 行」表述均改为「首个 `current_role:` 行其值恰为 ORCHESTRATOR」——旧表述本身就是存在性语义
+
+### 交付纪律偏差（须留痕）
+
+- **Planner 越权写入框架文件（违反 `tools/mh-dev/CLAUDE.md` 铁律 3）**: 用户指示「快速修复轨」后，Planner 未派发 Developer，自行写入 11 个框架文件完成 P0-1 与 F-01 修复，全部在 Planner 白名单之外。role-guard 的 mh-dev 分支只校验 `approved_scope`、不校验写入者角色，三个角色共享同一张通行证，故未能拦截——mh-dev 轨的角色分离目前只有软约束，与 `/mh-run` 轨按 `current_role` 分角色白名单不对称。这是 P0-1 / F-01 的第三个同源实例（判定对象与真实对象不一致，本项为 scope 授权对象 vs 实际写入者），建议 CR-017 修
+- **归属证据失真**: `change-attribution.developer.2.json` 署名 `developer` 但实际写入者为 Planner；其中 10 个文件的 `after_sha256` 亦与交付态漂移（路线 B 在该归属落盘后才实施）。归属文件受不可变约束无法更正，后续审计以 `docs/requirements/CR-016-role-guard-authority-model.md`「交付纪律偏差记录」节为准据
+- **不可变约束与同轮改判的结构性冲突（非违规）**: `tester.2` 快照与归属落盘后，Planner 指示改判 AC-02/AX-02，Tester 依不可变约束拒绝覆盖（处置正确），故其 sha 非最终交付态。建议流程明确：验收标准改判须触发新一轮，不得在同轮内消化
+- **「环境限制」标签掩盖真实缺陷**: `tools/mh-dev/tests/test-ppt-gate.sh` 的 2 项失败被 Planner、Developer 与前两轮 Tester 连续两轮误归因为 Playwright 环境限制，实为该套件 `AC-04`/`AC-05` 缺 `import('playwright')` 守卫（同套件其他三处均有）。`AC-04` 上半条判据 `rc != 0` 被 playwright 缺失时的 `exit 3` 满足，即它因错误的原因通过。教训：把失败归因为环境前，须先确认该失败的形态与环境成因一致
+
+### 文档更新
+
+- **docs/kb/domains/guards.md**: 新增「授权模型与能力边界」——守卫为自授权机制（判据存于被治理方可写文件）、`Bash` 通道不受覆盖、定位是防误撞而非安全边界；记录「交还谓词接受集 ⊇ 读取端接受集」不变量与 `grep -qx` 被实测否决的原因、路由的 fail-open 收口教训
+- **CLAUDE.md §5**: 新授权口径（工具覆盖、路径归属路由、交还例外、自授权与能力边界）
+- **templates/state-template.md**: `current_role` 补交还例外与「交还须一次完整写入」，更新规则 +1 条
+- **skills/mh-codeflow/SKILL.md**、**skills/mh-design/SKILL.md**: 调度循环派发/交还两次 state 写入须一次完整写入
+- **docs/designs/design.md §3**: 调度循环图显式含派发与交还两次 state 写入
+- **README.md**、**docs/designs/workflow.md**、**docs/designs/source-of-truth.md**: role-guard 口径同步（doc_sync 级联）
+
 ## [0.8.0] - 2026-06-10
 
 CR-006: TE Code Review 强化 + 测试用例沉淀机制 — 脚本化优先，复用已有模块。

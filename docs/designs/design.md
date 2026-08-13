@@ -134,11 +134,13 @@ mini-harness/
 ### Orchestrator 调度循环
 
 ```
-读取 .engine/.state.md → 确定下一步 → 写 handoff → 派发 SubAgent
-→ 接收回报 → 质量门禁 → 更新 .engine/.state.md → 循环
+读取 .engine/.state.md → 确定下一步 → 写 handoff → 更新 state（派发 current_role=<角色>）
+→ 派发 SubAgent → 接收回报 → 质量门禁 → 更新 state（交还 current_role=ORCHESTRATOR）→ 循环
 ```
 
-详见：skills/mh-codeflow/SKILL.md "调度协议"节
+派发与交还两次 state 写入**各须一次完整写入**。派发后 `current_role` 已是 SubAgent 角色，role-guard 对 `.engine/.state.md` 只保留一条状态机边：该次写入新内容的**首个** `current_role:` 行其值恰为 `ORCHESTRATOR` 时放行（交还例外；判据与读取端同源，非存在性量词，且只接受 `Write`）。这使「一次逻辑状态迁移」与「一次守卫判定」一一对应，代价是不能把交还拆成多次不含该行的 Edit。
+
+详见：skills/mh-codeflow/SKILL.md "调度协议"节、`docs/kb/domains/guards.md`「授权模型与能力边界」
 
 ### 并行编排层（Workflow）
 

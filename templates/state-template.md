@@ -14,7 +14,18 @@ req_id: REQ{NNN}              # 需求编号，全局唯一递增
 # === 流程状态 ===
 phase: init                    # 当前阶段: init | propose | apply | archive | done
 current_step: THINK-NEEDS     # 当前步骤 ID（见下方步骤 ID 枚举）
-current_role: THINKER          # 当前执行角色: THINKER | WORKER | VERIFIER
+current_role: THINKER          # 当前执行角色: THINKER | WORKER | VERIFIER（逗号分隔表示并行扇出）
+                               # 语义是「派发意图」而非执行者身份。单值字段，不新增备份字段。
+                               # 本文件只应有一个 current_role 行；生效值取首行（读取端 head -1）。
+                               # role-guard 交还例外：非 ORCHESTRATOR 持权时写本文件，
+                               # 仅当该次写入新内容的「首个 current_role 行」值恰为 ORCHESTRATOR
+                               # 才放行（判据与读取端同源，不读磁盘旧值）。
+                               # 写多行 current_role 而首行是别的角色一律拒——曾用存在性量词
+                               # （任一行匹配即放行）导致横向夺权。
+                               # 故交还必须用 Write 一次完整写入——交还例外只接受 Write，
+                               # Edit 写本文件一律 exit 2（Edit 只暴露片段，守卫看不到合并
+                               # 结果，跨行 old_string 曾可被用于提权）。
+                               # 详见 docs/kb/domains/guards.md
 current_handoff: ""            # 当前活跃 handoff 文件名（如 REQ001-REQ2-R1.md）
 completed_steps: []            # 已完成步骤列表（字符串数组）
 auto_advance: true             # 始终自动推进（/mh-run 唯一入口）
@@ -138,3 +149,4 @@ req_id: REQ{NNN}
 5. `current_handoff` 在每次写入新 handoff 时更新，handoff 完成后清空
 6. `sr_status` 各字段在对应审批节点执行时更新
 7. `track` 写入后只读，切换需重新开需求
+8. 派发（`current_role` 改为 SubAgent 角色）与交还（改回 `ORCHESTRATOR`）**各须一次完整写入**；交还写入内容的**首个** `current_role:` 行其值须恰为 `ORCHESTRATOR`，否则被 role-guard 判为伪交还而拦截。文件中不得出现多个 `current_role` 行——生效值只取首行，多行形态曾被用于横向夺权

@@ -82,7 +82,9 @@
 - 新增模板文件后，更新本文件的映射表
 - 新增 scripts 检查项后，更新 docs/designs/design.md §6
 - 发现映射表与实际不符时，以实际文件为准，更新映射表
-- `scripts/role-guard.sh` WORKER 角色可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`、`.archiveignore` 外的所有路径（项目代码路径放行）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd，`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行（与 `tools/mh-dev/scripts/validate-changes.sh` 的 tester_scope 同口径）
+- `scripts/role-guard.sh` 覆盖 `Write`/`Edit`/`NotebookEdit` 三种写入工具（`NotebookEdit` 的路径参数是 `notebook_path`；路径参数缺失时保守放行并打印 `WARN`）。归一化后**按路径归属路由**：`deliverables/` 前缀（目录前缀语义）归 `/mh-run` 角色白名单，其余归 mh-dev 框架治理，无活跃 mh-dev 授权时框架路径放行（默认会话透明）。两条流水线路径集不相交，互不阻断。
+- `scripts/role-guard.sh` WORKER 角色可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`、`.archiveignore` 外的所有路径（项目代码路径放行）；THINKER/WORKER/VERIFIER 额外有**交还例外**——写本需求 `.engine/.state.md` 且本次写入内容的首个 `current_role:` 行其值恰为 `ORCHESTRATOR` 时放行（判据与读取端同源，非存在性量词；取本次写入新内容而非磁盘旧值；**交还例外只接受 `Write`**，`Edit` 写该文件一律拒（片段判据无法覆盖合并结果，曾可提权）；路径正则 `^…$` 双向锚定 `.state.md` 全名，后缀伪造如 `.state.md.evil`/`.state.mdX` 与嵌套伪造路径均不命中；不放大到 `handoffs/` 等其他引擎态文件，不跨需求生效）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd，`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行（与 `tools/mh-dev/scripts/validate-changes.sh` 的 tester_scope 同口径）
+- role-guard 的判据存放在被治理方自己可写的文件中，故为**自授权机制**；`Bash` 通道不在 hook matcher 内、不受覆盖；其定位是防误撞而非安全边界（详见 `docs/kb/domains/guards.md`「授权模型与能力边界」）
 
 ---
 

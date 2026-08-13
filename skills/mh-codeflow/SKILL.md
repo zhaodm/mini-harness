@@ -53,12 +53,14 @@ code track 全流程自动推进。Orchestrator 主导，一次性执行 clarify
 1. 读取 .engine/.state.md         → 确认当前位置（phase/step/repair_round/track）
 2. 写入 handoff           → 使用 templates/handoff-template.md 格式
 3. 检查停止条件           → 触发则暂停等待用户
-4. 更新 .engine/.state.md         → current_step/current_role/current_handoff/task_started_at
+4. 更新 .engine/.state.md         → current_step/current_role/current_handoff/task_started_at（派发：一次完整写入）
 5. 派发 SubAgent          → 注入角色契约 + handoff + 白名单文件
 6. 接收回报               → SubAgent 填写 handoff 完成回报
 7. 执行质量门禁           → 按对应角色的检查清单逐项核对（见 templates/orchestrator-quality-gate.md）
-8. 推进或驳回             → 通过则更新 .engine/.state.md；不通过则写新 handoff 驳回
+8. 推进或驳回             → 通过则更新 .engine/.state.md（交还：一次完整写入）；不通过则写新 handoff 驳回
 ```
+
+**第 4/8 步的 state 写入必须是一次完整写入。** 派发后 `current_role` 已是 SubAgent 角色，此时 role-guard 只在「该次写入把流程交还给 ORCHESTRATOR」时放行 `.engine/.state.md`——判据取本次写入的新内容，要求其**首个** `current_role:` 行的值恰为 `ORCHESTRATOR`（与读取端同源；写多行 `current_role` 而首行是别的角色一律拒）。**且必须用 `Write` 工具**——交还例外只接受 Write，`Edit` 写 `.engine/.state.md` 一律 `exit 2`（Edit 片段判据无法覆盖合并结果，曾可被用于提权，见 `docs/kb/domains/guards.md`）。
 
 每一步之间打印心跳：`[Orchestrator] {动作描述}`
 

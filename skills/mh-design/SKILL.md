@@ -34,7 +34,7 @@ Thinker 需求分析 → 技术设计/视觉设计 → 计划编排 → SR1 方�
    - 期望输出: `deliverables/{REQ-ID}/THINKER-propose-requirement-spec.md`
 
 4. **更新 state 并调用 Workflow**：
-   - 更新 `.engine/.state.md`: current_step=THINK-NEEDS, current_role=THINKER
+   - 更新 `.engine/.state.md`: current_step=THINK-NEEDS, current_role=THINKER（一次完整写入）
    - 写入 handoff 文件
    - 调用 Workflow `thinker-design`（Thinker needs 相位）
 
@@ -44,6 +44,8 @@ Thinker 需求分析 → 技术设计/视觉设计 → 计划编排 → SR1 方�
    - 不通过 → 生成驳回 handoff（新轮次），重新调用 Workflow
 
 6. 更新 `.engine/.state.md`: current_handoff="", current_role=ORCHESTRATOR
+
+> **第 4/6 步的 state 写入必须是一次完整写入。** 派发后 `current_role` 已是 THINKER，role-guard 只在「该次写入把流程交还给 ORCHESTRATOR」时放行 `.engine/.state.md`——判据取本次写入的新内容，要求其**首个** `current_role:` 行的值恰为 `ORCHESTRATOR`。**且必须用 `Write` 工具**——`Edit` 写 `.engine/.state.md` 一律 `exit 2`（见 `docs/kb/domains/guards.md`）。
 
 ---
 

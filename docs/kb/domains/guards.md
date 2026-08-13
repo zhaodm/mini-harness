@@ -68,6 +68,105 @@ scripts/
 | `scripts/baseline.sh` | 基线对比 | `docs/designs/design.md` §7.4 |
 | `scripts/check-harness.sh` | 框架自检 | `docs/designs/design.md`、`.claude/commands/` |
 
+## 授权模型与能力边界
+
+### role-guard 是自授权机制，不是安全边界
+
+权限判据（`deliverables/{REQ-ID}/.engine/.state.md` 的 `current_role`、`tools/mh-dev/.mh-dev/state.json` 的 `approved_scope`）全部存放在**被治理方自己可写的文件**里。持权角色可以改写判据再写目标，守卫无法阻止。这不是待修的缺陷，而是模型的固有形态：PreToolUse 载荷不含 `agent_type`，SubAgent 是进程内 spawn，守卫无从获知「谁在写」，只能判定「这次写入是否是协议允许的状态迁移」。
+
+三条边界须一并记住：
+
+- **自授权。** `current_role` 表达的是「派发意图」而非「执行者身份」。守卫按意图放行，不校验身份。
+- **Bash 通道不受覆盖。** hook matcher 只含 `Write|Edit|NotebookEdit`。`Bash` 工具的重定向、`sed -i`、`tee` 一概绕过守卫。把 Bash 纳入 matcher 需要解析任意 shell 命令的写入目标，不可靠，故不做。
+- **定位是防误撞，不是防攻击。** 守卫要挡的是「Orchestrator 手滑替 Worker 写了代码」「SubAgent 越界改了别人的产出」这类协议内失误。对抗刻意绕过不在设计目标内，别把它当访问控制来依赖。
+
+因此：守卫失效属于流程纪律问题，不属于安全事件；但守卫**空转**（判据恒真、通道漏覆盖）比没有守卫更危险，因为它提供虚假保障——`NotebookEdit` 曾长期不在 matcher 内，即一条完全静默的漏覆盖通道。
+
+### 交还谓词的接受集必须等于读取端（双向，不是单向）
+
+**不变量：交还谓词的接受集 = 读取端判为 `ORCHESTRATOR` 的集合。两个方向都不许偏。**
+
+- 谓词**更严** → 写入方按 schema 示例书写却被判伪交还（「读得出但写不进」），单向闭锁缺陷换形态复发。
+- 谓词**更宽** → 写得进的内容其生效角色并非 ORCHESTRATOR（「写得进但读不出」），即横向夺权。
+
+⛔ **这条不变量最初写成单向（`⊇`），那个方向性错误本身就是一个 P0 缺陷的根因。** 详见下方「存在性量词」。**只防单侧的不变量会让另一侧的缺陷合法通过评审** —— 它确实通过了设计评审、Developer 自检与 Tester 两轮 217 项断言。
+
+实现直接复用读取端的解析，不再写正则去模拟它：
+
+```bash
+effective=$(printf '%s\n' "$NEW_CONTENT" | grep '^current_role:' | head -1 | awk '{print $2}')
+[[ "$effective" == "ORCHESTRATOR" ]]
+```
+
+**两端同源则结构上无从分歧**，无须人工核对「这个正则是否与解析器等价」——那种核对正是上一版失败的地方。
+
+#### 存在性量词与首行语义的分歧（P0，audit 发现）
+
+旧实现 `grep -qE '^current_role:[[:space:]]+ORCHESTRATOR([[:space:]]|$)'` 是**存在性量词**：内容中任一行匹配即放行。而读取端取**首行首值**（`head -1`）。多行内容上两端结论不同：
+
+| 载荷（THINKER 持权，写本需求 `.state.md`） | 旧谓词 | 落盘后生效角色 |
+|---|---|---|
+| 首行 `current_role: WORKER` + 末行 `current_role: ORCHESTRATOR` | 放行 | `WORKER` |
+| 首行 `current_role: THINKER,ORCHESTRATOR` + 末行 `current_role: ORCHESTRATOR` | 放行 | `THINKER,ORCHESTRATOR` |
+
+第二种载荷即完整夺权链：写入放行 → 生效角色含 ORCHESTRATOR → 持权者取得 `handoffs/`、`plan-action.md`、`SR*-record.md`、`lessons.md`、`process.log` 与全局 `deliverables/.state.md` 的写权（同一 state 下直接写这些是 `exit 2`）。基线 `156c49a` 对两种载荷均 `exit 2`，故这是新开的例外口子在多行内容上开得过宽，不是既有缺陷。
+
+**旧谓词下 `Edit` 仅追加一行即可完成夺权**，原派发行无须触碰。故「交还须一次完整写入」是协议约束，**不是安全约束**——它只约束合作者，不约束刻意绕过（与本域「自授权」定位一致）。
+
+#### 交还例外只接受 Write —— Edit 的片段判据无法覆盖合并结果（P0，audit F-01）
+
+`Edit` 载荷只有 `new_string`，守卫看不到 `old_string`，也看不到合并后的文件。因此谓词判的是**片段的首行生效值**，而落盘后真正决定权限的是**合并后文件的首行生效值**。**两端比较的不是同一份内容，双向不变量在 Edit 通道上并未真正成立。**
+
+`old_string` 跨行、从上一行中部延伸到 `current_role` 行时，片段首行被拼进上一行残段而不再行首匹配，片段第二行的诱饵在合并后升为生效行——**排列在合并这一步被反转**：
+
+```
+磁盘:   current_step: THINK-DESIGN
+        current_role: THINKER
+
+old_string = "DESIGN\ncurrent_role: THINKER"
+new_string = "current_role: ORCHESTRATOR\ncurrent_role: THINKER,ORCHESTRATOR"
+              ^ 片段首行，判据据此放行
+
+合并后: current_step: THINK-current_role: ORCHESTRATOR   ← 被吸收，不再行首匹配
+        current_role: THINKER,ORCHESTRATOR               ← 升为生效行
+```
+
+三种实测可达形态：落盘 `THINKER,ORCHESTRATOR`（取得 ORCHESTRATOR 的整个 `.engine/` 写权与全局 `.state.md`）、落盘 `WORKER`（横向夺权取得项目代码路径）、`current_role` 行整体消失（读取端解析为空 → `CURRENT_ROLES` 空 → `exit 0`，**守卫在该 state 上整体失效**，含跨需求路径全放行）。
+
+**处置：交还例外只接受 `Write`**（`[[ "$TOOL_NAME" == "Write" ]]`）。`Write` 的 `content` 即完整落盘内容，片段 == 合并态，该类分歧结构性消失——不必在守卫内模拟 Edit 替换语义（那需处理 `old_string` 缺失、多处匹配、`replace_all` 等，且与工具实现耦合）。协议侧本就约定「交还须一次完整写入」，故此收紧与既有纪律一致，只是把软约束变成硬约束。
+
+⛔ **两次 P0 同源：守卫的判定对象必须与读取端的生效对象是同一份内容。** P0-1 的分歧点在**量词**（存在性 vs 首行），F-01 的分歧点在**判定对象**（片段 vs 合并态）。修 P0-1 时收紧的双向不变量本身正确，但它只约束了「怎么解析」，没约束「解析谁」——**不变量的适用前提也必须写明**，否则同一个错误换个层面复发。
+
+**Planner 曾据「`old_string` 与行边界对齐」的枚举判定此缺口为 fail-safe 侧、无提权路径；该结论错误。** 那个前提是未声明的隐含假设，放宽到跨行 `old_string` 后即失效。教训：枚举法的结论强度受限于枚举维度是否穷尽，**未声明的前提就是未检验的前提**。
+
+**测试维度教训：** 217 项断言里 5 处双 `current_role` 载荷全是「诱饵在前、真值在后」排列，无一处相反，而存在性量词只在**相反排列**下暴露分歧。同类缺陷的断言必须显式覆盖「真值在前 / 真值在后」两种排列——**加断言数量不等于补维度**。
+
+#### 首行语义如何覆盖原三段锚定的职责
+
+`grep -qx` 亦已实测否决（它拒绝 `current_role: ORCHESTRATOR # 注释` 与多空格形态，而读取端接受，属「更严」侧违反）。现行首行解析同时挡住原先靠三段锚定挡的形态：缩进、`#` 注释、引号包裹均不被 `^current_role:` 命中；`current_role_backup:` 同理；`ORCHESTRATORX` 与 `THINKER,ORCHESTRATOR` 作为 `$2` 整体值不等于 `ORCHESTRATOR`；`current_role:ORCHESTRATOR`（无空格）两端一致解析为空值，故一致拒绝。
+
+判据只取本次写入的**新内容**（`Write` 的 `.tool_input.content`），**不读磁盘**：磁盘上的 `current_role` 恒为派发角色，用它判定等于永不成立。交还例外只接受 `Write`（理由见下节），故一次逻辑状态迁移对应一次守卫判定，且判定对象与落盘内容同一。`.ipynb` 不承载流程状态，`NotebookEdit` 不参与交还例外；`Edit` 写 `.engine/.state.md` 一律拒绝。
+
+### 交还例外不得放大为引擎态直通
+
+放行条件是「路径为本需求的 `.engine/.state.md`」**且**「本次写入交还给 ORCHESTRATOR」。`handoffs/`、`plan-action.md`、`SR*-record.md`、`lessons.md`、`process.log` 不在放行正则内，内容含交还标记也照旧拒绝。`${req}` 取自当前 state 的 `req_id`，故跨需求（REQ001 持权写 `deliverables/REQ002/.engine/.state.md`）不命中。放行落在 `check_permission()` 的 `THINKER`/`WORKER`/`VERIFIER` 三个分支内而非函数外，多角色形态（`THINKER,VERIFIER`）由「任一分支命中即放行」自动继承，ORCHESTRATOR 分支无须改动。
+
+**路径正则必须 `^…$` 双向锚定。** `[[ =~ ]]` 是无锚 ERE，写成 `deliverables/${req}/\.engine/\.state\.md` 时 `.state.md` 只是前缀，例外立刻从「单个 state 文件的一条状态机边」放大为「`.engine/` 目录直通」：持权角色在写入内容里带一行 `current_role: ORCHESTRATOR`，即可新建或覆盖 `.state.md.evil`、`.state.md.sh`、`.state.mdX`、`.state.md/child.md`。缺 `^` 锚同理放过 `x/deliverables/${req}/.engine/.state.md` 一类嵌套伪造路径。判据侧的行首锚定（上一节）与路径侧的双向锚定是两个独立的锚定要求，任缺其一例外都会被放大。左锚安全的前提是 `$file` 已是归一化后的仓库相对路径（`NORM_PATH`）。
+
+### 按路径归属路由，两条流水线不得互相阻断
+
+归一化后按 `case "$NORM_PATH" in deliverables/*)` 判定归属：`deliverables/` 归 `/mh-run` 角色白名单，其余归 mh-dev 框架治理。两个流程的路径集不相交，故可共存。
+
+旧实现以「不存在活跃 REQ state」（`-z "$STATE_FILE"`）作为 mh-dev 分支的进入条件，一个全局且偶然的耦合，派生两个反向缺陷：任意 REQ state 存在（含 `done` 终态残留）即永久关闭框架治理入口；而 `CURRENT_ROLES` 为空时的无条件 `exit 0` 又覆盖框架路径，使空/畸形 REQ state 反向绕过整个 `approved_scope`。**失效开放（fail-open）的兜底分支必须限定在它该管的路径集内**——`CURRENT_ROLES` 空则放行保留在 `/mh-run` 分支内，框架路径在上一层就已被路由走。
+
+归属判定必须是目录前缀语义：`deliverables-evil/`、`mydeliverables/`、`docs/deliverables/` 均不命中 `deliverables/*`，落入框架分支。判定用 `NORM_PATH` 而非原始 `FILE_PATH`，故绝对路径写法归属同样正确——归一化因此必须上移到路由之前，两分支共用。仓库外绝对路径的拦截随之上移，对两分支一致生效（消息不再含 `mh-dev` 字样）。
+
+顺带修复一处不对称：旧实现下只要存在活跃 REQ state，mh-dev 的 Tester 就写不了 `tests/`（mh-dev 分支被跳过，落到角色白名单后 `tests/` 无人有权）。路由后 `tests/` 归框架分支，Tester 放行照常生效。
+
+### 载荷路径参数缺失取保守放行
+
+`Write`/`Edit` 取 `.tool_input.file_path`，`NotebookEdit` 取 `.tool_input.notebook_path`——沿用 `file_path` 会取到空值而整条通道静默绕过。路径参数缺失时 `exit 0` 并向 stderr 打印 `WARN: <tool> 缺少路径参数，守卫跳过`，不 `exit 2`：此处硬阻断会把任何上游载荷契约变动变成全局阻断，且与真实越权无法区分，代价高于收益（守卫定位为防误撞）。这是对 CR-016 R5「不得默认放行」的一处有意偏离，已审批记录在案。
+
 ## 约束与陷阱
 
 ### role-guard.sh mh-dev 分支的 scope 匹配口径

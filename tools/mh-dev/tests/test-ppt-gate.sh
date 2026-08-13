@@ -103,8 +103,19 @@ echo "=== CR-014 PPT 门禁验收测试 ==="
 build_fixture
 
 head_ "AC-05 合规产出全链路通过"
-gate all
-expect_rc 0 "AC-05: 合规 4 页单文件产出 → exit 0 无误报"
+# `gate all` 含渲染层，playwright 不可用时 verify-ppt.sh 按设计 exit 3（阻断而非放行），
+# 于是本断言的 want=0 必然不成立。这不是产出不合规，是环境缺件——与同套件
+# AC-10 / AC-04 的渲染断言同类，须用同一条守卫跳过（skip_ 不计入 PASS/FAIL）。
+# 缺这条守卫会让「环境未装浏览器」长期伪装成「门禁有缺陷」，掩盖真实回归。
+if node -e "import('playwright')" >/dev/null 2>&1; then
+    gate all
+    expect_rc 0 "AC-05: 合规 4 页单文件产出 → exit 0 无误报"
+else
+    # 静态层仍可独立验证：合规产出不得被静态层误报
+    gate B
+    expect_rc 0 "AC-05: 合规 4 页单文件产出静态层 → exit 0 无误报"
+    skip_ "AC-05: 全链路（含渲染层）断言跳过（playwright 不可用）"
+fi
 
 head_ "AC-01 / AX-01 字号底线与档位边界"
 variant "t = t.replace('class=\"slide-title\"', 'class=\"slide-title\" style=\"font-size: 18px\"', 1)"
@@ -278,10 +289,20 @@ gate C
 if [ "$GATE_RC" -ne 0 ]; then ok "AC-09: 静态层检出 CSS 的 --font-caption: 9px"
 else bad "AC-09: --font-caption 降至 9px 后静态层仍 PASS —— var() token 是字号扫描盲区"; fi
 
-gate D
-if [ "$GATE_RC" -ne 0 ]; then ok "AC-04: 渲染层检出 9px 实际渲染字号"
-else bad "AC-04: 渲染层未测量计算字号 —— 静态层与渲染层同时漏过 CSS token 小字"; fi
-expect_out 'computed-font' "AC-04: 渲染层以 computed-font 类别报出"
+# 渲染层断言须有浏览器守卫。缺守卫时这组有两种失效方式，且方向相反：
+#   - 上面那条判据是 `rc != 0`，而 playwright 缺失时 exit 3 同样 != 0，
+#     于是它**因错误的原因通过**（假通过，比失败更难发现）；
+#   - 下面 expect_out 'computed-font' 需要真实测量输出，无浏览器时必然失败。
+# 一组断言里同时存在假通过与真失败，正是「未加守卫」的典型症状。
+if node -e "import('playwright')" >/dev/null 2>&1; then
+    gate D
+    if [ "$GATE_RC" -ne 0 ]; then ok "AC-04: 渲染层检出 9px 实际渲染字号"
+    else bad "AC-04: 渲染层未测量计算字号 —— 静态层与渲染层同时漏过 CSS token 小字"; fi
+    expect_out 'computed-font' "AC-04: 渲染层以 computed-font 类别报出"
+else
+    skip_ "AC-04: 渲染层检出 9px 实际渲染字号（playwright 不可用）"
+    skip_ "AC-04: 渲染层以 computed-font 类别报出（playwright 不可用）"
+fi
 
 # templates/ 未被本套件改动——这是上述改造的核心断言，回归即刻可见
 if command grep -q -- '--font-caption: 18px;' templates/ppt-base.css; then
