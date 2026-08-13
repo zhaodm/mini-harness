@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "density_tiers": {
+    "speaker": {
+      "label": "低密度演讲型",
+      "floor": 18,
+      "content_ratio_min": 0.25,
+      "theme": "templates/ppt-base.css"
+    },
+    "reading": {
+      "label": "高密度阅读型",
+      "floor": 14,
+      "content_ratio_min": 0.45,
+      "theme": "templates/ppt-light.css"
+    }
+  },
+  "layout_types": [
+    "全屏大字",
+    "图文混排",
+    "多栏对比",
+    "时间线流程",
+    "数据展示",
+    "全出血背景",
+    "问答互动"
+  ],
+  "glyph_classes": [
+    "trend-arrow",
+    "icon-dot",
+    "timeline-node"
+  ],
+  "layouts": [
+    { "id": "L01", "name": "封面+摘要", "density": "speaker", "layout_type": "全屏大字" },
+    { "id": "L02", "name": "执行摘要", "density": "speaker", "layout_type": "图文混排" },
+    { "id": "L03", "name": "业务仪表盘", "density": "speaker", "layout_type": "数据展示" },
+    { "id": "L04", "name": "图表+表格", "density": "speaker", "layout_type": "数据展示" },
+    { "id": "L05", "name": "四象限分析", "density": "speaker", "layout_type": "多栏对比" },
+    { "id": "L06", "name": "数据明细表", "density": "speaker", "layout_type": "数据展示" },
+    { "id": "L07", "name": "图文混排", "density": "speaker", "layout_type": "图文混排" },
+    { "id": "L08", "name": "卡片网格", "density": "speaker", "layout_type": "图文混排" },
+    { "id": "L09", "name": "时间线+数据", "density": "speaker", "layout_type": "时间线流程" },
+    { "id": "L10", "name": "方案对比", "density": "speaker", "layout_type": "多栏对比" },
+    { "id": "L11", "name": "漏斗指标", "density": "speaker", "layout_type": "时间线流程" },
+    { "id": "L12", "name": "总结与规划", "density": "speaker", "layout_type": "图文混排" },
+    { "id": "W01", "name": "经营数据总览", "density": "reading", "layout_type": "数据展示" },
+    { "id": "W02", "name": "双栏复合对比", "density": "reading", "layout_type": "多栏对比" },
+    { "id": "W03", "name": "指标卡片网格", "density": "reading", "layout_type": "图文混排" },
+    { "id": "W04", "name": "表格+指标", "density": "reading", "layout_type": "数据展示" },
+    { "id": "W05", "name": "总结+行动项", "density": "reading", "layout_type": "图文混排" }
+  ]
+}

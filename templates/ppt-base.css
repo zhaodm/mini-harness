@@ -223,11 +223,12 @@ body {
 }
 
 /* Slide Header */
+/* margin-bottom 须 ≥ 全局标题间距下限 32px（渲染层 title-gap 检查项） */
 .slide-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
 }
 
 .slide-header .slide-title {

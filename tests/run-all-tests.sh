@@ -29,6 +29,7 @@ run_suite() {
 run_suite "role-guard.sh 回归测试" "bash tests/test-role-guard.sh"
 run_suite "框架自检回归测试" "bash tests/test-check-harness.sh"
 run_suite "mh-dev 治理集成测试" "bash tools/mh-dev/tests/test-governance.sh"
+run_suite "CR-014 PPT 门禁验收测试" "bash tools/mh-dev/tests/test-ppt-gate.sh"
 run_suite "prompt-assembler 单元测试" "node tests/test-prompt-assembler.js"
 run_suite "result-parser 单元测试" "node tests/test-result-parser.js"
 run_suite "detect-scenario 单元测试" "node tests/test-detect-scenario.js"

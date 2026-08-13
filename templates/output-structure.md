@@ -102,6 +102,6 @@ deliverables/{REQ-ID}/ 根目录允许以下文件（非目录）：
 | output_type | 额外说明 |
 |-------------|---------|
 | code | 产出物放 `src/` + `tests/` + `docs/` + `deploy/`（按需） |
-| ppt | 产出物直接放产品区根（HTML+CSS），wireframes 放 `assets/wireframes/` |
+| ppt | 产出物为**单一 HTML 文件** + CSS，直接放产品区根（导航在文件内实现一次）；wireframes 放 `assets/wireframes/` |
 | documentation | 无 src/，主产出在 `docs/` |
 | infrastructure | 主产出在 `deploy/`，src/ 可选 |

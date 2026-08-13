@@ -76,7 +76,11 @@ mini-harness/
 │   ├── metrics-template.md      执行指标模板
 │   ├── lessons-template.md      经验沉淀模板
 │   ├── frontend-design-skill.md 前端设计指南（Anthropic官方）
-│   ├── ppt-base.css             PPT 设计系统
+│   ├── ppt-base.css             PPT 设计系统（低密度档）
+│   ├── ppt-light.css            PPT 浅色主题（高密度档）
+│   ├── ppt-base.html            PPT 单文件骨架
+│   ├── ppt-quality-rules.md     PPT 硬约束数值权威源
+│   ├── ppt-templates/           PPT 版式登记表 + 布局模板
 │   ├── examples/                金标准产出示例
 │   └── output-guides/           产出结构参考
 ├── docs/                        设计参考（人工阅读，Orchestrator 运行时不读）
@@ -247,10 +251,19 @@ ppt track 的 ppt_design_mode 在 clarify 阶段选择：
 
 | 路径 | 约束 | 适用场景 |
 |------|------|---------|
-| system（ppt-base.css） | 严格设计系统，统一风格 | 企业汇报、品牌一致性 |
-| creative（frontend-design） | 仅结构约束，视觉自由 | 创意提案、视觉冲击力 |
+| system（ppt-base.css / ppt-light.css） | 严格设计系统，版式须取自登记表 | 企业汇报、品牌一致性 |
+| creative（frontend-design） | 仅结构约束，版式取值自由但须声明 | 创意提案、视觉冲击力 |
 
-详见：skills/mh-slideflow/SKILL.md
+另在 clarify 阶段选择 `ppt_density`（密度模式），决定字号底线与留白阈值档位：
+
+| 档位 | 定位 | 绝对下限 | 留白内容占比下限 |
+|------|------|---------|-----------------|
+| speaker（低密度演讲型） | 投影演讲、金句冲击 | 18px | 25% |
+| reading（高密度阅读型） | 仪表盘、阅读材料 | 14px | 45% |
+
+读不到 `ppt_density` 时按 speaker（更严格档）判定。
+
+详见：skills/mh-slideflow/SKILL.md · templates/ppt-quality-rules.md
 
 ---
 
@@ -279,7 +292,7 @@ Orchestrator 接收回报后逐项核对对应角色验收清单。详见 skills
 |------|------|---------|
 | verify.sh | 结构校验 | 文件存在性(A)、阶段完整性(B)、流程一致性(C)、健康度(D)、契约(E) |
 | verify-qa.sh | 内容质量校验 | 模糊词(QA-1)、测试结果(QA-2)、报告结论(QA-3)、报告完整性(QA-4)、设计规格(QA-5)、代码规范(QA-6)、经验采集(QA-7) |
-| verify-ppt.sh | PPT 专项校验 | viewport、.slide容器、CSS引用、字号底线、方向键导航、页数一致性、占位符残留 |
+| verify-ppt.sh | PPT 专项校验（静态层 bash + 渲染层 Node/Playwright） | A 文件存在性与单文件形态、B 静态合规（字号分档/版式登记/多样性/结构）、C 内容完整性与页数一致、D 渲染几何测量（溢出/重叠/留白/标题间距）。退出码 3 = 渲染环境不可用（阻断，不降级） |
 
 **约束升级路径：** 自然语言约束 → 发现频繁违反 → 脚本化 → 硬性拦截
 
@@ -356,12 +369,6 @@ deliverables/{REQ-ID}/docs/lessons-learned.md  ← 全量累积（从 .engine/ �
 | scripts/baseline.sh | 基线对比 | 检测非流程修改 |
 | scripts/check-harness.sh | 框架自检 | 框架维护时 |
 
-### 修复工具
-
-| 脚本 | 用途 |
-|------|------|
-| scripts/fix-ppt-fonts.py | 批量修复 PPT 字号（< 18px 上调） |
-
 ### 内置能力（MCP/工具）
 
 | 工具 | 用途 | 调用时机 |
@@ -391,9 +398,11 @@ deliverables/{REQ-ID}/docs/lessons-learned.md  ← 全量累积（从 .engine/ �
 | metrics-template.md | 执行指标格式 | Orchestrator（ARC-5） |
 | lessons-template.md | 经验沉淀文档格式 | Orchestrator（ARC-6） |
 | frontend-design-skill.md | 前端设计指南（Anthropic官方） | Thinker/Worker（PPT creative模式） |
-| ppt-base.css | PPT 设计系统 | Thinker/Worker（PPT system模式） |
-| ppt-base.html | PPT HTML骨架 | Worker |
-| ppt-light.css | PPT 浅色主题 | Thinker/Worker |
+| ppt-base.css | PPT 设计系统（低密度 speaker 档字阶） | Thinker/Worker（PPT system模式） |
+| ppt-base.html | PPT 单文件骨架（舞台缩放 + 导航 + 演讲者模式） | Worker |
+| ppt-light.css | PPT 浅色主题（高密度 reading 档字阶） | Thinker/Worker |
+| ppt-quality-rules.md | PPT 硬约束数值权威源（字号分档/几何阈值/豁免规则） | Thinker/Worker/Verifier |
+| ppt-templates/registry.json | PPT 版式登记（ID/类型/密度归属） | Thinker（选版式）、verify-ppt.sh |
 | examples/*.md | 金标准产出示例（Thinker/Worker/Verifier/修复） | 各角色参考 |
 | output-guides/*.md | 产出结构参考 | Worker |
 | ppt-templates/layouts/ | PPT 布局模板 | Thinker |

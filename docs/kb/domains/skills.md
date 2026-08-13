@@ -71,7 +71,7 @@ tools/mh-dev/skills/
 | 文件 | 职责 | 改动时需同步检查 |
 |------|------|----------------|
 | `skills/mh-codeflow/SKILL.md` | code track 全流程编排、调度协议、质量门禁 | `agents/orchestrator.md`、`docs/designs/design.md` §4、`docs/designs/source-of-truth.md` |
-| `skills/mh-slideflow/SKILL.md` | ppt track 全流程、PPT 视觉约束 | `docs/designs/design.md` §6、`templates/ppt-quality-rules.md` |
+| `skills/mh-slideflow/SKILL.md` | ppt track 全流程骨架 + 按需加载索引；视觉叙事原则（人类判断项）。硬约束数值下沉至 ppt-quality-rules.md，入口不复述 | `docs/designs/design.md` §6、`templates/ppt-quality-rules.md`、`templates/ppt-templates/registry.json` |
 | `skills/mh-intake/SKILL.md` | 需求初始化与澄清 | `agents/thinker.md` |
 | `skills/mh-design/SKILL.md` | Thinker 设计相位、SR1 通过标准 | `agents/thinker.md`、`docs/designs/design.md` §4 |
 | `skills/mh-build/SKILL.md` | Worker 开发 SOP、SR3 通过标准 | `agents/worker.md`、`docs/designs/design.md` §4 |

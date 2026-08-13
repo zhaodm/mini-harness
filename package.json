@@ -2,5 +2,8 @@
   "name": "mini-harness",
   "version": "0.8.0",
   "type": "module",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
 }

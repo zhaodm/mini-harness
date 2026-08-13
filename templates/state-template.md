@@ -23,6 +23,7 @@ auto_advance: true             # 始终自动推进（/mh-run 唯一入口）
 track: code                    # code | ppt（入口确定，不可中途切换）
 thinker_phase: ""              # needs | design | visual（当前 Thinker 相位）
 ppt_design_mode: ""            # system | creative（ppt track 专用）
+ppt_density: ""                # speaker | reading（ppt track 专用；空值按 speaker 严格档判定）
 
 # === 修复循环 ===
 repair_round: 0                # 当前修复轮次（0=未进入修复循环，1-5=修复中）

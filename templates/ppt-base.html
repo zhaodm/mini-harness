@@ -3,12 +3,230 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=1920">
-  <title>PPT Slide</title>
+  <title>PPT</title>
   <link rel="stylesheet" href="ppt-base.css">
+  <style>
+    /* ── 舞台缩放：1920×1080 固定布局整体等比缩放至视口，允许留边 ──
+       ⛔ 禁止响应式重排：不得用 media query 改变 slide 内部布局，不得对舞台内元素用
+          clamp()。内部永远是 1920×1080 的固定布局——这是"所见即所得"的前提，也使
+          渲染层测量结果与实际投影一致。 */
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000; }
+
+    .ppt-viewport {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ppt-stage {
+      width: 1920px;
+      height: 1080px;
+      position: relative;
+      flex: none;
+      transform-origin: center center;
+      /* JS 按 min(vw/1920, vh/1080) 写入 --ppt-scale */
+      transform: scale(var(--ppt-scale, 1));
+    }
+
+    /* 页面可见性用 visibility + opacity + pointer-events 控制。
+       ⛔ 不用 display:none —— .slide 若被后续 CSS 设为 display:flex 会覆盖它，
+          导致所有页同时可见。 */
+    .ppt-stage > .slide {
+      position: absolute;
+      inset: 0;
+      visibility: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .ppt-stage > .slide.is-active {
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* 页码指示 */
+    .ppt-indicator {
+      position: fixed;
+      right: 20px;
+      bottom: 16px;
+      z-index: 50;
+      font: 600 18px/1 -apple-system, 'Inter', sans-serif;
+      color: rgba(255, 255, 255, 0.55);
+      pointer-events: none;
+    }
+
+    /* 总览（Esc） */
+    .ppt-overview {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 32px;
+      overflow: auto;
+      background: rgba(10, 10, 10, 0.96);
+    }
+    .ppt-overview.is-open { display: grid; }
+    .ppt-overview button {
+      aspect-ratio: 16 / 9;
+      border: 2px solid #3a3a3a;
+      border-radius: 6px;
+      background: #1c1c1c;
+      color: #f0f0f0;
+      font: 600 20px/1.4 -apple-system, 'Inter', sans-serif;
+      cursor: pointer;
+    }
+    .ppt-overview button:hover { border-color: #E8845F; }
+  </style>
 </head>
 <body>
-  <div class="slide">
-    <!-- Slide content here -->
+  <div class="ppt-viewport">
+    <div class="ppt-stage" id="pptStage">
+      <!-- 每页一个 .slide，必须声明 data-layout 与 data-slide-id；
+           data-notes 承载讲稿备注（按 slide-id 绑定，插入新页时不串页） -->
+      <div class="slide" data-layout="L01" data-slide-id="s01" data-layout-type="全屏大字" data-notes="">
+        <!-- Slide content here -->
+      </div>
+    </div>
   </div>
+
+  <div class="ppt-indicator" id="pptIndicator">1 / 1</div>
+  <div class="ppt-overview" id="pptOverview" aria-label="幻灯片总览"></div>
+
+  <!-- 导航 + 缩放 + 演讲者模式：单文件形态下内联一次，不逐页重写 -->
+  <script>
+  (function () {
+    'use strict';
+    var stage = document.getElementById('pptStage');
+    var slides = [].slice.call(stage.querySelectorAll('.slide'));
+    var indicator = document.getElementById('pptIndicator');
+    var overview = document.getElementById('pptOverview');
+    var current = 0;
+    var presenter = null;      // 演讲者窗口
+    var startedAt = Date.now();
+    var slideEnteredAt = Date.now();
+
+    // ── 舞台缩放 ──
+    function fit() {
+      var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      stage.style.setProperty('--ppt-scale', s);
+    }
+    window.addEventListener('resize', fit);
+    fit();
+
+    // ── 页面切换 ──
+    function show(i) {
+      if (i < 0 || i >= slides.length) return;
+      slides.forEach(function (el, idx) { el.classList.toggle('is-active', idx === i); });
+      current = i;
+      slideEnteredAt = Date.now();
+      indicator.textContent = (i + 1) + ' / ' + slides.length;
+      if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+      syncPresenter();
+    }
+    function next() { show(current + 1); }
+    function prev() { show(current - 1); }
+
+    // ── 总览 ──
+    function buildOverview() {
+      overview.innerHTML = '';
+      slides.forEach(function (el, idx) {
+        var b = document.createElement('button');
+        var t = el.querySelector('.slide-title, h1, h2');
+        b.textContent = (idx + 1) + '. ' + (t ? t.textContent.trim().slice(0, 24) : (el.dataset.layout || ''));
+        b.addEventListener('click', function () { overview.classList.remove('is-open'); show(idx); });
+        overview.appendChild(b);
+      });
+    }
+    function toggleOverview() {
+      overview.classList.toggle('is-open');
+      if (overview.classList.contains('is-open')) buildOverview();
+    }
+
+    // ── 键盘契约：←↑ 上一页 · →↓ 下一页 · Esc 总览 · P 演讲者模式 ──
+    document.addEventListener('keydown', function (e) {
+      switch (e.key) {
+        case 'ArrowRight': case 'ArrowDown': case 'PageDown': next(); break;
+        case 'ArrowLeft':  case 'ArrowUp':   case 'PageUp':   prev(); break;
+        case 'Escape': toggleOverview(); break;
+        case 'p': case 'P': openPresenter(); break;
+        case 'Home': show(0); break;
+        case 'End': show(slides.length - 1); break;
+        default: return;   // 其他键留给交互页触发内容显示
+      }
+      e.preventDefault();
+    });
+
+    // ── 演讲者模式：双屏同步 + 计时 + 讲稿备注 ──
+    function notesOf(i) {
+      var el = slides[i];
+      if (!el) return '—';
+      var n = el.dataset.notes;
+      if (n && n.trim()) return n.trim();
+      // SPEAKER_NOTES 映射按 data-slide-id 绑定，不按页序号
+      var map = window.SPEAKER_NOTES || {};
+      var byId = map[el.dataset.slideId];
+      return byId && byId.trim() ? byId.trim() : '—';   // 无备注显示 —，不显示"待补充"
+    }
+
+    function openPresenter() {
+      if (presenter && !presenter.closed) { presenter.focus(); return; }
+      presenter = window.open('', 'ppt-presenter', 'width=1100,height=700');
+      if (!presenter) return;
+      presenter.document.write(
+        '<!DOCTYPE html><meta charset="utf-8"><title>演讲者视图</title>' +
+        '<style>body{margin:0;font:18px/1.6 -apple-system,"Inter",sans-serif;background:#151515;color:#eee;' +
+        'display:grid;grid-template-rows:auto 1fr auto;height:100vh}' +
+        'header{display:flex;gap:24px;padding:14px 20px;background:#000;font-weight:600}' +
+        '#n{padding:20px;white-space:pre-wrap;font-size:22px;overflow:auto}' +
+        'footer{padding:12px 20px;background:#000;color:#888;font-size:18px}' +
+        '.k{color:#E8845F}</style>' +
+        '<header><span>页 <span id="p" class="k"></span></span>' +
+        '<span>总时长 <span id="t" class="k"></span></span>' +
+        '<span>本页 <span id="s" class="k"></span></span></header>' +
+        '<div id="n"></div>' +
+        '<footer>←→ 翻页 · 本窗口与主窗口同步</footer>');
+      presenter.document.close();
+      presenter.document.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next();
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prev();
+      });
+      syncPresenter();
+    }
+
+    function fmt(ms) {
+      var s = Math.floor(ms / 1000);
+      return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }
+
+    function syncPresenter() {
+      if (!presenter || presenter.closed) return;
+      var d = presenter.document;
+      var p = d.getElementById('p'), n = d.getElementById('n');
+      if (p) p.textContent = (current + 1) + ' / ' + slides.length;
+      if (n) n.textContent = notesOf(current);
+    }
+
+    setInterval(function () {
+      if (!presenter || presenter.closed) return;
+      var d = presenter.document;
+      var t = d.getElementById('t'), s = d.getElementById('s');
+      if (t) t.textContent = fmt(Date.now() - startedAt);
+      if (s) s.textContent = fmt(Date.now() - slideEnteredAt);
+    }, 500);
+
+    window.addEventListener('beforeunload', function () { if (presenter && !presenter.closed) presenter.close(); });
+
+    // ── 初始页 ──
+    var initial = parseInt((location.hash || '').replace('#', ''), 10);
+    show(Number.isFinite(initial) && initial >= 1 && initial <= slides.length ? initial - 1 : 0);
+  })();
+  </script>
 </body>
 </html>

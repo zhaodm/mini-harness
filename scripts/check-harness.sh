@@ -47,6 +47,7 @@ for dir in agents skills scripts templates workflows workflows/lib tests docs do
   [[ -d "$dir" ]] && pass "$dir/" || fail "$dir/ 不存在"
 done
 for file in templates/handoff-template.md templates/logging-standard.md templates/state-template.md templates/output-structure.md templates/ppt-base.css templates/ppt-base.html \
+           templates/ppt-light.css templates/ppt-templates/registry.json \
            templates/orchestrator-quality-gate.md templates/needs-spec-template.md templates/design-spec-template.md templates/ppt-slide-spec-template.md templates/ppt-quality-rules.md templates/code-report-template.md templates/test-report-template.md; do
   require_file "$file"
 done

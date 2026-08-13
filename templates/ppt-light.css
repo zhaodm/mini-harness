@@ -24,11 +24,12 @@
   --radius-lg: 8px;
 
   --font-family: -apple-system, 'Inter', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-title: 24px;
-  --font-subtitle: 17px;
-  --font-body: 14px;
-  --font-small: 12px;
-  --font-caption: 11px;
+  /* 高密度阅读型字阶（绝对下限 14px，见 templates/ppt-quality-rules.md） */
+  --font-title: 32px;
+  --font-subtitle: 22px;
+  --font-body: 18px;
+  --font-small: 16px;
+  --font-caption: 14px;
   --font-kpi: 28px;
 
   --spacing-xs: 6px;
@@ -208,7 +209,7 @@ body {
 .mini-ring .ring-value {
   position: relative;
   z-index: 1;
-  font-size: 11px;
+  font-size: var(--font-caption);
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -335,6 +336,7 @@ body {
   font-weight: 600;
 }
 
+/* ▲▼ 为图形装饰符号，豁免文字底线（不承载可读文字，见 ppt-quality-rules.md 豁免规则） */
 .trend-arrow.up { color: var(--color-positive); }
 .trend-arrow.up::before { content: '▲'; font-size: 8px; }
 .trend-arrow.down { color: var(--color-negative); }

@@ -6,7 +6,7 @@
 ## 职责与边界
 
 **做什么：**
-- 实现三层校验体系：结构校验(verify.sh)、内容质量校验(verify-qa.sh)、PPT 专项(verify-ppt.sh)
+- 实现三层校验体系：结构校验(verify.sh)、内容质量校验(verify-qa.sh)、PPT 专项(verify-ppt.sh —— 含 bash 静态层与 Node/Playwright 渲染层)
 - 实现 role-guard.sh PreToolUse Hook，按角色限制文件写入路径
 - 实现归档完整性校验(verify-archive.sh)
 - 实现框架自检(check-harness.sh)和基线对比(baseline.sh)
@@ -24,7 +24,7 @@
 scripts/
 ├── verify.sh               结构校验（A/B/C/D/E 类）
 ├── verify-qa.sh            内容质量校验（QA-1~13）
-├── verify-ppt.sh           PPT 专项校验
+├── verify-ppt.sh           PPT 专项校验（静态层 + 渲染层 + export 子命令）
 ├── verify-archive.sh       归档完整性校验
 ├── verify-code-review.sh   Code Review 格式校验
 ├── role-guard.sh           角色文件写入权限拦截（PreToolUse Hook）
@@ -36,7 +36,7 @@ scripts/
 |--------|------|------|
 | 结构校验 | 文件存在性(A)、阶段完整性(B)、流程一致性(C)、健康度(D)、契约(E) | `scripts/verify.sh` |
 | 质量校验 | 模糊词、测试结果、报告结论、报告完整性、设计规格、代码规范、经验采集 | `scripts/verify-qa.sh` |
-| PPT 校验 | viewport、.slide 容器、CSS 引用、字号底线、导航、页数 | `scripts/verify-ppt.sh` |
+| PPT 校验 | A 文件存在性与单文件形态、B 静态合规（字号分档/版式登记/多样性/结构）、C 内容完整性与页数、D 渲染几何测量（溢出/重叠/留白/标题间距）。含检查器运行时自检 | `scripts/verify-ppt.sh` |
 | 归档校验 | deliverables/{REQ-ID}/ 完整性 + docs/kb/ 校验 | `scripts/verify-archive.sh` |
 | Code Review 校验 | CR-1~5 格式与维度校验 | `scripts/verify-code-review.sh` |
 | 角色权限 | PreToolUse Hook，按角色限制写入路径 | `scripts/role-guard.sh` |
@@ -61,7 +61,7 @@ scripts/
 |------|------|----------------|
 | `scripts/verify.sh` | 结构校验（A/B/C/D/E 类） | `skills/mh-verify/SKILL.md`、`docs/designs/design.md` §7.4 |
 | `scripts/verify-qa.sh` | 内容质量校验（QA-1~13） | `skills/mh-verify/SKILL.md`、`docs/designs/design.md` §7.4 |
-| `scripts/verify-ppt.sh` | PPT 专项校验 | `skills/mh-slideflow/SKILL.md`、`templates/ppt-quality-rules.md` |
+| `scripts/verify-ppt.sh` | PPT 专项校验（静态层 bash + 渲染层 Node/Playwright；退出码 3 = 渲染环境不可用） | `skills/mh-slideflow/SKILL.md`、`templates/ppt-quality-rules.md`、`templates/ppt-templates/registry.json`、`package.json` |
 | `scripts/verify-archive.sh` | 归档完整性校验 + deliverables docs/kb/ 校验 | `skills/mh-deliver/SKILL.md` |
 | `scripts/verify-code-review.sh` | Code Review 格式与维度校验（CR-1~5） | `skills/mh-verify/SKILL.md` |
 | `scripts/role-guard.sh` | 角色文件写入权限拦截（PreToolUse Hook） | `CLAUDE.md` §5、`docs/designs/source-of-truth.md`、`docs/kb/domains/guards.md` |
@@ -96,3 +96,39 @@ scripts/
 `ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"`。hook 由 Claude Code 触发，cwd 不受脚本控制；`$(pwd)` 会让归一化随调用位置漂移——从子目录触发时仓库内绝对路径无法剥离前缀，进而误拦合法写入。`find "$ROOT/deliverables"`、`MH_DEV_STATE` 默认值、scope 归一化三处共用同一 `ROOT`，故任意 cwd 下退出码与消息一致。
 
 `find` 返回绝对路径使 `STATE_FILE` 变绝对，`check_permission` 用 `[[ =~ ]]` 子串匹配 `deliverables/${req}/...`，绝对路径同样命中，deliverables 分支判定不变。
+
+### verify-ppt.sh 禁止 GNU grep 扩展与错误吞没
+
+仓库运行于 macOS，`/usr/bin/grep` 是 BSD grep，不支持 `-P`/`\K`/前后向断言。交互 shell 的 `grep`
+可能被 ugrep 接管而支持 `-P`，导致**人工验证通过、脚本执行失效**——验证脚本行为必须用
+`bash script.sh` 实跑。
+
+CR-014 前的字号检查用 `grep -oP 'font-size:\s*\K\d+(?=px)' "$f" 2>/dev/null | awk ... || true`：
+BSD grep 报错被 `2>/dev/null` 吞掉，非 0 退出码被 `|| true` 吞掉，结果**恒定通过**。同类失效还有
+`grep -c ... || echo "0"`（无匹配时 `grep -c` 已自行输出 `0` 并返回 1，`|| echo "0"` 再补一个，
+产出 `"0\n0"` 令整数比较报错后被吞没）与漏 `-maxdepth 1` 导致 wireframe 子目录被重复计数。
+
+现行处置：字号扫描与登记表解析经 `require_ok()` 包装（失败时打印实际 stderr 并累加 ERRORS），
+且脚本启动时对已知违规/合规 fixture 自测字号检查一次，行为不符即报"检查器自身失效"并 exit 1。
+理由：静态扫描防不住新引入的等价写法，运行时自检才防得住。
+
+`require_ok` 的输出经全局 `REQUIRE_OK_OUT` 回传，**不写 stdout 供 `$(...)` 捕获**——
+后者会把 `require_ok` 放进子 shell，`ERRORS` 累加随子 shell 一同丢弃，包装就退化成纯装饰。
+这是"注释声称的机制与实现不符"的一类：门禁空转比没有门禁更危险，因为它提供虚假保障。
+
+### 字号检查的覆盖面即其有效性
+
+CR-014 repair round 1：字号扫描只匹配 `font-size: <n>px` 字面量，而设计系统 CSS 的字号
+全部走 `var(--font-*)`，字面值只出现在 token 定义行（`--font-caption: 18px`，无 `font-size:`
+前缀）。结果 `--font-caption` 可被改到 9px 而静态层与渲染层同时报 PASS。`font: 600 8px/1`
+简写同理绕过——而 `ppt-base.html` 骨架自身就用此写法。
+
+处置：静态扫描覆盖三形态（字面量 / `--font-*` token 定义 / `font` 简写），
+D 类渲染层对每个文本元素读 `getComputedStyle().fontSize` 作为不可绕过的兜底。
+**教训：检查器"能报出违规"不等于"覆盖了违规能出现的全部形态"。** 少一种形态就少一道门。
+
+### bash 变量名与多字节字符相邻
+
+`"$DENSITY（...）"` 中的全角括号会被 bash 并入变量名，`set -u` 下报
+`DENSITY?: unbound variable`。中文消息里变量后紧跟非 ASCII 字符时**必须写 `${VAR}`**。
+该类缺陷只在特定分支被执行时才暴露，容易漏测。

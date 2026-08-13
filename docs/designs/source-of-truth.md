@@ -26,9 +26,13 @@
 | repair_history schema | templates/state-template.md | skills/mh-repair/SKILL.md 示例 |
 | repair_snapshots schema | templates/state-template.md | skills/mh-repair/SKILL.md "修复派发"节 |
 | 硬校验规则 | scripts/*.sh | docs/designs/design.md §7.4 |
-| PPT track 规则 | skills/mh-slideflow/SKILL.md（扩展） | docs/designs/design.md §6 |
-| PPT 视觉约束 | skills/mh-slideflow/SKILL.md "PPT 视觉约束"节 | templates/ppt-quality-rules.md |
-| PPT 实现品质要求 | skills/mh-slideflow/SKILL.md "PPT 实现品质要求"节 | templates/ppt-quality-rules.md |
+| PPT track 规则 | skills/mh-slideflow/SKILL.md（流程骨架 + 按需加载索引） | docs/designs/design.md §6 |
+| PPT 视觉叙事原则（人类判断项） | skills/mh-slideflow/SKILL.md "PPT 视觉叙事原则"节 | — |
+| PPT 硬约束数值（字号分档 / 几何阈值 / 豁免规则 / 布局规则） | templates/ppt-quality-rules.md | scripts/verify-ppt.sh |
+| PPT 版式登记（ID / 类型 / 密度归属） | templates/ppt-templates/registry.json | templates/ppt-quality-rules.md |
+| PPT 密度模型 | templates/ppt-quality-rules.md "密度模型"节 | templates/state-template.md `ppt_density` |
+| PPT 渲染几何测量 | scripts/verify-ppt.sh D 类（内联 Node/Playwright 测量器） | templates/ppt-quality-rules.md |
+| PPT 单文件形态与导航 | templates/ppt-base.html | templates/ppt-quality-rules.md |
 | 经验采集规则 | skills/mh-deliver/SKILL.md "经验采集规则"节 | — |
 | Mini-Harness 自身开发协议 | tools/mh-dev/CLAUDE.md | tools/mh-dev/skills/mh-dev/SKILL.md |
 | mh-dev 自开发状态 schema | tools/mh-dev/templates/state.json.template | tools/mh-dev/.mh-dev/state.json |

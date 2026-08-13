@@ -7,7 +7,7 @@
 
 **做什么：**
 - 定义各产出物的标准格式模板（handoff、state、日志、指标、经验沉淀）
-- 定义 PPT 设计系统模板（ppt-base.css、ppt-base.html、布局模板）
+- 定义 PPT 设计系统模板（ppt-base.css、ppt-light.css、ppt-base.html 单文件骨架、版式登记表、布局模板）
 - 定义知识库模板（system-map、domain、recipe、kb-verify）
 - 定义金标准产出示例和产出结构参考
 
@@ -31,10 +31,10 @@ templates/
 ├── needs-spec-template.md       需求规格模板
 ├── design-spec-template.md       设计规格模板
 ├── ppt-slide-spec-template.md   PPT 幻灯片规格模板
-├── ppt-quality-rules.md         PPT 质量规则
-├── ppt-base.css                  PPT 设计系统
-├── ppt-base.html                 PPT HTML 骨架
-├── ppt-light.css                 PPT 浅色主题
+├── ppt-quality-rules.md         PPT 硬约束数值权威源
+├── ppt-base.css                  PPT 设计系统（低密度 speaker 档）
+├── ppt-base.html                 PPT 单文件骨架（舞台缩放+导航+演讲者模式）
+├── ppt-light.css                 PPT 浅色主题（高密度 reading 档）
 ├── frontend-design-skill.md      前端设计指南
 ├── code-report-template.md       代码报告模板
 ├── test-report-template.md       测试报告模板
@@ -51,10 +51,12 @@ templates/
 │   ├── backend-api.md
 │   ├── cli-tool.md
 │   └── web-app.md
-├── ppt-templates/layouts/        PPT 布局模板
-│   ├── L01-cover-summary.html
-│   ├── L02-executive-summary.html
-│   └── ... (共 17 个布局)
+├── ppt-templates/
+│   ├── registry.json             PPT 版式登记（ID/类型/密度归属）
+│   └── layouts/                  PPT 布局模板
+│       ├── L01-cover-summary.html
+│       ├── L02-executive-summary.html
+│       └── ... (共 17 个布局，L 系列低密度 / W 系列高密度)
 └── kb/                            知识库模板
     ├── system-map-template.md
     ├── domain-template.md
@@ -67,7 +69,7 @@ templates/
 | 流程模板 | handoff、state、pointer、logging | `templates/handoff-template.md` 等 |
 | 质量模板 | 指标、经验、门禁清单 | `templates/metrics-template.md` 等 |
 | 需求/设计模板 | 需求规格、设计规格 | `templates/needs-spec-template.md` 等 |
-| PPT 模板 | 设计系统、HTML 骨架、布局 | `templates/ppt-*.css`、`templates/ppt-templates/layouts/` |
+| PPT 模板 | 设计系统、单文件骨架、版式登记、布局 | `templates/ppt-*.css`、`templates/ppt-base.html`、`templates/ppt-templates/registry.json`、`templates/ppt-templates/layouts/` |
 | 报告模板 | 代码报告、测试报告 | `templates/code-report-template.md` 等 |
 | 示例 | 金标准产出示例 | `templates/examples/*.md` |
 | 产出参考 | 结构参考指南 | `templates/output-guides/*.md` |
@@ -99,10 +101,11 @@ templates/
 | `templates/needs-spec-template.md` | 需求规格模板 | `skills/mh-intake/SKILL.md` |
 | `templates/design-spec-template.md` | 设计规格模板 | `skills/mh-design/SKILL.md` |
 | `templates/ppt-slide-spec-template.md` | PPT 幻灯片规格模板 | `skills/mh-slideflow/SKILL.md` |
-| `templates/ppt-quality-rules.md` | PPT 质量规则 | `skills/mh-slideflow/SKILL.md`、`scripts/verify-ppt.sh` |
-| `templates/ppt-base.css` | PPT 设计系统 | `skills/mh-slideflow/SKILL.md` |
-| `templates/ppt-base.html` | PPT HTML 骨架 | `skills/mh-build/SKILL.md` |
-| `templates/ppt-light.css` | PPT 浅色主题 | `skills/mh-slideflow/SKILL.md` |
+| `templates/ppt-quality-rules.md` | PPT 硬约束数值权威源（字号分档/几何阈值/豁免/布局规则） | `skills/mh-slideflow/SKILL.md`、`scripts/verify-ppt.sh` |
+| `templates/ppt-base.css` | PPT 设计系统（低密度 speaker 档字阶） | `skills/mh-slideflow/SKILL.md` |
+| `templates/ppt-base.html` | PPT 单文件骨架（舞台缩放+导航+演讲者模式） | `skills/mh-build/SKILL.md`、`skills/mh-slideflow/SKILL.md` |
+| `templates/ppt-light.css` | PPT 浅色主题（高密度 reading 档字阶） | `skills/mh-slideflow/SKILL.md` |
+| `templates/ppt-templates/registry.json` | PPT 版式登记（ID/类型/密度归属/图形 class） | `scripts/verify-ppt.sh`、`skills/mh-slideflow/SKILL.md` |
 | `templates/frontend-design-skill.md` | 前端设计指南 | `skills/mh-slideflow/SKILL.md` |
 | `templates/code-report-template.md` | 代码报告模板 | `skills/mh-build/SKILL.md` |
 | `templates/test-report-template.md` | 测试报告模板 | `skills/mh-verify/SKILL.md` |
