@@ -113,17 +113,17 @@ test_strategy 固定为 `manual`，Verifier 使用 `scripts/verify-ppt.sh` 校�
 
 1. Thinker needs 相位（需求规格化）
 2. **Thinker visual 相位**（Wireframe 设计）
-   - 创建 `deliverables/{REQ-ID}/THINKER-propose-wireframes/`
+   - 创建 `deliverables/{project}/assets/wireframes/`
    - 写入 handoff，白名单按 ppt_design_mode 区分：
-     - **system**: ORCHESTRATOR-init-proposal.md, THINKER-propose-requirement-spec.md, ppt-quality-rules.md, ppt-templates/registry.json, ppt-templates/layouts/
-     - **creative**: ORCHESTRATOR-init-proposal.md, THINKER-propose-requirement-spec.md, ppt-quality-rules.md, frontend-design-skill.md
-   - 期望输出: THINKER-propose-slide-spec.md + THINKER-propose-wireframes/
+     - **system**: `deliverables/{project}/.engine/proposal.md`, `deliverables/{project}/docs/spec/requirement-spec.md`, ppt-quality-rules.md, ppt-templates/registry.json, ppt-templates/layouts/
+     - **creative**: `deliverables/{project}/.engine/proposal.md`, `deliverables/{project}/docs/spec/requirement-spec.md`, ppt-quality-rules.md, frontend-design-skill.md
+   - 期望输出: `deliverables/{project}/docs/spec/slide-spec.md` + `deliverables/{project}/assets/wireframes/`
    - slide-spec 每页须标注版式 ID 与布局类型（供多样性统计与 Worker 落声明）
 3. **用户审批 Wireframe**（WIREFRAME-PENDING 暂停点）
    - 向用户呈现 wireframe 预览路径，请求确认
    - 通过 → 继续 apply
    - 修改 → 重新派发 Thinker visual（轮次+1）
-4. Orchestrator 编排 .engine/plan-action.md → SR1 方案确认
+4. Orchestrator 编排 `deliverables/{project}/.engine/plan-action.md` → SR1 方案确认
 
 ---
 
@@ -133,7 +133,7 @@ test_strategy 固定为 `manual`，Verifier 使用 `scripts/verify-ppt.sh` 校�
    - 白名单按 ppt_design_mode 区分，另加 `templates/ppt-quality-rules.md`
    - 约束: 精装实现，真实数据，舞台 1920×1080 等比缩放
    - 每页声明 `data-layout` + `data-slide-id`；讲稿备注写 `data-notes`
-2. Verifier 使用 `scripts/verify-ppt.sh all {REQ-ID}` 校验四类检查
+2. Verifier 使用 `scripts/verify-ppt.sh all {project}` 校验四类检查
    - **A** 文件存在性与单文件形态 · **B** 静态合规（字号/版式/结构）
    - **C** 内容完整性与页数一致 · **D** 渲染几何测量（真实浏览器）
    - 退出码：0 通过 · 1 有失败项 · 3 渲染环境不可用（须先装依赖，不可跳过）
@@ -144,8 +144,8 @@ test_strategy 固定为 `manual`，Verifier 使用 `scripts/verify-ppt.sh` 校�
 
 ## Archive 阶段
 
-1. 归档产出物到 deliverables/{REQ-ID}/ 产品区（单 HTML + CSS）
-2. 额外归档 THINKER-propose-wireframes/ → deliverables/{REQ-ID}/assets/wireframes/
+1. 归档产出物到 deliverables/{project}/ 产品区（单 HTML + CSS）
+2. wireframes 已由 Thinker 直接产出到 `deliverables/{project}/assets/wireframes/`，归档无拷贝（产出即归档）
 3. 流程结束
 
 ---

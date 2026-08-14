@@ -16,23 +16,26 @@
 4. 更新 .state.md 推进流程
 5. 在审批节点（SR1/SR3）呈现摘要，等待人工决策
 6. 处理失败回退（重试或上升人工）
-7. **经验采集**：在关键节点实时记录经验到 `deliverables/{REQ-ID}/.engine/lessons.md`（规则见 mh-deliver skill）
+7. **经验采集**：在关键节点实时记录经验到 `deliverables/{project}/.engine/lessons.md`（规则见 mh-deliver skill）
 8. **track 路由**：根据 .state.md 的 track 字段，按 code 或 ppt 流水线派发
 
 ## 输入
 
-- deliverables/.state.md
-- deliverables/{REQ-ID}/.engine/.state.md
-- deliverables/{REQ-ID}/.engine/handoffs/*.md（状态检查）
-- deliverables/{REQ-ID}/.engine/reports/*.report.md（各棒完成回报，Step 0 白名单核对的输入）
+- deliverables/.state.md（全局指针，`project` 字段）
+- deliverables/{project}/.engine/.state.md
+- deliverables/{project}/.engine/handoffs/*.md（状态检查）
+- deliverables/{project}/.engine/reports/*.report.md（各棒完成回报，Step 0 白名单核对的输入）
 - 各角色交付的产出物（执行质量门禁）
 
 ## 输出
 
-- deliverables/{REQ-ID}/.engine/handoffs/{handoff文件}（使用 templates/handoff-template.md 格式）
-- deliverables/{REQ-ID}/.engine/.state.md（更新）
-- deliverables/{REQ-ID}/.engine/plan-action.md（REQ-4 步骤）
-- deliverables/{REQ-ID}/.engine/SR{N}-record.md（审批记录）
+- deliverables/{project}/.engine/handoffs/{handoff文件}（使用 templates/handoff-template.md 格式）
+- deliverables/{project}/.engine/.state.md（更新）
+- deliverables/{project}/.engine/proposal.md（init 阶段 Proposal）
+- deliverables/{project}/.engine/plan-action.md（计划编排）
+- deliverables/{project}/.engine/SR{N}-record.md（审批记录）
+- deliverables/{project}/docs/（ARC-5~8 归档产出：metrics.md、lessons-learned.md、kb/）
+- deliverables/{project}/tests/regression-suite.md（ARC-5 用例沉淀）
 
 ## 阻塞条件
 
@@ -45,7 +48,7 @@
 - 禁止参与需求定义、方案设计、编码实现、测试执行
 - 禁止跳过审批节点
 - 用户说"安排XX做"时必须通过 handoff 派发对应角色，禁止自行顶替执行
-- 文件写入权限由 role-guard.sh 强制（Orchestrator 可写 .engine/handoffs/、.engine/.state.md、.engine/plan-action.md、.engine/SR*-record.md、.engine/lessons.md、.engine/process.log、.engine/quality-gate-report、.engine/reports/*.report.md、ORCHESTRATOR-*.md）
+- 文件写入权限由 role-guard.sh 强制（Orchestrator 可写 `.engine/` 下的 handoffs/、.state.md、plan-action.md、SR*-record.md、lessons.md、process.log、proposal.md、archive-manifest.md、baselines/、quality-gate-report.md、reports/*.report.md，产品区的 `docs/`、`tests/regression-suite.md`，以及全局 `deliverables/.state.md`；**不可写 `src/`、`deploy/`、`assets/`、`.archiveignore` 与其他角色的引擎态产出**）
 - 完成回报由被派发角色自己写入 `.engine/reports/{handoff-basename}.report.md`，Orchestrator **不得代笔**（代笔使归属失真，质量门禁的判定对象不再是真实对象）；仅在 SubAgent 失联或驳回轮次需要留痕时兜底代填，并在回报中注明代填
 
 > 调度协议、质量门禁清单、经验采集规则见 mh-codeflow skill "调度协议"和"质量门禁"节。

@@ -34,9 +34,9 @@ const newResult2 = detectScenario({
   globalStateExists: true,
   reqStatePhase: null,
   outputSpecFiles: [],
-  activeReqId: null
+  activeProject: null
 });
-assert('有全局 state 但无 reqId → NEW', newResult2.scenario === 'NEW');
+assert('有全局 state 但无 project → NEW', newResult2.scenario === 'NEW');
 
 // --- 2. RESUME 场景: 有未完成的流程 ---
 console.log('\n--- 2. RESUME 场景 ---');
@@ -45,19 +45,19 @@ const resumeResult1 = detectScenario({
   globalStateExists: true,
   reqStatePhase: 'propose',
   outputSpecFiles: [],
-  activeReqId: 'REQ003'
+  activeProject: 'auth-svc'
 });
 assert('phase=propose → RESUME', resumeResult1.scenario === 'RESUME');
-assert('activeReqId=REQ003', resumeResult1.activeReqId === 'REQ003');
+assert('activeProject=auth-svc', resumeResult1.activeProject === 'auth-svc');
 
 const resumeResult2 = detectScenario({
   globalStateExists: true,
   reqStatePhase: 'apply',
   outputSpecFiles: ['design.md'],
-  activeReqId: 'REQ005'
+  activeProject: 'sync-job'
 });
 assert('phase=apply 且有 docs/spec → RESUME（优先级高于 CHANGE）', resumeResult2.scenario === 'RESUME');
-assert('未完成流程优先于变更模式', resumeResult2.activeReqId === 'REQ005');
+assert('未完成流程优先于变更模式', resumeResult2.activeProject === 'sync-job');
 
 // --- 3. CHANGE 场景: phase=done 且有归档产物 ---
 console.log('\n--- 3. CHANGE 场景 ---');
@@ -66,7 +66,7 @@ const changeResult1 = detectScenario({
   globalStateExists: true,
   reqStatePhase: 'done',
   outputSpecFiles: ['requirement-spec.md', 'design.md'],
-  activeReqId: 'REQ002'
+  activeProject: 'order-api'
 });
 assert('phase=done + docs/spec 有文件 → CHANGE', changeResult1.scenario === 'CHANGE');
 
@@ -84,7 +84,7 @@ const edgeResult1 = detectScenario({
   globalStateExists: true,
   reqStatePhase: 'done',
   outputSpecFiles: [],
-  activeReqId: 'REQ001'
+  activeProject: 'web-cli'
 });
 assert('phase=done 但 docs/spec 为空 → NEW（历史已清理）', edgeResult1.scenario === 'NEW');
 
@@ -95,7 +95,7 @@ const initResult = detectScenario({
   globalStateExists: true,
   reqStatePhase: 'init',
   outputSpecFiles: [],
-  activeReqId: 'REQ004'
+  activeProject: 'data-etl'
 });
 assert('phase=init → RESUME（未完成的初始化）', initResult.scenario === 'RESUME');
 
@@ -106,7 +106,7 @@ const archiveResult = detectScenario({
   globalStateExists: true,
   reqStatePhase: 'archive',
   outputSpecFiles: ['design.md'],
-  activeReqId: 'REQ006'
+  activeProject: 'chat-ui'
 });
 assert('phase=archive → RESUME', archiveResult.scenario === 'RESUME');
 assert('不误判为 CHANGE', archiveResult.scenario !== 'CHANGE');

@@ -2,7 +2,7 @@
 # verify-qa.sh - 内容质量硬校验脚本
 # 补充 verify.sh（文件存在性）和 verify-ppt.sh（PPT结构），专注于内容质量
 # 退出码: 0=全部通过, 1=存在失败项
-# 用法: ./scripts/verify-qa.sh [REQ-ID]
+# 用法: ./scripts/verify-qa.sh [project]
 
 set -euo pipefail
 
@@ -10,19 +10,19 @@ DELIVERABLES_DIR="deliverables"
 ERRORS=0
 WARNS=0
 
-req_id="${1:-}"
+project="${1:-}"
 
-# 自动从 .state.md 读取 REQ-ID
-if [ -z "$req_id" ]; then
-    req_id=$(grep "^req_id:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+# 自动从全局指针读取项目标识符（CR-018: req_id → project）
+if [ -z "$project" ]; then
+    project=$(grep "^project:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 fi
 
-if [ -z "$req_id" ]; then
-    echo "WARN: 未指定 REQ-ID 且无法从 .state.md 读取，跳过质量检查"
+if [ -z "$project" ]; then
+    echo "WARN: 未指定项目标识符且无法从 .state.md 读取，跳过质量检查"
     exit 0
 fi
 
-REQ_DIR="$DELIVERABLES_DIR/$req_id"
+REQ_DIR="$DELIVERABLES_DIR/$project"
 
 # 读取字段
 get_field() {
@@ -30,14 +30,14 @@ get_field() {
     grep "^${field}:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo ""
 }
 
-echo "=== 内容质量检查: $req_id ==="
+echo "=== 内容质量检查: $project ==="
 echo ""
 
 # ─────────────────────────────────────────────
 # QA-1: Thinker 需求文档 — 禁止模糊词
 # ─────────────────────────────────────────────
 check_thinker_ambiguity() {
-    local file="$REQ_DIR/THINKER-propose-requirement-spec.md"
+    local file="$REQ_DIR/docs/spec/requirement-spec.md"
     if [ ! -f "$file" ]; then return; fi
 
     echo "--- QA-1: 需求文档模糊词检查 ---"
@@ -45,7 +45,7 @@ check_thinker_ambiguity() {
     ambiguous=$(grep -n -i "适当\|合理\|尽量\|较快\|较好\|一般来说\|大概\|可能需要" "$file" 2>/dev/null || true)
 
     if [ -n "$ambiguous" ]; then
-        echo "FAIL: THINKER-propose-requirement-spec.md 含模糊词（需求不可测试）:"
+        echo "FAIL: docs/spec/requirement-spec.md 含模糊词（需求不可测试）:"
         echo "$ambiguous" | head -5
         ERRORS=$((ERRORS + 1))
     else
@@ -58,10 +58,10 @@ check_thinker_ambiguity() {
 # QA-2: Worker code-report — 必须含测试结果
 # ─────────────────────────────────────────────
 check_worker_report() {
-    local file="$REQ_DIR/WORKER-apply-code-report-t1.md"
+    local file="$REQ_DIR/.engine/code-report-t1.md"
     if [ ! -f "$file" ]; then
         # 尝试通用匹配
-        for f in "$REQ_DIR"/WORKER-apply-code-report*.md; do
+        for f in "$REQ_DIR"/.engine/code-report-*.md; do
             [ -f "$f" ] && file="$f" && break
         done
     fi
@@ -69,7 +69,7 @@ check_worker_report() {
 
     echo "--- QA-2: Worker code-report 测试结果检查 ---"
     if ! grep -qi "dev-test.*PASS\|测试.*通过\|tests.*pass" "$file" 2>/dev/null; then
-        echo "FAIL: WORKER-apply-code-report 未包含 dev-test PASS 记录"
+        echo "FAIL: .engine/code-report 未包含 dev-test PASS 记录"
         ERRORS=$((ERRORS + 1))
     else
         echo "PASS: 含测试通过记录"
@@ -84,7 +84,7 @@ check_verifier_conclusion() {
     echo "--- QA-3: Verifier 测试报告结论检查 ---"
     local found=0
 
-    for report in "$REQ_DIR"/VERIFIER-apply-*test-report*.md "$REQ_DIR"/VERIFIER-apply-*report*.md; do
+    for report in "$REQ_DIR"/.engine/final-test-report.md "$REQ_DIR"/.engine/temp-test-report.md; do
         [ -f "$report" ] || continue
         if grep -qi "结论.*PASS\|结论.*FAIL\|PASS\|FAIL\|通过\|不通过" "$report" 2>/dev/null; then
             echo "PASS: $(basename "$report") 含明确结论"
@@ -146,7 +146,7 @@ check_handoff_completion() {
 # ─────────────────────────────────────────────
 check_slidespec_quality() {
     if ! is_ppt_project; then return; fi
-    local file="$REQ_DIR/THINKER-propose-slide-spec.md"
+    local file="$REQ_DIR/docs/spec/slide-spec.md"
     if [ ! -f "$file" ]; then return; fi
 
     echo "--- QA-5: slide-spec 视觉设计完整性 ---"
@@ -195,7 +195,7 @@ check_ppt_inline_styles() {
 
     for html in "$REQ_DIR"/*.html; do
         [ -f "$html" ] || continue
-        # 跳过 THINKER-propose-wireframes/ 下的 html
+        # 跳过 assets/wireframes/ 下的 html
         local parent
         parent=$(dirname "$html")
         [[ "$parent" == *wireframes* ]] && continue
@@ -298,8 +298,8 @@ check_repair_reports() {
 
     local missing=0
     for i in $(seq 2 $((repair_round + 1))); do
-        if ! ls "$REQ_DIR"/WORKER-apply-code-report-r${i}*.md >/dev/null 2>&1; then
-            echo "FAIL: repair_round=$repair_round 但缺少 WORKER-apply-code-report-r${i}*.md"
+        if ! ls "$REQ_DIR"/.engine/code-report-r${i}*.md >/dev/null 2>&1; then
+            echo "FAIL: repair_round=$repair_round 但缺少 .engine/code-report-r${i}*.md"
             missing=$((missing + 1))
         fi
     done
@@ -380,7 +380,7 @@ check_regression_coverage() {
     fi
 
     local report=""
-    for r in "$REQ_DIR"/VERIFIER-apply-final-test-report.md "$REQ_DIR"/VERIFIER-apply-temp-test-report.md; do
+    for r in "$REQ_DIR"/.engine/final-test-report.md "$REQ_DIR"/.engine/temp-test-report.md; do
         [ -f "$r" ] && report="$r" && break
     done
 
@@ -416,7 +416,7 @@ check_testcase_sedimentation() {
         return
     fi
 
-    local testcases="$REQ_DIR/THINKER-propose-requirement-spec.md"
+    local testcases="$REQ_DIR/docs/spec/requirement-spec.md"
     local suite="$REQ_DIR/tests/regression-suite.md"
 
     if [ ! -f "$testcases" ]; then
@@ -432,12 +432,12 @@ check_testcase_sedimentation() {
         return
     fi
 
-    # 检查当前 REQ 的用例是否已沉淀（REQ-ID 标签存在）
-    if ! grep -q "<!-- REQ-${req_id} START -->" "$suite" 2>/dev/null; then
-        echo "FAIL: regression-suite.md 中缺少 REQ-${req_id} 标签段（沉淀不完整）"
+    # 检查当前项目的用例是否已沉淀（PROJECT 标签存在）
+    if ! grep -q "<!-- PROJECT-${project} START -->" "$suite" 2>/dev/null; then
+        echo "FAIL: regression-suite.md 中缺少 PROJECT-${project} 标签段（沉淀不完整）"
         ERRORS=$((ERRORS + 1))
     else
-        echo "PASS: REQ-${req_id} 用例已沉淀到回归套件"
+        echo "PASS: PROJECT-${project} 用例已沉淀到回归套件"
     fi
     echo ""
 }

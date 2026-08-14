@@ -20,6 +20,9 @@
 | Orchestrator 质量门禁清单 | skills/mh-codeflow/SKILL.md "质量门禁"节 + templates/orchestrator-quality-gate.md | — |
 | SR Gate 通过标准 | skills/mh-design/SKILL.md, skills/mh-build/SKILL.md, skills/mh-deliver/SKILL.md | docs/designs/design.md §4 |
 | 状态 schema | templates/state-template.md | docs/designs/design.md §4.4 |
+| 全局指针语义（活跃交付物定位） | templates/state-pointer-template.md | scripts/role-guard.sh、docs/kb/domains/guards.md |
+| 项目标识符字符集与保留名 | scripts/validate-slug.sh | templates/state-template.md、skills/mh-intake/SKILL.md |
+| 交付物目录结构与产品区根文件清单 | templates/output-structure.md | scripts/role-guard.sh `is_product_root_file()`、scripts/verify-archive.sh ARC-7 |
 | Handoff 协议与格式 | templates/handoff-template.md | docs/designs/design.md §5.3 |
 | 日志格式 | templates/logging-standard.md | — |
 | 修复收敛机制 | skills/mh-repair/SKILL.md "决策"节 | docs/designs/design.md §6 |
@@ -83,9 +86,11 @@
 - 新增 scripts 检查项后，更新 docs/designs/design.md §6
 - 发现映射表与实际不符时，以实际文件为准，更新映射表
 - `scripts/role-guard.sh` 覆盖 `Write`/`Edit`/`NotebookEdit` 三种写入工具（`NotebookEdit` 的路径参数是 `notebook_path`；路径参数缺失时保守放行并打印 `WARN`）。归一化后**按路径归属路由**：`deliverables/` 前缀（目录前缀语义）归 `/mh-run` 角色白名单，其余归 mh-dev 框架治理，无活跃 mh-dev 授权时框架路径放行（默认会话透明）。两条流水线路径集不相交，互不阻断。
-- `scripts/role-guard.sh` **完成回报例外**（CR-017）——THINKER/WORKER/VERIFIER/ORCHESTRATOR 四者均可写本需求 `deliverables/{REQ-ID}/.engine/reports/*.report.md`（回报独立落盘，`handoffs/` 仍 ORCHESTRATOR 独占）。该条**无内容判据**（有意：内容判据是 CR-016 两个 P0 的共同载体），故排列次序对抗不适用；路径正则 `^…$` 双向锚定（`.report.md.evil`/`.report.mdX`/`.report.md/child.md` 与 `x/deliverables/…` 嵌套伪造均不命中），`${req}` 取自当前 state 故不跨需求；不放大到 `handoffs/`、`plan-action.md` 等其他引擎态文件。写权由「当前谁持权」而非「文件名声称的角色」约束（避免引入第二主体）。提升的是落盘可追溯性，非身份认证——守卫仍无法证明回报由谁写
+- `scripts/role-guard.sh` **完成回报例外**（CR-017）——THINKER/WORKER/VERIFIER/ORCHESTRATOR 四者均可写本交付物 `deliverables/{project}/.engine/reports/*.report.md`（回报独立落盘，`handoffs/` 仍 ORCHESTRATOR 独占）。该条**无内容判据**（有意：内容判据是 CR-016 两个 P0 的共同载体），故排列次序对抗不适用；路径正则 `^…$` 双向锚定（`.report.md.evil`/`.report.mdX`/`.report.md/child.md` 与 `x/deliverables/…` 嵌套伪造均不命中），`${req}` 取自全局指针的 `project` 故不跨交付物；不放大到 `handoffs/`、`plan-action.md` 等其他引擎态文件。写权由「当前谁持权」而非「文件名声称的角色」约束（避免引入第二主体）。提升的是落盘可追溯性，非身份认证——守卫仍无法证明回报由谁写
 - `scripts/role-guard.sh` mh-dev 分支**只校验 `approved_scope`，不校验写入者角色**（三角色共享同一张通行证）。CR-017 D3 曾设计按 `state.json` 的 `current_role` 收窄，因该字段恒为 `planner`（`transition-state.sh:19` 硬写）而未落地，理由见 `docs/kb/domains/guards.md`
-- `scripts/role-guard.sh` WORKER 角色可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`、`.archiveignore` 外的所有路径（项目代码路径放行）；THINKER/WORKER/VERIFIER 额外有**交还例外**——写本需求 `.engine/.state.md` 且本次写入内容的首个 `current_role:` 行其值恰为 `ORCHESTRATOR` 时放行（判据与读取端同源，非存在性量词；取本次写入新内容而非磁盘旧值；**交还例外只接受 `Write`**，`Edit` 写该文件一律拒（片段判据无法覆盖合并结果，曾可提权）；路径正则 `^…$` 双向锚定 `.state.md` 全名，后缀伪造如 `.state.md.evil`/`.state.mdX` 与嵌套伪造路径均不命中；不放大到 `handoffs/` 等其他引擎态文件，不跨需求生效）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd，`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行（与 `tools/mh-dev/scripts/validate-changes.sh` 的 tester_scope 同口径）
+- `scripts/role-guard.sh` **产品区授权为肯定式路径归属表**（CR-018 R6）：THINKER 写 `docs/spec/`、`assets/`、`.archiveignore`、`.engine/verify-strategy.md`；WORKER 写 `src/`、`tests/`、`deploy/`、`assets/`、产品区根文件全名白名单（`templates/output-structure.md` 同源）、`.engine/code-report-*.md`、`.engine/quality-gate-report.md`；VERIFIER 写 `tests/`、`.engine/final-test-report.md`、`.engine/temp-test-report.md`；ORCHESTRATOR 写 `.engine/` 的调度态文件（`.state.md`、`handoffs/`、`plan-action.md`、`SR*-record.md`、`lessons.md`、`process.log`、`proposal.md`、`archive-manifest.md`、`baselines/`、`quality-gate-report.md`）、产品区 `docs/`、`tests/regression-suite.md` 与全局 `deliverables/.state.md`。**不得以「不含其他角色前缀」作为授权谓词**——原否定式谓词的边界寄生于其他角色的文件名前缀，产品区去前缀后排除项全部落空而退化为产品区全通。WORKER 由此不可写 `docs/`；`tests/` 由 WORKER 与 VERIFIER 共写、`assets/` 由 THINKER 与 WORKER 共写、`quality-gate-report.md` 由 WORKER 与 ORCHESTRATOR 共写，均为显式声明的既有分工。归属表**每条均 `^…$` 双向锚定**，目录前缀条目形如 `^…/src/.+$`（尾部 `.+` 使目录自身不命中，左锚拒嵌套伪造）；`.ipynb` 由目录归属承载，不再枚举扩展名
+- `scripts/role-guard.sh` **活跃交付物定位以全局指针为准**（CR-018 R7）：读 `deliverables/.state.md` 的 `project`，**不以文件系统扫描首个命中项替代**（交付目录改用项目标识符命名后多项目并存成为常态，`find … | head -1` 会取到任意一个项目的状态判权）。五形态：指针文件不存在 / `project` 为空 / 指针指向的交付物或其 state 不存在 / `current_role` 空或畸形 → `exit 0`；`project` 非法 slug → `exit 2`（唯一收紧项）。任一形态下都不遍历 `deliverables/` 寻找替代 state。标识符字符集 `^[a-z][a-z0-9-]{0,63}$` 且不得为保留名（`docs`/`src`/`tests`/`deploy`/`assets`/`reference`/`engine`），由 `scripts/validate-slug.sh` 单一实现强制，生成侧（`skills/mh-intake/SKILL.md`）与消费侧（守卫，插值前自校验，不信任生成侧）各调用一次
+- `scripts/role-guard.sh` THINKER/WORKER/VERIFIER 额外有**交还例外**——写本交付物 `.engine/.state.md` 且本次写入内容的首个 `current_role:` 行其值恰为 `ORCHESTRATOR` 时放行（判据与读取端同源，非存在性量词；取本次写入新内容而非磁盘旧值；**交还例外只接受 `Write`**，`Edit` 写该文件一律拒（片段判据无法覆盖合并结果，曾可提权）；路径正则 `^…$` 双向锚定 `.state.md` 全名，后缀伪造如 `.state.md.evil`/`.state.mdX` 与嵌套伪造路径均不命中；不放大到 `handoffs/` 等其他引擎态文件，不跨交付物生效）；全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd，`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行（与 `tools/mh-dev/scripts/validate-changes.sh` 的 tester_scope 同口径）
 - role-guard 的判据存放在被治理方自己可写的文件中，故为**自授权机制**；`Bash` 通道不在 hook matcher 内、不受覆盖；其定位是防误撞而非安全边界（详见 `docs/kb/domains/guards.md`「授权模型与能力边界」）
 
 ---
@@ -100,4 +105,7 @@
 - [ ] `find skills/ -name '*.md' -not -path '*/SKILL.md'` → 确认无扁平 skill 文件残留
 - [ ] `bash scripts/check-harness.sh` → 框架完整性通过
 - [ ] 对比 state-template.md 与最近的 deliverables/*/.engine/.state.md → schema 一致
+- [ ] `grep -rn "req_id\|{REQ-ID}" agents/ skills/ scripts/ templates/ workflows/` → 确认无旧标识符字段残留（CR-018 已改 `project`）
+- [ ] `grep -rn "THINKER-propose\|WORKER-apply\|VERIFIER-apply\|ORCHESTRATOR-init" agents/ skills/ scripts/ templates/` → 确认产品区无角色前缀命名残留（命中项须属 `.engine/` 语境或历史说明注释）
+- [ ] 对比 `templates/output-structure.md` 根文件清单与 `scripts/role-guard.sh` 的 `is_product_root_file()` → 两处同源，改一处须改两处
 - [ ] 检查 CHANGELOG.md 是否已更新

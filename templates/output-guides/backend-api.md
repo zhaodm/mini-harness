@@ -6,7 +6,7 @@
 ## 推荐目录结构
 
 ```
-deliverables/{REQ-ID}/
+deliverables/{project}/
 ├── src/
 │   ├── routes/          # 路由定义（URL → handler 映射）
 │   ├── controllers/     # 请求处理（参数解析、响应构造）

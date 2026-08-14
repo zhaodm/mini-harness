@@ -7,7 +7,7 @@
   5. R2+ 轮次仅传递本轮增量要求（新增/变更点 + 失败原因 + 修正方向），不重复前轮已明确的上下文
 -->
 ---
-handoff_id: "{REQ-ID}-{STEP-ID}-R{N}"
+handoff_id: "{project}-{STEP-ID}-R{N}"
 from: ORCHESTRATOR
 to: "{THINKER|WORKER|VERIFIER}"
 status: pending
@@ -55,7 +55,7 @@ completed_at: ""
 
 ## 期望输出
 
-<!-- ⚠️ Orchestrator 自检: Worker 任务的输出路径必须以 deliverables/{REQ-ID}/ 开头，且符合 design.md "产出物目录结构" 章节规划的路径，禁止自行决定路径 -->
+<!-- ⚠️ Orchestrator 自检: Worker 任务的输出路径必须以 deliverables/{project}/ 开头，且符合 design.md "产出物目录结构" 章节规划的路径，禁止自行决定路径 -->
 - `{output_path}`
 
 ## 约束
@@ -109,7 +109,7 @@ completed_at: ""
 <!-- ⚠️ 回报不写在本文件内。本文件是 ORCHESTRATOR 独占（任务描述+白名单+约束+修复上下文），
      执行角色写入一律被 role-guard 拒绝。回报写入下方派生路径的独立文件。 -->
 
-- 回报文件: `deliverables/{REQ-ID}/.engine/reports/{本 handoff 的文件名去掉 .md}.report.md`
+- 回报文件: `deliverables/{project}/.engine/reports/{本 handoff 的文件名去掉 .md}.report.md`
 - 填写者: 本 handoff `to` 字段声明的角色（THINKER / WORKER / VERIFIER）。SubAgent 失联或驳回轮次时 ORCHESTRATOR 兜底代填
 - 回报文件内容（五个字段，均须行首无缩进，门禁按行首锚定读取）:
 

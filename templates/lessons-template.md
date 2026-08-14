@@ -28,7 +28,7 @@
 
 ```
 ### EXP-{N}: {经验标题}
-- 来源: {REQ-ID}
+- 来源: {project}
 - 类别: {设计/实现/流程/测试/沟通}
 - 角色: {Orchestrator/Thinker/Worker/Verifier}
 - 经验: {具体内容}

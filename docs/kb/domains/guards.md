@@ -37,7 +37,7 @@ scripts/
 | 结构校验 | 文件存在性(A)、阶段完整性(B)、流程一致性(C)、健康度(D)、契约(E) | `scripts/verify.sh` |
 | 质量校验 | 模糊词、测试结果、报告结论、报告完整性、设计规格、代码规范、经验采集 | `scripts/verify-qa.sh` |
 | PPT 校验 | A 文件存在性与单文件形态、B 静态合规（字号分档/版式登记/多样性/结构）、C 内容完整性与页数、D 渲染几何测量（溢出/重叠/留白/标题间距）。含检查器运行时自检 | `scripts/verify-ppt.sh` |
-| 归档校验 | deliverables/{REQ-ID}/ 完整性 + docs/kb/ 校验 | `scripts/verify-archive.sh` |
+| 归档校验 | deliverables/{project}/ 完整性 + docs/kb/ 校验 | `scripts/verify-archive.sh` |
 | Code Review 校验 | CR-1~5 格式与维度校验 | `scripts/verify-code-review.sh` |
 | 角色权限 | PreToolUse Hook，按角色限制写入路径 | `scripts/role-guard.sh` |
 | 基线对比 | 检测非流程修改 | `scripts/baseline.sh` |
@@ -65,6 +65,7 @@ scripts/
 | `scripts/verify-archive.sh` | 归档完整性校验 + deliverables docs/kb/ 校验 | `skills/mh-deliver/SKILL.md` |
 | `scripts/verify-code-review.sh` | Code Review 格式与维度校验（CR-1~5） | `skills/mh-verify/SKILL.md` |
 | `scripts/role-guard.sh` | 角色文件写入权限拦截（PreToolUse Hook） | `CLAUDE.md` §5、`docs/designs/source-of-truth.md`、`docs/kb/domains/guards.md` |
+| `scripts/validate-slug.sh` | 项目标识符字符集校验（生成侧 mh-intake + 消费侧 role-guard 共用） | `skills/mh-intake/SKILL.md`、`scripts/role-guard.sh`、`templates/state-template.md` |
 | `scripts/baseline.sh` | 基线对比 | `docs/designs/design.md` §7.4 |
 | `scripts/check-harness.sh` | 框架自检 | `docs/designs/design.md`、`.claude/commands/` |
 
@@ -72,7 +73,7 @@ scripts/
 
 ### role-guard 是自授权机制，不是安全边界
 
-权限判据（`deliverables/{REQ-ID}/.engine/.state.md` 的 `current_role`、`tools/mh-dev/.mh-dev/state.json` 的 `approved_scope`）全部存放在**被治理方自己可写的文件**里。持权角色可以改写判据再写目标，守卫无法阻止。这不是待修的缺陷，而是模型的固有形态：PreToolUse 载荷不含 `agent_type`，SubAgent 是进程内 spawn，守卫无从获知「谁在写」，只能判定「这次写入是否是协议允许的状态迁移」。
+权限判据（`deliverables/{project}/.engine/.state.md` 的 `current_role`、`deliverables/.state.md` 的 `project`、`tools/mh-dev/.mh-dev/state.json` 的 `approved_scope`）全部存放在**被治理方自己可写的文件**里。持权角色可以改写判据再写目标，守卫无法阻止。这不是待修的缺陷，而是模型的固有形态：PreToolUse 载荷不含 `agent_type`，SubAgent 是进程内 spawn，守卫无从获知「谁在写」，只能判定「这次写入是否是协议允许的状态迁移」。
 
 三条边界须一并记住：
 
@@ -177,9 +178,54 @@ CR-016 在**量词**（存在性 vs 首行）与**判定对象**（片段 vs 合
 
 ### 交还例外不得放大为引擎态直通
 
-放行条件是「路径为本需求的 `.engine/.state.md`」**且**「本次写入交还给 ORCHESTRATOR」。`handoffs/`、`plan-action.md`、`SR*-record.md`、`lessons.md`、`process.log` 不在放行正则内，内容含交还标记也照旧拒绝。`${req}` 取自当前 state 的 `req_id`，故跨需求（REQ001 持权写 `deliverables/REQ002/.engine/.state.md`）不命中。放行落在 `check_permission()` 的 `THINKER`/`WORKER`/`VERIFIER` 三个分支内而非函数外，多角色形态（`THINKER,VERIFIER`）由「任一分支命中即放行」自动继承，ORCHESTRATOR 分支无须改动。
+放行条件是「路径为本交付物的 `.engine/.state.md`」**且**「本次写入交还给 ORCHESTRATOR」。`handoffs/`、`plan-action.md`、`SR*-record.md`、`lessons.md`、`process.log` 不在放行正则内，内容含交还标记也照旧拒绝。`${req}` 取自全局指针 `deliverables/.state.md` 的 `project`（CR-018 前取自 REQ state 的 `req_id`），故跨交付物（`web-cli` 持权写 `deliverables/other/.engine/.state.md`）不命中。放行落在 `check_permission()` 的 `THINKER`/`WORKER`/`VERIFIER` 三个分支内而非函数外，多角色形态（`THINKER,VERIFIER`）由「任一分支命中即放行」自动继承，ORCHESTRATOR 分支无须改动。
 
 **路径正则必须 `^…$` 双向锚定。** `[[ =~ ]]` 是无锚 ERE，写成 `deliverables/${req}/\.engine/\.state\.md` 时 `.state.md` 只是前缀，例外立刻从「单个 state 文件的一条状态机边」放大为「`.engine/` 目录直通」：持权角色在写入内容里带一行 `current_role: ORCHESTRATOR`，即可新建或覆盖 `.state.md.evil`、`.state.md.sh`、`.state.mdX`、`.state.md/child.md`。缺 `^` 锚同理放过 `x/deliverables/${req}/.engine/.state.md` 一类嵌套伪造路径。判据侧的行首锚定（上一节）与路径侧的双向锚定是两个独立的锚定要求，任缺其一例外都会被放大。左锚安全的前提是 `$file` 已是归一化后的仓库相对路径（`NORM_PATH`）。
+
+### 产品区授权从否定式改肯定式（CR-018 R6）
+
+改动前 WORKER 的产品区谓词是**否定式**：「`deliverables/${req}/` 下，不含 `.engine/`、不含 `THINKER-`/`VERIFIER-`/`ORCHESTRATOR-` 前缀、不是 `.archiveignore` 的路径皆可写」。它的授权边界完全寄生于**其他角色的文件命名前缀**——前缀是唯一的分隔物。
+
+CR-018 R3 把产品区的角色前缀去掉后，该谓词的排除项全部落空，**退化为「产品区全通」**。这不是命名改动的副作用，而是否定式授权的固有脆弱性：它表达的是「不属于别人的都是我的」，一旦「别人的」失去可识别特征，剩余集合就是全部。
+
+新表是肯定式的：每角色列出自己可写的路径集，归属由**目录**承载而非文件名前缀。
+
+| 角色 | 产品区 | 引擎态 |
+|---|---|---|
+| ORCHESTRATOR | `docs/`、`tests/regression-suite.md` | `.state.md`、`handoffs/`、`plan-action.md`、`SR*-record.md`、`lessons.md`、`process.log`、`proposal.md`、`archive-manifest.md`、`baselines/`、`quality-gate-report.md`、`reports/*.report.md`、全局 `deliverables/.state.md` |
+| THINKER | `docs/spec/`、`assets/`、`.archiveignore` | `verify-strategy.md`、`reports/*.report.md`、交还例外 |
+| WORKER | `src/`、`tests/`、`deploy/`、`assets/`、根文件全名白名单 | `code-report-*.md`、`quality-gate-report.md`、`reports/*.report.md`、交还例外 |
+| VERIFIER | `tests/` | `final-test-report.md`、`temp-test-report.md`、`reports/*.report.md`、交还例外 |
+
+三点须记住：
+
+- **WORKER 不可写 `docs/`。** 规格文档的写权归 THINKER（产出）与 ORCHESTRATOR（ARC 归档）。否定式谓词下 WORKER 本可写 `docs/`，这是它退化为全通的一部分。
+- **共写是显式声明，不是漏洞。** `tests/` 由 WORKER 与 VERIFIER 共写（TDD 的 Red 步 vs 回归测试，既有分工），`assets/` 由 THINKER 与 WORKER 共写（wireframes vs 运行期静态资源），`quality-gate-report.md` 由 WORKER 与 ORCHESTRATOR 共写，`reports/` 四角色共写（CR-017 D1）。共写方产出同类文件，不构成越权。
+- **产品区根用全名白名单，不用模式匹配。** `README.md`、`package.json`、`*.html`/`*.css`（ppt 单文件形态）等逐条列出。用「根目录下任意文件」会让产品区根重新变成散落区，正是 R3 要消除的形态。清单与 `templates/output-structure.md` 同源，改一处须改两处。
+
+**每一条都须 `^…$` 双向锚定，包括目录前缀条目。** 目录前缀写成 `^deliverables/${req}/src/.+$`：尾部 `.+` 使目录自身不命中，左锚使 `x/deliverables/${req}/src/a.ts` 不命中。这与交还例外的锚定要求同源（见上节），只是作用于更多条目。
+
+### 活跃交付物定位以全局指针为准，绝不退化为扫描（CR-018 R7）
+
+改动前用 `find "$ROOT/deliverables" -maxdepth 3 -name ".state.md" -path "*/.engine/.state.md" | head -1` 取活跃需求。目录名从 `REQ00N` 变为项目名后，`deliverables/` 下多项目并存成为常态形态，`head -1` 取到的是**文件系统枚举顺序上的任意一个**项目，守卫据此读 `current_role` 与标识符判权即失效——非指针所指的交付物其状态会决定另一个交付物的写权。
+
+现以全局指针 `deliverables/.state.md` 的 `project` 字段定位，五种异常形态穷举如下：
+
+| 形态 | 行为 | 理由 |
+|---|---|---|
+| 指针文件不存在 | exit 0 放行 | 无活跃交付物，等价于 `/mh-run` 未启动 |
+| 指针存在但 `project` 空 | exit 0 放行 | 初始化中途的正常瞬态 |
+| `project` 非法 slug | **exit 2 拦截** | 唯一收紧项：合法流程不会写入非法 slug，出现即 state 被污染，此时放行等于在污染态下判权 |
+| 指针指向的交付物目录/state 不存在 | exit 0 放行 | 指针滞后于目录（如手工清理），非越权信号 |
+| `current_role` 空/畸形 | exit 0 放行 | 沿用既有语义 |
+
+**任一形态下都不再遍历 `deliverables/` 寻找替代 state。** 放行为主与守卫定位一致（防误撞而非安全边界）：误拦会使正常流程中断且原因难查，漏拦的后果由「守卫本就不是安全边界」这一既有定位承担。唯一的 exit 2 留给污染态——那是唯一无法用正常流程解释的形态。
+
+**消费侧必须独立校验标识符。** `${project}` 被插值进 `[[ =~ ]]` 正则与路径拼接，故守卫在插值前调 `scripts/validate-slug.sh`，不信任生成侧（mh-intake）的校验：指针文件是被治理方可写的，生成侧校验可被绕过。字符集 `^[a-z][a-z0-9-]{0,63}$` 使标识符**正则字面量安全**（`a-z0-9-` 在 ERE 中无元字符语义），故无需引入转义层；反之若允许 `.`，`project: web.cli` 会命中 `webXcli`，允许 `/` 或 `..` 则直接是路径穿越。这也是 `docs`/`src`/`tests`/`deploy`/`assets`/`reference`/`engine` 须列为保留名的原因——交付目录与其内部目录同名会使路径归属产生歧义。
+
+校验点落在守卫内而非仅在生成侧，也顺带收窄了一类既有缺陷：CR-017 审计记录过 `req_id` 未转义即插入 ERE（写成 `req_id: .*` 可令白名单跨需求生效），当时判为「基线既有、非该 CR 新开」而未修。字符集校验使同类注入在插值前即被拦下，`project: .*` 现在 `exit 2`。但**这不是把守卫升级成了安全边界**——判据仍存放在被治理方可写的文件里（`project` 字段本身即是新增的一处自授权判据面），持权者仍可写一个合法 slug 指向别处。它挡住的是「畸形值让正则语义漂移」，不是「有意改判据」。
+
+**指针的引入使自授权判据面从一处变为两处。** 原先只有 `deliverables/{project}/.engine/.state.md` 的 `current_role`；现在 `deliverables/.state.md` 的 `project` 也参与定位，且其写权归 ORCHESTRATOR。改指针即可切换「哪个交付物的 `current_role` 说话」。这与既有定位一致（自授权、防误撞），记在此处是为了让后续 CR 在推理守卫行为时把两个文件都算进来——只看 REQ state 会漏掉一层。
 
 ### 按路径归属路由，两条流水线不得互相阻断
 
@@ -274,3 +320,5 @@ D 类渲染层对每个文本元素读 `getComputedStyle().fontSize` 作为不�
 `"$DENSITY（...）"` 中的全角括号会被 bash 并入变量名，`set -u` 下报
 `DENSITY?: unbound variable`。中文消息里变量后紧跟非 ASCII 字符时**必须写 `${VAR}`**。
 该类缺陷只在特定分支被执行时才暴露，容易漏测。
+
+**判据收紧会把此类潜伏缺陷变成主路径（CR-018 实例）。** `verify-archive.sh` ARC-7 的 `$filename（` 长期缺花括号，但根 `ROLE-*.md` 被显式豁免使该分支在常见输入下不可达；CR-018 R8 删除豁免后它成为主路径，第一个散落文档就触发 `unbound variable`，整个 `check_output_structure()` 中断——**表现为静默跳过而非报错**，收紧后的判据反而完全不生效。教训：放宽一个豁免时要顺带检查被它遮蔽的分支是否可执行，「以前没出问题」只说明那条路没走过。同类未修实例（本 CR 范围外，仅记录）：`scripts/verify.sh:215/265/293/296` 四处 `$var（`，触发条件是 `phase=done` 且 handoff 不足 / process.log 过短 / `repair_round≥3`。

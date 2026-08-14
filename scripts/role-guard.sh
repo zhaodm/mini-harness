@@ -5,10 +5,12 @@
 # 工作原理：
 # 1. 从 stdin 读取 tool call JSON（Write / Edit / NotebookEdit）
 # 2. 归一化路径后按归属路由：deliverables/ 归 /mh-run 角色白名单，其余归 mh-dev 框架治理
-# 3. /mh-run 分支从 .engine/.state.md 读 current_role，检查目标是否在该角色白名单内
+# 3. /mh-run 分支以全局指针 deliverables/.state.md 的 project 定位活跃交付物（CR-018 D3.4，
+#    不扫描文件系统），从该交付物的 .engine/.state.md 读 current_role，
+#    再按肯定式路径归属表（CR-018 D3.1）检查目标是否属该角色
 #    （非 ORCHESTRATOR 角色额外允许一条状态机边：把流程交还给 ORCHESTRATOR）
 # 4. mh-dev 分支要求活跃治理授权 + approved_scope 命中；无授权时放行（默认会话透明）
-# 5. 不在白名单 → exit 2（拒绝）
+# 5. 不在归属表 → exit 2（拒绝）
 #
 # 能力边界（CR-016 R6）：判据来自被治理方自己可写的状态文件，故本守卫是自授权机制；
 # Bash 工具不在 hook matcher 内，重定向写入不受覆盖。定位是防误撞，不是安全边界。
@@ -116,14 +118,38 @@ fi
 
 # === deliverables/ 分支：/mh-run 角色白名单 ===
 
-# 定位活跃需求的 .engine/.state.md
-STATE_FILE=$(find "$ROOT/deliverables" -maxdepth 3 -name ".state.md" -path "*/.engine/.state.md" 2>/dev/null | head -1)
+# 定位活跃交付物：以全局指针 deliverables/.state.md 的 project 字段为准（CR-018 D3.4）。
+# 旧实现 `find … -path "*/.engine/.state.md" | head -1` 取文件系统首个命中项。
+# 交付目录从 REQ00N 改为项目名后，deliverables/ 下多项目并存是常态形态，
+# `head -1` 会取到任意一个项目的标识符与 current_role，据此判权即失效。
+# **绝不退化为扫描**：以下任一异常形态都不再遍历 deliverables/ 寻找替代 state；
+# 非指针所指的交付物其 current_role 不参与任何判权。
+#
+# 五形态语义（D3.4，放行为主与守卫定位一致——防误撞而非安全边界）：
+#   指针文件不存在        → exit 0（无活跃交付物，等价于 /mh-run 未启动）
+#   指针存在但 project 空 → exit 0（初始化中途的正常瞬态）
+#   project 非法 slug     → exit 2（唯一收紧项：合法流程不会写入非法 slug，
+#                                   出现即 state 被污染，此时放行等于在污染态下判权）
+#   目标交付物/state 缺失 → exit 0（指针滞后于目录，如手工清理，非越权信号）
+#   current_role 空/畸形  → exit 0（沿用既有语义）
+POINTER_FILE="$ROOT/deliverables/.state.md"
+[[ -f "$POINTER_FILE" ]] || exit 0
 
-[[ -z "$STATE_FILE" ]] && exit 0  # 无活跃需求时不拦截
+PROJECT=$(grep "^project:" "$POINTER_FILE" 2>/dev/null | head -1 | awk '{print $2}')
+[[ -z "$PROJECT" ]] && exit 0
+
+# 消费侧独立校验：state 是被治理方可写的文件，生成侧（mh-intake）校验可被绕过。
+# 校验在插值进路径正则之前，故 D1.1 的字符集保证了 ${req} 的正则字面量安全。
+if ! SLUG_ERR=$(bash "$ROOT/scripts/validate-slug.sh" "$PROJECT" 2>&1); then
+  echo "BLOCKED: deliverables/.state.md 的 project 字段被污染 —— ${SLUG_ERR}"
+  exit 2
+fi
+
+STATE_FILE="$ROOT/deliverables/$PROJECT/.engine/.state.md"
+[[ -f "$STATE_FILE" ]] || exit 0
 
 CURRENT_ROLES=$(grep "^current_role:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')
-REQ_ID=$(grep "^req_id:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')
-[[ -z "$CURRENT_ROLES" || -z "$REQ_ID" ]] && exit 0
+[[ -z "$CURRENT_ROLES" ]] && exit 0
 
 # CR-016 D1：交还谓词。判据取自本次写入的新内容，不读磁盘旧值——磁盘旧值恒为派发角色，
 # 用它判定等于永不成立。
@@ -132,7 +158,7 @@ REQ_ID=$(grep "^req_id:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')
 # 更严 → 写入方按 schema 示例书写却被判伪交还（缺陷 1 换形态复发）；
 # 更宽 → 写得进的内容其生效角色不是 ORCHESTRATOR，即横向夺权。
 # 故实现直接复用读取端的解析：`grep '^current_role:' | head -1 | awk '{print $2}'`，
-# 与第 124 行读取端同源。两端同源则结构上无从分歧，不必靠人工核对正则是否等价。
+# 与上方 CURRENT_ROLES 读取端同源。两端同源则结构上无从分歧，不必靠人工核对正则是否等价。
 #
 # 曾用 `grep -qE '^current_role:[[:space:]]+ORCHESTRATOR([[:space:]]|$)'`（存在性量词），
 # 实测导致提权：内容含多行 current_role 时，只要**任一行**是合法交还行即放行，
@@ -159,8 +185,8 @@ REQ_ID=$(grep "^req_id:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')
 # 「文件名声称的角色」与「state 里的角色」两个主体，正是本 CR 要消除的那类不一致。
 #
 # 正则口径与交还例外一致：`^…$` 双向锚定（左锚拒 x/deliverables/… 嵌套伪造，右锚拒
-# .report.md.evil / .report.mdX / .report.md/child.md）；`${req}` 取自当前 state 的 req_id
-# 故不跨需求；`.report.md` 双段后缀与 handoffs/ 下的命名形态显式区分。
+# .report.md.evil / .report.mdX / .report.md/child.md）；`${req}` 取自全局指针的 project
+# 故不跨交付物；`.report.md` 双段后缀与 handoffs/ 下的命名形态显式区分。
 is_report() {
   local file=$1 req=$2
   [[ "$file" =~ ^deliverables/${req}/\.engine/reports/.*\.report\.md$ ]]
@@ -182,38 +208,76 @@ is_handback() {
   [[ "$effective" == "ORCHESTRATOR" ]]
 }
 
+# 产品区根文件白名单（CR-018 D3.2）：WORKER 可写的根文件逐条列出全名，
+# 不用「根目录下任意文件」——那会让产品区根重新变成散落区，正是 R3 要消除的形态。
+# 清单来源 templates/output-structure.md「产品区根目录允许的文件」。
+# *.html / *.css 是 ppt track 单文件形态的产出（CR-014，落在产品区根），
+# 无此两条 ppt track 的 Worker 无法交付任何产出物。
+is_product_root_file() {
+  local file=$1 req=$2
+  [[ "$file" =~ ^deliverables/${req}/(README\.md|package\.json|pyproject\.toml|go\.mod|Cargo\.toml|tsconfig\.json|Makefile|\.env\.example|\.gitignore|vite\.config\.[a-z]+|webpack\.config\.[a-z]+|[A-Za-z0-9_-]+\.html|[A-Za-z0-9_-]+\.css)$ ]]
+}
+
 # 角色权限检查（单角色）
+#
+# CR-018 D3.1：肯定式路径归属表。每角色显式声明可写路径集，不再以「不含其他角色前缀」
+# 作为授权谓词——产品区去掉角色前缀后，那条否定式谓词退化为「产品区全通」。
+# 归属由**目录**承载：docs/ 归 THINKER（规格）与 ORCHESTRATOR（归档），
+# src/、deploy/ 归 WORKER，tests/ 由 WORKER 与 VERIFIER 共写，assets/ 由 THINKER 与 WORKER 共写。
+# 共写不构成越权：共写方产出同类文件，且 .engine/reports/ 已有四角色共写先例（CR-017 D1）。
+#
+# D3.3 匹配语义：**每一条都 `^…$` 双向锚定**，两种形态之一——
+#   目录前缀：^deliverables/${req}/src/.+$      尾部 .+ 确保不匹配目录自身，
+#                                              左锚拒 x/deliverables/${req}/src/a.ts 嵌套伪造
+#   文件全名：^deliverables/${req}/\.engine/proposal\.md$
+# 无 `$` 锚时文件名退化为前缀（`.state.md.evil`、`.state.md/child.md` 全部命中），
+# 无 `^` 锚时嵌套伪造路径命中；两者都把单文件例外放大成目录直通（CR-016/CR-017 已详述）。
+# `-evil` 后缀类绕过（deliverables-evil/、tests-evil/）由 `^deliverables/${req}/` 前缀
+# 与 ${req} 的字符集（D1.1，经 validate-slug.sh 强制）共同排除。
 check_permission() {
   local role=$1 file=$2 req=$3
 
   case "$role" in
     ORCHESTRATOR)
-      [[ "$file" =~ deliverables/${req}/\.engine/\.state\.md ]] && return 0
-      [[ "$file" =~ deliverables/${req}/\.engine/handoffs/.*\.md ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.engine/\.state\.md$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.engine/handoffs/.+\.md$ ]] && return 0
       # 回报路径（CR-017 D1）：驳回轮次与 SubAgent 失联时的兜底代填仍需此权限。
       # 代填由此不再是绕过守卫，而是显式兜底。
       is_report "$file" "$req" && return 0
-      [[ "$file" =~ deliverables/${req}/\.engine/plan-action\.md ]] && return 0
-      [[ "$file" =~ deliverables/${req}/\.engine/SR.*-record\.md ]] && return 0
-      [[ "$file" =~ deliverables/${req}/\.engine/lessons\.md ]] && return 0
-      [[ "$file" =~ deliverables/${req}/WORKER-apply-quality-gate-report.*\.md ]] && return 0
-      [[ "$file" =~ deliverables/${req}/ORCHESTRATOR-.*\.(md|ipynb) ]] && return 0
-      [[ "$file" =~ deliverables/${req}/\.engine/archive-manifest\.md ]] && return 0
-      [[ "$file" =~ deliverables/\.state\.md ]] && return 0
-      [[ "$file" =~ deliverables/${req}/\.engine/process\.log ]] && return 0
-      # ARC 阶段 Orchestrator 可写归档目标（通过 archive-manifest 约束具体路径）
-      local phase
-      phase=$(grep "^phase:" "$STATE_FILE" 2>/dev/null | awk '{print $2}')
+      [[ "$file" =~ ^deliverables/${req}/\.engine/plan-action\.md$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.engine/SR.*-record\.md$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.engine/lessons\.md$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.engine/proposal\.md$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.engine/archive-manifest\.md$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.engine/baselines/.+$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.engine/process\.log$ ]] && return 0
+      # 质量门禁报告：Orchestrator 执行门禁命令后归因填写（templates/quality-gate-report-template.md、
+      # agents/orchestrator.md 均如此声明），与 WORKER 共写。等价于原 L223 的
+      # WORKER-apply-quality-gate-report 条在新命名下的形态，不是新增权限。
+      [[ "$file" =~ ^deliverables/${req}/\.engine/quality-gate-report\.md$ ]] && return 0
+      # 归档产出（ARC-5~8）：docs/metrics.md、docs/lessons-learned.md、docs/kb/、
+      # change 模式 archiveMerge() 写 docs/spec/。原实现靠 ORCHESTRATOR-*.md 前缀 +
+      # 一个取出后从未被使用的 phase 变量（既有死逻辑），现改为显式声明。
+      [[ "$file" =~ ^deliverables/${req}/docs/.+$ ]] && return 0
+      # ARC-5 回归套件沉淀：仅此一个 tests/ 下的文件，不放大为 tests/ 目录直通。
+      [[ "$file" =~ ^deliverables/${req}/tests/regression-suite\.md$ ]] && return 0
+      # 全局指针（活跃交付物切换）。此条不带 ${req}，故须单独双向锚定。
+      [[ "$file" =~ ^deliverables/\.state\.md$ ]] && return 0
       ;;
     THINKER)
-      # 产出扩展名含 .ipynb：NotebookEdit 纳入守卫后（CR-016 R5），若白名单仍只锚定 .md，
-      # 本角色将无法写入自己前缀的 notebook。只放开本角色前缀，不跨角色边界。
-      [[ "$file" =~ deliverables/${req}/THINKER-.*\.(md|ipynb) ]] && return 0
-      [[ "$file" =~ deliverables/${req}/\.archiveignore ]] && return 0
-      # 完成回报（CR-017 D1）：本需求 .engine/reports/*.report.md。无内容判据，
+      # 规格文档（D2.1）：docs/spec/ 下的 requirement-spec.md、design.md、design-overview.md、
+      # slide-spec.md 等。目录前缀条目不限扩展名，故 CR-016 R5 的 .ipynb 诉求由目录归属承载——
+      # notebook 落在 docs/spec/ 或 assets/ 内自然放行，无需再枚举扩展名。
+      [[ "$file" =~ ^deliverables/${req}/docs/spec/.+$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.archiveignore$ ]] && return 0
+      # 设计稿/wireframes（ppt track visual 相位产出 assets/wireframes/），与 WORKER 共写
+      [[ "$file" =~ ^deliverables/${req}/assets/.+$ ]] && return 0
+      # 验证策略（原 THINKER-propose-verify-strategy.md）：消费者是引擎的集成预检，故归引擎态
+      [[ "$file" =~ ^deliverables/${req}/\.engine/verify-strategy\.md$ ]] && return 0
+      # 完成回报（CR-017 D1）：本交付物 .engine/reports/*.report.md。无内容判据，
       # 不放大到 handoffs/ 等其他引擎态文件——它们不在此正则内。
       is_report "$file" "$req" && return 0
-      # 交还例外：仅本需求的 .state.md，且本次写入把流程交还给 ORCHESTRATOR。
+      # 交还例外：仅本交付物的 .state.md，且本次写入把流程交还给 ORCHESTRATOR。
       # 不放大为引擎态直通——handoffs/、plan-action.md 等不在此正则内，
       # 即使写入内容含交还标记也落到原有拒绝路径。
       # 正则须 ^…$ 双向锚定（$file 已是归一化的仓库相对路径）：无 $ 锚时 .state.md 退化为
@@ -223,25 +287,34 @@ check_permission() {
       [[ "$file" =~ ^deliverables/${req}/\.engine/\.state\.md$ ]] && is_handback && return 0
       ;;
     WORKER)
-      [[ "$file" =~ deliverables/${req}/WORKER-.*\.md ]] && return 0
-      # 完成回报（CR-017 D1），口径同 THINKER 分支。须显式放行：下方项目代码放行块
-      # 整体排除 .engine/（大小写不敏感），回报落在 .engine/reports/ 内不会由那条命中。
+      # 项目代码与资源（D3.1）。原否定式谓词「产品区下不含其他角色前缀者皆可写」整体删除：
+      # 去前缀后它退化为产品区全通。新表下 WORKER **不可写 docs/**——规格文档的写权归
+      # THINKER（产出）与 ORCHESTRATOR（归档）。
+      [[ "$file" =~ ^deliverables/${req}/src/.+$ ]] && return 0
+      # tests/ 与 VERIFIER 共写：Worker 写实现测试（TDD 的 Red 步）、Verifier 写回归测试，
+      # 这是 skills/mh-build/SKILL.md 的既有分工。
+      [[ "$file" =~ ^deliverables/${req}/tests/.+$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/deploy/.+$ ]] && return 0
+      # assets/ 与 THINKER 共写：Thinker 出 wireframes/设计稿，Worker 出运行期静态资源
+      [[ "$file" =~ ^deliverables/${req}/assets/.+$ ]] && return 0
+      # 产品区根的项目配置文件与 ppt 单文件产出（D3.2 全名白名单，非模式匹配）
+      is_product_root_file "$file" "$req" && return 0
+      # 代码报告与质量门禁报告（原 WORKER-apply-code-report-t{N}.md /
+      # WORKER-apply-quality-gate-report.md）：消费者是门禁脚本，故归引擎态平铺
+      [[ "$file" =~ ^deliverables/${req}/\.engine/code-report-[a-z0-9-]+\.md$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.engine/quality-gate-report\.md$ ]] && return 0
+      # 完成回报（CR-017 D1），口径同 THINKER 分支
       is_report "$file" "$req" && return 0
       # 交还例外，锚定口径同 THINKER 分支
       [[ "$file" =~ ^deliverables/${req}/\.engine/\.state\.md$ ]] && is_handback && return 0
-      # 项目代码路径放行：WORKER 可写产品区下的项目代码目录（按 design.md 规划）
-      # 排除 .engine/（引擎态）和其他角色的命名前缀产出（大小写不敏感，防止 .ENGINE/ 绕过）
-      if [[ "$file" =~ deliverables/${req}/ ]] && \
-         ! echo "$file" | grep -qiE "deliverables/${req}/\.?engine/" && \
-         ! echo "$file" | grep -qi "deliverables/${req}/THINKER-" && \
-         ! echo "$file" | grep -qi "deliverables/${req}/VERIFIER-" && \
-         ! echo "$file" | grep -qi "deliverables/${req}/ORCHESTRATOR-" && \
-         ! echo "$file" | grep -qi "deliverables/${req}/\.archiveignore"; then
-        return 0
-      fi
       ;;
     VERIFIER)
-      [[ "$file" =~ deliverables/${req}/VERIFIER-.*\.(md|ipynb) ]] && return 0
+      # 回归测试，与 WORKER 共写（见 WORKER 分支说明）
+      [[ "$file" =~ ^deliverables/${req}/tests/.+$ ]] && return 0
+      # 测试报告（原 VERIFIER-apply-final-test-report.md / -temp-test-report.md）：
+      # 消费者是 verify-qa.sh / verify-code-review.sh 门禁，故归引擎态平铺
+      [[ "$file" =~ ^deliverables/${req}/\.engine/final-test-report\.md$ ]] && return 0
+      [[ "$file" =~ ^deliverables/${req}/\.engine/temp-test-report\.md$ ]] && return 0
       # 完成回报（CR-017 D1），口径同 THINKER 分支
       is_report "$file" "$req" && return 0
       # 交还例外，锚定口径同 THINKER 分支
@@ -259,7 +332,7 @@ check_permission() {
 IFS=',' read -ra ROLES <<< "$CURRENT_ROLES"
 ALLOWED=false
 for ROLE in "${ROLES[@]}"; do
-  if check_permission "$ROLE" "$NORM_PATH" "$REQ_ID"; then
+  if check_permission "$ROLE" "$NORM_PATH" "$PROJECT"; then
     ALLOWED=true
     break
   fi

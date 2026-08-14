@@ -2,7 +2,7 @@
 # verify-archive.sh - 归档质量硬校验脚本
 # 通用检查 + 项目专属检查（从 .archiveignore 读取）
 # 退出码: 0=全部通过, 1=存在失败项
-# 用法: ./scripts/verify-archive.sh [REQ-ID]
+# 用法: ./scripts/verify-archive.sh [project]
 #
 # CR-010: 取消 ARC-2（重复检测）、ARC-3（更新方向检测）、ARC-5（REQ-ID 隔离）
 # 产出即归档：无根 output/ 二份存放
@@ -13,27 +13,27 @@ DELIVERABLES_DIR="deliverables"
 ERRORS=0
 WARNS=0
 
-req_id="${1:-}"
+project="${1:-}"
 
-# 自动从 .state.md 读取 REQ-ID
-if [ -z "$req_id" ]; then
-    req_id=$(grep "^req_id:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+# 自动从全局指针读取项目标识符（CR-018: req_id → project）
+if [ -z "$project" ]; then
+    project=$(grep "^project:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 fi
 
-if [ -z "$req_id" ]; then
-    echo "WARN: 未指定 REQ-ID 且无法从 .state.md 读取，跳过归档检查"
+if [ -z "$project" ]; then
+    echo "WARN: 未指定项目标识符且无法从 .state.md 读取，跳过归档检查"
     exit 0
 fi
 
-REQ_DIR="$DELIVERABLES_DIR/$req_id"
+REQ_DIR="$DELIVERABLES_DIR/$project"
 IGNORE_FILE="$REQ_DIR/.archiveignore"
 
-echo "=== 归档质量检查: $req_id ==="
+echo "=== 归档质量检查: $project ==="
 echo ""
 
 # ─────────────────────────────────────────────
 # ARC-1: 项目专属禁止项检查（从 .archiveignore 读取）
-# 检查 deliverables/{REQ-ID}/ 产品区
+# 检查 deliverables/{project}/ 产品区
 # ─────────────────────────────────────────────
 check_archiveignore() {
     echo "--- ARC-1: 项目专属禁止项 ---"
@@ -88,7 +88,7 @@ check_output_nonempty() {
     echo "--- ARC-4: 归档目录非空 ---"
 
     if [ ! -d "$REQ_DIR" ]; then
-        echo "FAIL: deliverables/$req_id/ 目录不存在"
+        echo "FAIL: deliverables/$project/ 目录不存在"
         ERRORS=$((ERRORS + 1))
     else
         local file_count
@@ -105,7 +105,7 @@ check_output_nonempty() {
 
 # ─────────────────────────────────────────────
 # ARC-6: 分层知识库校验
-# 仅当 deliverables/{REQ-ID}/docs/kb/ 已存在时校验（用户主动请求生成才会存在）
+# 仅当 deliverables/{project}/docs/kb/ 已存在时校验（用户主动请求生成才会存在）
 # ─────────────────────────────────────────────
 check_knowledge_base() {
     echo "--- ARC-6: 分层知识库校验 ---"
@@ -229,13 +229,20 @@ check_output_structure() {
         fi
     done
 
-    # 检查顶层散落的 .md 文件（README.md 和 ROLE-*.md 除外）
+    # 检查顶层散落的 .md 文件（仅 README.md 合法）
+    # CR-018 R8：角色前缀（THINKER-/WORKER-/VERIFIER-/ORCHESTRATOR-）不再是豁免理由——
+    # 产品区已不含角色名，它现在是违规特征。原判据把 ROLE-*.md 显式列入白名单，
+    # 是「散落在根」成为框架保证结果的三处成因之一。
     for entry in "$REQ_DIR"/*.md; do
         [ -f "$entry" ] || continue
         local filename
         filename=$(basename "$entry")
-        if [ "$filename" != "README.md" ] && ! echo "$filename" | grep -qE "^(THINKER|WORKER|VERIFIER|ORCHESTRATOR)-"; then
-            echo "WARN: 产品区根目录存在散落文档: $filename（应移入 docs/）"
+        if [ "$filename" != "README.md" ]; then
+            # ${filename} 必须加花括号：变量名紧邻全角字符时 bash 会把全角字符并入变量名，
+            # `set -u` 下即 unbound variable 而整个检查函数中断（guards.md 已记录该陷阱）。
+            # 基线同样缺花括号，但根 ROLE-*.md 被豁免使该分支在常见输入下不可达；
+            # 本 CR 收紧判据后它变为主路径，故一并修正。
+            echo "WARN: 产品区根目录存在散落文档: ${filename}（应移入 docs/；含角色名或相位名者属 CR-018 R3 违规）"
             violations=$((violations + 1))
         fi
     done

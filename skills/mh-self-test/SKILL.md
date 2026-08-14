@@ -17,7 +17,7 @@ Worker 完成编码实现后，在填写 code-report.md 之前执行。
 
 ## 前置: 读取技术栈信息
 
-1. 读取 `deliverables/{REQ-ID}/.engine/.state.md` 中 tech_stack、test_strategy 字段
+1. 读取 `deliverables/{project}/.engine/.state.md` 中 tech_stack、test_strategy 字段
 2. 根据 tech_stack.language 确定命令路由
 
 ---
@@ -84,7 +84,7 @@ Worker 完成编码实现后，在填写 code-report.md 之前执行。
 
 ## 输出
 
-将结果记录到 deliverables/{REQ-ID}/WORKER-apply-code-report-t{N}.md 的"测试结果"和"自检结果"部分：
+将结果记录到 deliverables/{project}/.engine/code-report-t{N}.md 的"测试结果"和"自检结果"部分：
 
 ```
 ## 测试结果

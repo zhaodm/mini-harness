@@ -16,12 +16,12 @@ import { archiveMerge } from './archive-merge.js';
 
 /**
  * @typedef {Object} KBSources
- * @property {string} [requirementSpec] - THINKER-propose-requirement-spec.md
- * @property {string} [designContent] - THINKER-propose-design.md
- * @property {string[]} [codeReports] - WORKER-apply-code-report*.md 数组
+ * @property {string} [requirementSpec] - docs/spec/requirement-spec.md
+ * @property {string} [designContent] - docs/spec/design.md
+ * @property {string[]} [codeReports] - .engine/code-report-*.md 数组
  * @property {string} [codeReviewContent] - Verifier code-review 内容
  * @property {Object[]} [repairHistory] - .engine/.state.md repair_history[]
- * @property {string[]} [outputFiles] - deliverables/{REQ-ID}/ 文件路径列表
+ * @property {string[]} [outputFiles] - deliverables/{project}/ 文件路径列表
  * @property {Object} [techStack] - .engine/.state.md tech_stack
  * @property {string} [outputType] - 产出类型（可选，用于推断）
  */
@@ -55,12 +55,12 @@ import { archiveMerge } from './archive-merge.js';
  * 构建分层知识库
  *
  * @param {KBSources} sources - 各来源内容
- * @param {string} reqId - 当前 REQ-ID
+ * @param {string} project - 当前项目标识符
  * @param {string} date - 当前日期 YYYY-MM-DD
  * @param {Object} meta - { projectName, techStack }
  * @returns {KnowledgeBase}
  */
-export function buildKnowledgeBase(sources, reqId, date, meta) {
+export function buildKnowledgeBase(sources, project, date, meta) {
   const { requirementSpec, designContent, codeReports, codeReviewContent,
           repairHistory, outputFiles, techStack, outputType } = sources;
   const { projectName = '未命名项目' } = meta || {};
@@ -73,7 +73,7 @@ export function buildKnowledgeBase(sources, reqId, date, meta) {
 
   // Step 3: 生成 system-map
   const systemMap = buildSystemMap({
-    projectName, reqId, date, techStack, outputType,
+    projectName, project, date, techStack, outputType,
     requirementSpec, designContent, outputFiles, domains, recipes,
     codeReviewContent, repairHistory,
   });
@@ -106,11 +106,11 @@ export function buildKnowledgeBase(sources, reqId, date, meta) {
  *
  * @param {Object} existingKB - 已有知识库文件内容 { systemMap, domains: {name: content}, recipes: {name: content} }
  * @param {KnowledgeBase} newKB - 本次生成的知识库
- * @param {string} reqId - 当前 REQ-ID
+ * @param {string} project - 当前项目标识符
  * @param {string} date - 当前日期
  * @returns {{ files: {path: string, content: string}[], stats: Object }}
  */
-export function mergeKnowledgeBase(existingKB, newKB, reqId, date) {
+export function mergeKnowledgeBase(existingKB, newKB, project, date) {
   const files = [];
 
   // system-map: 全量替换（始终反映最新全景）
@@ -121,7 +121,7 @@ export function mergeKnowledgeBase(existingKB, newKB, reqId, date) {
     const existing = existingKB.domains && existingKB.domains[domain.name];
     if (existing) {
       // 合并：保留已有约束/陷阱段，更新其他段
-      const merged = mergeDomainGuide(existing, domain.content, reqId);
+      const merged = mergeDomainGuide(existing, domain.content, project);
       files.push({ path: `docs/kb/domains/${domain.name}.md`, content: merged });
     } else {
       files.push({ path: `docs/kb/domains/${domain.name}.md`, content: domain.content });
@@ -256,7 +256,7 @@ export function inferRecipes(designContent, codeReports) {
  * 生成 Layer 0: system-map.md
  */
 function buildSystemMap(ctx) {
-  const { projectName, reqId, date, techStack, outputType,
+  const { projectName, project, date, techStack, outputType,
           requirementSpec, designContent, outputFiles, domains, recipes,
           codeReviewContent, repairHistory } = ctx;
 
@@ -268,7 +268,7 @@ function buildSystemMap(ctx) {
   lines.push(`# ${projectName} — 系统全景`);
   lines.push('');
   lines.push(`> 自动生成，供 AI 快速定位任务涉及的模块并跳转到域指南。`);
-  lines.push(`> 生成自: ${reqId} | 日期: ${date} | 技术栈: ${techSummary}`);
+  lines.push(`> 生成自: ${project} | 日期: ${date} | 技术栈: ${techSummary}`);
   lines.push('');
 
   // 项目定位
@@ -835,7 +835,7 @@ function extractDomainPitfalls(domain, codeReviewContent, repairHistory) {
 }
 
 /** 合并已有域指南和新内容 */
-function mergeDomainGuide(existing, newContent, reqId) {
+function mergeDomainGuide(existing, newContent, project) {
   // 保留已有的"约束与陷阱"段（可能被人工完善），替换其他段
   const existingPitfalls = extractSectionContent(existing, '## 约束与陷阱');
   if (existingPitfalls && existingPitfalls.length > 30) {

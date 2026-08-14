@@ -84,8 +84,8 @@ mini-harness/
 │   ├── examples/                金标准产出示例
 │   └── output-guides/           产出结构参考
 ├── docs/                        设计参考（人工阅读，Orchestrator 运行时不读）
-├── deliverables/                运行时产物（按 REQ-ID 隔离，git忽略）
-└── {产出物}                     归档产物在 deliverables/{REQ-ID}/ 下
+├── deliverables/                运行时产物（按项目标识符隔离，git忽略）
+└── {产出物}                     归档产物在 deliverables/{project}/ 下
 ```
 
 ---
@@ -230,7 +230,7 @@ Orchestrator 与各角色间信息传递的唯一通道。结构化文件，包�
 ### Orchestrator 运行时上下文负载
 
 Orchestrator 启动时读取：本文件(orchestrator.md) + 当前 skill + .engine/.state.md + handoff。
-不需要读取 THINKER-propose-design.md、source-of-truth.md（人工维护参考）。
+不需要读取 docs/spec/design.md、source-of-truth.md（人工维护参考）。
 
 ---
 
@@ -308,7 +308,7 @@ Orchestrator 接收回报后逐项核对对应角色验收清单。详见 skills
 - 总耗时、角色派发/驳回次数、修复轮次与收敛性、SR审批结果、断点异常
 
 模板：templates/metrics-template.md
-产出：deliverables/{REQ-ID}/docs/metrics.md
+产出：deliverables/{project}/docs/metrics.md
 
 ### 经验记忆（lessons-learned）
 
@@ -328,10 +328,10 @@ Orchestrator 接收回报后逐项核对对应角色验收清单。详见 skills
 #### 存储架构
 
 ```
-deliverables/{REQ-ID}/.engine/lessons.md    ← 过程暂存（实时追加）
+deliverables/{project}/.engine/lessons.md    ← 过程暂存（实时追加）
          │
          ▼ ARC-7 merge
-deliverables/{REQ-ID}/docs/lessons-learned.md  ← 全量累积（从 .engine/ 归档）
+deliverables/{project}/docs/lessons-learned.md  ← 全量累积（从 .engine/ 归档）
 ```
 
 #### 消费方式

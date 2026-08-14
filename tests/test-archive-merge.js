@@ -25,13 +25,13 @@ console.log('--- 1. 追加新增内容 ---');
 const append1 = archiveMerge({
   existingContent: `# Design\n\n## 模块 A\n\n模块 A 的内容。\n`,
   newContent: `## 模块 B\n\n模块 B 的新内容。\n`,
-  reqId: 'REQ002',
+  project: 'order-api',
   mergeType: 'append'
 });
 assert('包含原有内容', append1.mergedContent.includes('模块 A 的内容'));
 assert('包含新增内容', append1.mergedContent.includes('模块 B 的新内容'));
-assert('新增内容有 REQ START 标签', append1.mergedContent.includes('<!-- REQ-REQ002 START -->'));
-assert('新增内容有 REQ END 标签', append1.mergedContent.includes('<!-- REQ-REQ002 END -->'));
+assert('新增内容有 REQ START 标签', append1.mergedContent.includes('<!-- PROJECT-order-api START -->'));
+assert('新增内容有 REQ END 标签', append1.mergedContent.includes('<!-- PROJECT-order-api END -->'));
 assert('operations 记录追加操作', append1.operations.length === 1 && append1.operations[0].type === 'append');
 
 // --- 2. 替换: 已有标签段落 ---
@@ -43,11 +43,11 @@ const existingWithTag = `# Design
 
 模块 A 的内容。
 
-<!-- REQ-REQ001 START -->
+<!-- PROJECT-web-cli START -->
 ## 模块 B
 
 旧的模块 B 内容。
-<!-- REQ-REQ001 END -->
+<!-- PROJECT-web-cli END -->
 
 ## 模块 C
 
@@ -57,14 +57,14 @@ const existingWithTag = `# Design
 const replace1 = archiveMerge({
   existingContent: existingWithTag,
   newContent: `## 模块 B\n\n更新后的模块 B 内容。\n`,
-  reqId: 'REQ001',
+  project: 'web-cli',
   mergeType: 'replace'
 });
 assert('替换后包含新内容', replace1.mergedContent.includes('更新后的模块 B 内容'));
 assert('替换后不含旧内容', !replace1.mergedContent.includes('旧的模块 B 内容'));
 assert('保留模块 A', replace1.mergedContent.includes('模块 A 的内容'));
 assert('保留模块 C', replace1.mergedContent.includes('模块 C 的内容'));
-assert('标签更新为当前 REQ-ID', replace1.mergedContent.includes('<!-- REQ-REQ001 START -->'));
+assert('标签更新为当前 project', replace1.mergedContent.includes('<!-- PROJECT-web-cli START -->'));
 assert('operations 记录替换', replace1.operations[0].type === 'replace');
 
 // --- 3. 废弃: 标记 DEPRECATED ---
@@ -73,11 +73,11 @@ console.log('\n--- 3. 废弃标记 ---');
 const deprecate1 = archiveMerge({
   existingContent: existingWithTag,
   newContent: '功能已合并到模块 A 中',
-  reqId: 'REQ003',
+  project: 'auth-svc',
   mergeType: 'deprecate',
-  targetReqId: 'REQ001'
+  targetProject: 'web-cli'
 });
-assert('包含 DEPRECATED 标记', deprecate1.mergedContent.includes('[DEPRECATED by REQ-REQ003]'));
+assert('包含 DEPRECATED 标记', deprecate1.mergedContent.includes('[DEPRECATED by PROJECT-auth-svc]'));
 assert('保留原文供追溯', deprecate1.mergedContent.includes('旧的模块 B 内容'));
 assert('包含废弃原因', deprecate1.mergedContent.includes('功能已合并到模块 A 中'));
 assert('operations 记录废弃', deprecate1.operations[0].type === 'deprecate');
@@ -95,7 +95,7 @@ const noTag = `# Requirement Spec
 const append2 = archiveMerge({
   existingContent: noTag,
   newContent: `## FR-2: 用户注册\n\n用户可以通过邮箱注册新账号。\n`,
-  reqId: 'REQ002',
+  project: 'order-api',
   mergeType: 'append'
 });
 assert('历史内容完整保留', append2.mergedContent.includes('用户可以通过邮箱密码登录'));
@@ -107,7 +107,7 @@ console.log('\n--- 5. 目标标签不存在降级为追加 ---');
 const replaceFallback = archiveMerge({
   existingContent: noTag,
   newContent: `## FR-3: 密码重置\n\n用户可以重置密码。\n`,
-  reqId: 'REQ005',
+  project: 'data-etl',
   mergeType: 'replace'
 });
 assert('标签不存在时降级为 append', replaceFallback.operations[0].type === 'append');
@@ -118,26 +118,26 @@ console.log('\n--- 6. 多标签共存 ---');
 
 const multiTag = `# Design
 
-<!-- REQ-REQ001 START -->
+<!-- PROJECT-web-cli START -->
 ## 模块 A
 内容 A
-<!-- REQ-REQ001 END -->
+<!-- PROJECT-web-cli END -->
 
-<!-- REQ-REQ002 START -->
+<!-- PROJECT-order-api START -->
 ## 模块 B
 内容 B
-<!-- REQ-REQ002 END -->
+<!-- PROJECT-order-api END -->
 `;
 
 const appendMulti = archiveMerge({
   existingContent: multiTag,
   newContent: `## 模块 C\n\n内容 C\n`,
-  reqId: 'REQ003',
+  project: 'auth-svc',
   mergeType: 'append'
 });
-assert('保留 REQ001 标签段', appendMulti.mergedContent.includes('<!-- REQ-REQ001 START -->'));
-assert('保留 REQ002 标签段', appendMulti.mergedContent.includes('<!-- REQ-REQ002 START -->'));
-assert('新增 REQ003 标签段', appendMulti.mergedContent.includes('<!-- REQ-REQ003 START -->'));
+assert('保留 web-cli 标签段', appendMulti.mergedContent.includes('<!-- PROJECT-web-cli START -->'));
+assert('保留 order-api 标签段', appendMulti.mergedContent.includes('<!-- PROJECT-order-api START -->'));
+assert('新增 auth-svc 标签段', appendMulti.mergedContent.includes('<!-- PROJECT-auth-svc START -->'));
 
 // --- 7. 空文档追加 ---
 console.log('\n--- 7. 空文档追加 ---');
@@ -145,11 +145,11 @@ console.log('\n--- 7. 空文档追加 ---');
 const emptyDoc = archiveMerge({
   existingContent: '',
   newContent: `# 新文档\n\n全新内容。\n`,
-  reqId: 'REQ001',
+  project: 'web-cli',
   mergeType: 'append'
 });
 assert('空文档 → 直接写入带标签', emptyDoc.mergedContent.includes('全新内容'));
-assert('有标签包裹', emptyDoc.mergedContent.includes('<!-- REQ-REQ001 START -->'));
+assert('有标签包裹', emptyDoc.mergedContent.includes('<!-- PROJECT-web-cli START -->'));
 
 // === 结果 ===
 console.log('\n========================');

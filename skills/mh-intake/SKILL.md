@@ -14,8 +14,8 @@ description: This skill should be used when the user starts a new project requir
 ## 前置检查
 
 1. 如 `deliverables/.state.md` 不存在，从 `templates/state-pointer-template.md` 拷贝
-2. 如存在，读取 req_id 和对应 `.engine/.state.md` 的 phase
-3. 如 `deliverables/{REQ-ID}/docs/lessons-learned.md` 存在，加载历史经验
+2. 如存在，读取 `project` 和对应 `.engine/.state.md` 的 phase
+3. 如 `deliverables/{project}/docs/lessons-learned.md` 存在，加载历史经验
 4. **调用 `detectScenario()`**（`workflows/lib/detect-scenario.js`）判断场景
 5. RESUME → 提示用户继续或放弃；CHANGE → 增量开发模式；NEW → 全新项目
 5. **旧角色 schema 迁移**：如 .engine/.state.md 含旧 current_role（PM/BA/SA/DE/TE/UX），
@@ -27,7 +27,7 @@ description: This skill should be used when the user starts a new project requir
 
 ### CHANGE 模式要点
 
-- Proposal 标注"增量开发，基于 deliverables/{REQ-ID}/ 已有代码"
+- Proposal 标注"增量开发，基于 deliverables/{project}/ 已有代码"
 - Thinker 仅产出增量文档，归档时 `archiveMerge()` 负责 merge 全量
 - Worker handoff 白名单包含 design.md 规划的项目代码路径；Verifier 回归覆盖全部已有功能
 
@@ -40,14 +40,21 @@ description: This skill should be used when the user starts a new project requir
 
 检测不完整时向用户确认。结果写入 `.engine/.state.md` tech_stack 和 env 字段。
 
-## Step 1: 初始化任务目录 + Track 选择
+## Step 1: 确认项目标识符 + 初始化交付目录 + Track 选择
 
-1. 生成 REQ-ID → 创建 `deliverables/{REQ-ID}/` 目录结构（含 `.engine/` 子目录）
-2. **Track 选择**（由入口命令决定）：
+1. **与用户确认项目标识符**（`project`），它同时是交付目录名：
+   - 根据用户需求描述提出候选标识符（如 `web-cli`、`order-api`），向用户确认或请其给出
+   - **立即校验**：`bash scripts/validate-slug.sh <slug>` —— 退出码非 0 则向用户展示脚本打印的
+     原因并重新询问，不得自行改写用户给的值后静默通过
+   - 约束：`^[a-z][a-z0-9-]{0,63}$`，且不得为保留名（`docs`/`src`/`tests`/`deploy`/`assets`/`reference`/`engine`）
+   - 确认后写入 `.engine/.state.md` 的 `project` 字段，**此后只读**；它是该交付物在框架内的
+     唯一标识符，不与需求编号并存
+2. 创建 `deliverables/{project}/` 目录结构（含 `.engine/` 子目录）
+3. **Track 选择**（由入口命令决定）：
    - `/mh-run` → `track: code`
    - `/mh-ppt` → `track: ppt`
-3. 写入 `.engine/.state.md`（schema 见 `templates/state-template.md`），含 track 字段
-4. track 写入后只读，切换需重新开需求
+4. 写入 `.engine/.state.md`（schema 见 `templates/state-template.md`），含 `project` 与 `track` 字段
+5. track 写入后只读，切换需重新开需求
 
 ## Step 2: 需求澄清（人机协作）
 
@@ -65,9 +72,9 @@ description: This skill should be used when the user starts a new project requir
 
 ## Step 4: Proposal 定稿
 
-1. 写入 `deliverables/{REQ-ID}/ORCHESTRATOR-init-proposal.md`
+1. 写入 `deliverables/{project}/.engine/proposal.md`
 2. 向用户呈现，请求确认
-3. 确认 → 更新 `.engine/.state.md`: phase=init, current_step=INIT-DONE；更新 `deliverables/.state.md`: req_id={REQ-ID}（全局指针）
+3. 确认 → 更新 `.engine/.state.md`: phase=init, current_step=INIT-DONE；更新 `deliverables/.state.md`: `project: {project}`（全局指针，role-guard 据此定位活跃交付物）
 4. 驳回 → 修改后重新呈现，循环直到确认
 
 ### Proposal 格式

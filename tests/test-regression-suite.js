@@ -62,11 +62,11 @@ const sampleTestcases = `# 测试用例
 - 期望结果: 显示格式错误提示
 `;
 
-const parsed = parseTestcases(sampleTestcases, 'REQ001');
+const parsed = parseTestcases(sampleTestcases, 'web-cli');
 assert('解析出 3 个用例', parsed.length === 3);
 assert('TC-1 id 正确', parsed[0].id === 'TC-1');
 assert('TC-1 title 正确', parsed[0].title === '用户注册正常流');
-assert('TC-1 sourceReq', parsed[0].sourceReq === 'REQ001');
+assert('TC-1 sourceReq', parsed[0].sourceReq === 'web-cli');
 assert('TC-1 requirement', parsed[0].requirement === 'FR-1');
 assert('TC-1 type', parsed[0].type === 'Integration');
 assert('TC-1 priority', parsed[0].priority === 'Critical');
@@ -82,13 +82,13 @@ assert('TC-3 priority=Minor', parsed[2].priority === 'Minor');
 console.log('\n--- 2. aggregateToSuite 首次创建 ---');
 
 const template = readFileSync('templates/regression-suite-template.md', 'utf8');
-const result1 = aggregateToSuite(template, parsed, 'REQ001');
+const result1 = aggregateToSuite(template, parsed, 'web-cli');
 
 assert('首次: added=3', result1.stats.added === 3);
 assert('首次: updated=0', result1.stats.updated === 0);
 assert('首次: total=3', result1.stats.total === 3);
-assert('首次: 包含 REQ-REQ001 START 标签', result1.content.includes('<!-- REQ-REQ001 START -->'));
-assert('首次: 包含 REQ-REQ001 END 标签', result1.content.includes('<!-- REQ-REQ001 END -->'));
+assert('首次: 包含 PROJECT-web-cli START 标签', result1.content.includes('<!-- PROJECT-web-cli START -->'));
+assert('首次: 包含 PROJECT-web-cli END 标签', result1.content.includes('<!-- PROJECT-web-cli END -->'));
 assert('首次: 包含 TC-1', result1.content.includes('TC-1'));
 assert('首次: 包含 TC-2', result1.content.includes('TC-2'));
 assert('首次: 包含 TC-3', result1.content.includes('TC-3'));
@@ -96,9 +96,9 @@ assert('首次: 索引含 Critical', result1.content.includes('### Critical'));
 assert('首次: 索引含 TC-1 在 Critical', /### Critical[\s\S]*?\[TC-1\]/.test(result1.content));
 
 // --- 3. aggregateToSuite 追加第二个 REQ ---
-console.log('\n--- 3. aggregateToSuite 追加 REQ002 ---');
+console.log('\n--- 3. aggregateToSuite 追加 order-api ---');
 
-const req2Cases = `# 测试用例
+const proj2Cases = `# 测试用例
 
 ## TC-4: 登录成功
 
@@ -121,31 +121,31 @@ const req2Cases = `# 测试用例
 - 期望结果: 返回 401
 `;
 
-const parsed2 = parseTestcases(req2Cases, 'REQ002');
-assert('REQ002 解析出 2 个用例', parsed2.length === 2);
+const parsed2 = parseTestcases(proj2Cases, 'order-api');
+assert('order-api 解析出 2 个用例', parsed2.length === 2);
 
-const result2 = aggregateToSuite(result1.content, parsed2, 'REQ002');
+const result2 = aggregateToSuite(result1.content, parsed2, 'order-api');
 assert('追加: added=2', result2.stats.added === 2);
 assert('追加: total=5', result2.stats.total === 5);
-assert('追加: 包含 REQ-REQ001 START', result2.content.includes('<!-- REQ-REQ001 START -->'));
-assert('追加: 包含 REQ-REQ002 START', result2.content.includes('<!-- REQ-REQ002 START -->'));
+assert('追加: 包含 PROJECT-web-cli START', result2.content.includes('<!-- PROJECT-web-cli START -->'));
+assert('追加: 包含 PROJECT-order-api START', result2.content.includes('<!-- PROJECT-order-api START -->'));
 assert('追加: 索引含 TC-4 在 Critical', /### Critical[\s\S]*?\[TC-4\]/.test(result2.content));
 
 // --- 4. aggregateToSuite 去重（同 REQ 再次沉淀）---
 console.log('\n--- 4. aggregateToSuite 去重 ---');
 
-const result3 = aggregateToSuite(result2.content, parsed2, 'REQ002');
+const result3 = aggregateToSuite(result2.content, parsed2, 'order-api');
 assert('去重: updated=2', result3.stats.updated === 2);
 assert('去重: added=0', result3.stats.added === 0);
 assert('去重: total=5（不增长）', result3.stats.total === 5);
-// 确认只有一个 REQ-REQ002 标签段
-const req2Starts = (result3.content.match(/<!-- REQ-REQ002 START -->/g) || []).length;
-assert('去重: REQ002 标签段仅 1 个', req2Starts === 1);
+// 确认只有一个 PROJECT-order-api 标签段
+const proj2Starts = (result3.content.match(/<!-- PROJECT-order-api START -->/g) || []).length;
+assert('去重: order-api 标签段仅 1 个', proj2Starts === 1);
 
 // --- 5. aggregateToSuite 空用例 ---
 console.log('\n--- 5. aggregateToSuite 空用例 ---');
 
-const result4 = aggregateToSuite(result2.content, [], 'REQ003');
+const result4 = aggregateToSuite(result2.content, [], 'auth-svc');
 assert('空用例: total 不变', result4.stats.total === 5);
 assert('空用例: added=0', result4.stats.added === 0);
 

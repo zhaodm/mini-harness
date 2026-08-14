@@ -4,7 +4,7 @@
 # 覆盖 acceptance-criteria.json 的 AC-01~AC-12 / AX-01~AX-08 中可脚本化的判定项。
 # 设计约束：
 #   - 全程 BSD grep 兼容（PATH 收敛到 /usr/bin:/bin 后仍须通过）
-#   - fixture 建在 deliverables/REQ-PPTGATE-$$ 下（带 PID 以支持并发），测试结束必须清理：
+#   - fixture 建在 deliverables/ppt-gate-$$ 下（带 PID 以支持并发），测试结束必须清理：
 #     残留 .engine/.state.md 会让 role-guard 切到 /mh-run 分支，污染 test-governance.sh
 #   - 不修改任何被测文件；需要变体时先复制到 fixture 再改
 
@@ -15,7 +15,10 @@ cd "$ROOT" || exit 1
 
 # REQ 带 PID：并发运行时两个进程若共用同一 fixture 目录会互相覆盖，
 # 表现为 role-guard/governance 套件随机假失败（曾观测到 64/100）。
-REQ="REQ-PPTGATE-$$"
+# CR-018 D1.1：项目标识符须匹配 ^[a-z][a-z0-9-]{0,63}$。原值 REQ-PPTGATE-$$ 含大写，
+# 在新校验下是非法 slug —— 守卫会判「state 被污染」exit 2，使 AX-06 的放行类断言假失败，
+# 拒绝类断言则因错误原因通过。全小写 slug 仍带 PID 以保并发隔离。
+REQ="ppt-gate-$$"
 R="deliverables/$REQ"
 TMP="/tmp/ppt-gate-$$"
 GOOD="$TMP/good.html"
@@ -33,15 +36,18 @@ skip_() { printf '  \033[0;33mSKIP\033[0m: %s\n' "$1"; SKIPPED=$((SKIPPED + 1));
 
 # 本套件只写 fixture 目录与 TMP，templates/ 与 scripts/ 全程只读，
 # 故清理即删除这两处；中断退出也不会在仓库留下污染。
-cleanup() { rm -rf "$R" "$TMP"; }
+# 全局指针一并清理：残留指针会让 role-guard 切到 /mh-run 分支而污染 test-governance.sh
+cleanup() { rm -rf "$R" "$TMP" deliverables/.state.md; }
 trap cleanup EXIT
 
 build_fixture() {
     rm -rf "$R"
-    mkdir -p "$R/.engine" "$R/THINKER-propose-wireframes" "$TMP"
-    printf 'req_id: %s\nppt_density: speaker\nppt_design_mode: system\n' "$REQ" > "$R/.engine/.state.md"
-    printf '## Slide 1\n## Slide 2\n## Slide 3\n## Slide 4\n' > "$R/THINKER-propose-slide-spec.md"
-    printf '<div class="slide" data-layout="L01"></div>\n' > "$R/THINKER-propose-wireframes/wf01.html"
+    mkdir -p "$R/.engine" "$R/assets/wireframes" "$R/docs/spec" "$TMP"
+    # CR-018 D3.4：守卫与 verify-ppt.sh 均以全局指针 deliverables/.state.md 的 project 定位
+    printf 'project: %s\n' "$REQ" > deliverables/.state.md
+    printf 'project: %s\nppt_density: speaker\nppt_design_mode: system\n' "$REQ" > "$R/.engine/.state.md"
+    printf '## Slide 1\n## Slide 2\n## Slide 3\n## Slide 4\n' > "$R/docs/spec/slide-spec.md"
+    printf '<div class="slide" data-layout="L01"></div>\n' > "$R/assets/wireframes/wf01.html"
     python3 - "$GOOD" <<'PY'
 import re, sys, pathlib
 out = pathlib.Path(sys.argv[1])
@@ -143,15 +149,15 @@ gate B; expect_out '密度档 speaker' "AC-09: 非法档位值 → 回落 speake
 set_state ppt_density speaker
 
 head_ "AC-02 页数一致性只统计最终产出"
-for i in 2 3 4 5 6; do cp "$GOOD" "$R/THINKER-propose-wireframes/wf0$i.html"; done
+for i in 2 3 4 5 6; do cp "$GOOD" "$R/assets/wireframes/wf0$i.html"; done
 mkdir -p "$R/archive"; cp "$GOOD" "$R/archive/old.html"
 gate C; expect_out 'PASS: 页数一致 (4 页)' "AC-02: wireframe 目录与归档副本不计入页数"
-printf '## Slide 1\n## Slide 2\n## Slide 3\n## Slide 4\n## Slide 5\n' > "$R/THINKER-propose-slide-spec.md"
+printf '## Slide 1\n## Slide 2\n## Slide 3\n## Slide 4\n## Slide 5\n' > "$R/docs/spec/slide-spec.md"
 gate C; expect_rc 1 "AC-02: spec 5 页 vs 实际 4 页 → FAIL"
-printf '## Slide 1\n## Slide 2\n## Slide 3\n## Slide 4\n' > "$R/THINKER-propose-slide-spec.md"
+printf '## Slide 1\n## Slide 2\n## Slide 3\n## Slide 4\n' > "$R/docs/spec/slide-spec.md"
 
 head_ "AC-03 空 slide-spec 不得吞错报通过"
-printf '# 无任何页面条目的规格\n' > "$R/THINKER-propose-slide-spec.md"
+printf '# 无任何页面条目的规格\n' > "$R/docs/spec/slide-spec.md"
 gate C
 expect_rc 1 "AC-03: 空 spec → FAIL 而非通过"
 if printf '%s\n' "$GATE_OUT" | command grep -qiE 'syntax error|integer expression expected|unary operator'; then
@@ -159,7 +165,7 @@ if printf '%s\n' "$GATE_OUT" | command grep -qiE 'syntax error|integer expressio
 else
     ok "AC-03: 无 shell 语法错误"
 fi
-printf '## Slide 1\n## Slide 2\n## Slide 3\n## Slide 4\n' > "$R/THINKER-propose-slide-spec.md"
+printf '## Slide 1\n## Slide 2\n## Slide 3\n## Slide 4\n' > "$R/docs/spec/slide-spec.md"
 
 head_ "AC-06 / AC-07 / AX-08 版式声明与多样性"
 variant "t = t.replace('data-layout=\"L05\"', 'data-layout=\"ZZ9\"', 1)"
@@ -229,7 +235,7 @@ cp -R scripts templates package.json "$ISO/" 2>/dev/null
 mkdir -p "$ISO/deliverables/$REQ/.engine"
 cp "$R/.engine/.state.md" "$ISO/deliverables/$REQ/.engine/"
 cp "$GOOD" "$ISO/deliverables/$REQ/presentation.html"
-cp "$R/THINKER-propose-slide-spec.md" "$ISO/deliverables/$REQ/"
+cp "$R/docs/spec/slide-spec.md" "$ISO/deliverables/$REQ/"
 out=$( (cd "$ISO" && bash scripts/verify-ppt.sh D "$REQ" 2>&1) ); rc=$?
 [ "$rc" -eq 3 ] && ok "AX-02: playwright 缺失 → exit 3 阻断" || bad "AX-02: playwright 缺失应 exit 3，实际 $rc"
 printf '%s\n' "$out" | command grep -q '=== PPT 校验通过' && bad "AX-02: 阻断时仍输出整体通过结论" || ok "AX-02: 阻断时无整体通过结论"
@@ -245,7 +251,7 @@ printf '%s\n' "$out" | command grep -q '=== PPT 校验通过' && bad "AX-02: all
 head_ "AX-06 单文件形态下 role-guard 角色隔离不变"
 # ⚠️ 本组断言要求串行执行：role-guard.sh 用 `find deliverables -name .state.md | head -1`
 # 定位活跃 state，是全局单例假设。并发运行时它可能读到另一进程的 fixture state，
-# 导致 req_id 不匹配、放行判定失败（表现为「单文件产出被误拦」假失败）。
+# 导致 project 不匹配、放行判定失败（表现为「单文件产出被误拦」假失败）。
 # fixture 目录已按 PID 隔离，但该单例假设在 role-guard 内部，非本套件可解。
 # 检出并发即跳过本组，不产出假失败——其余 70+ 断言不受影响、仍可并发。
 other_state=$(find deliverables -name ".state.md" -path "*/.engine/*" 2>/dev/null | command grep -v "^deliverables/$REQ/" | head -1)
@@ -256,14 +262,14 @@ guard() {
     printf '{"tool_name":"Write","tool_input":{"file_path":"%s"}}' "$1" | bash scripts/role-guard.sh >/dev/null 2>&1
     echo $?
 }
-printf 'req_id: %s\nppt_density: speaker\nppt_design_mode: system\ncurrent_role: WORKER\nphase: apply\n' "$REQ" > "$R/.engine/.state.md"
+printf 'project: %s\nppt_density: speaker\nppt_design_mode: system\ncurrent_role: WORKER\nphase: apply\n' "$REQ" > "$R/.engine/.state.md"
 [ "$(guard "$R/.engine/.state.md")" = "2" ] && ok "AX-06: WORKER 写 .engine/ → 拒" || bad "AX-06: WORKER 写 .engine/ 未被拒"
 [ "$(guard "$R/.ENGINE/x.md")" = "2" ] && ok "AX-06: .ENGINE 大小写绕过 → 拒" || bad "AX-06: .ENGINE 绕过未被拒"
-[ "$(guard "$R/THINKER-propose-slide-spec.md")" = "2" ] && ok "AX-06: WORKER 写 THINKER- 产出 → 拒" || bad "AX-06: 跨角色产出未被拒"
+[ "$(guard "$R/docs/spec/slide-spec.md")" = "2" ] && ok "AX-06: WORKER 写 THINKER- 产出 → 拒" || bad "AX-06: 跨角色产出未被拒"
 [ "$(guard "$R/../../etc/passwd")" = "2" ] && ok "AX-06: 路径穿越 → 拒" || bad "AX-06: 路径穿越未被拒"
 [ "$(guard "$R/presentation.html")" = "0" ] && ok "AX-06: WORKER 写单文件产出 → 放行" || bad "AX-06: 单文件产出被误拦"
 fi
-printf 'req_id: %s\nppt_density: speaker\nppt_design_mode: system\n' "$REQ" > "$R/.engine/.state.md"
+printf 'project: %s\nppt_density: speaker\nppt_design_mode: system\n' "$REQ" > "$R/.engine/.state.md"
 
 # ---------------------------------------------------------------------------
 # CSS token 字号回归（AC-09 静态层 / AC-04 渲染层）
@@ -359,6 +365,17 @@ fi
 
 # 运行时面全量悬空引用扫描：路径式引用（含 /）必须指向真实存在的文件。
 # 逐 run 生成物（deliverables/、.engine/、.mh-dev/）与散文中的裸文件名不计入。
+#
+# **伪造样本例外**：守卫的注释用「文件名/子路径」形态举例说明「无 $ 锚时会被误命中的
+# 伪造路径」（如 `.state.md/child.md`、`.report.md/child.md`）。这类串把一个文件名
+# 当作目录来构造，语义上恰恰是「不存在、且必须被拒绝」的路径——它不是引用，
+# 断言它存在会与守卫要拒绝它的意图直接矛盾。
+#
+# 判据取**结构特征**而非文件名白名单：非末尾分量带有文件扩展名（.md/.sh/.json/…）时，
+# 该串把「文件」当作了目录，真实引用不可能有这种形状。
+# 注意不能用「前缀分量是已存在的文件」作判据——伪造样本里的 .state.md 在仓库中
+# 根本不存在（它是交付物运行态文件），前缀存在性判据对它永不成立。
+# CR-018 前该串写作裸文本故不被 pat 命中，本 CR 加了反引号才暴露此缺口。
 dangling=$(python3 - <<'PY'
 import re, pathlib
 root = pathlib.Path('.')
@@ -372,6 +389,13 @@ for d in dirs:
                   if f.suffix in ('.md', '.sh', '.json', '.html', '.css', '.js') and f.is_file()]
 pat = re.compile(r'`([A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+\.(?:md|sh|css|html|js|json|py))`')
 skip = re.compile(r'^(deliverables/|\.engine/|tools/mh-dev/\.mh-dev/|output/|dist/|node_modules/|tests/regression-suite\.md)')
+
+# 伪造样本例外（见上方注释）：非末尾分量带文件扩展名 → 把文件当目录用，
+# 是「必须被守卫拒绝」的伪造构造而非引用。
+FILE_SEG = re.compile(r'\.(?:md|sh|css|html|js|json|py|log|ipynb)$', re.I)
+def is_forgery_sample(ref):
+    return any(FILE_SEG.search(seg) for seg in ref.split('/')[:-1])
+
 seen = set()
 for f in files:
     try:
@@ -381,6 +405,8 @@ for f in files:
     for m in pat.finditer(txt):
         ref = m.group(1)
         if skip.match(ref) or '*' in ref or ref.startswith('http'):
+            continue
+        if is_forgery_sample(ref):
             continue
         if (root / ref).exists() or (f.parent / ref).exists():
             continue

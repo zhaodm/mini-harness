@@ -2,29 +2,29 @@
 # baseline.sh - 基线对比脚本
 # 对比当前产出物与已归档基线，检测是否有未经流程的修改
 # 退出码: 0=一致, 1=存在差异
-# 用法: ./scripts/baseline.sh [REQ-ID]
+# 用法: ./scripts/baseline.sh [project]
 
 set -euo pipefail
 
 DELIVERABLES_DIR="deliverables"
 ERRORS=0
-req_id="${1:-}"
+project="${1:-}"
 
-# 自动从 .state.md 读取 REQ-ID
-if [ -z "$req_id" ]; then
-    req_id=$(grep "^req_id:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+# 自动从全局指针读取项目标识符（CR-018: req_id → project）
+if [ -z "$project" ]; then
+    project=$(grep "^project:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 fi
 
-REQ_DIR="$DELIVERABLES_DIR/$req_id"
-SPEC_DIR="$DELIVERABLES_DIR/$req_id/docs/spec"
-BASELINES_DIR="$DELIVERABLES_DIR/$req_id/.engine/baselines"
+REQ_DIR="$DELIVERABLES_DIR/$project"
+SPEC_DIR="$DELIVERABLES_DIR/$project/docs/spec"
+BASELINES_DIR="$DELIVERABLES_DIR/$project/.engine/baselines"
 
 echo "=== 基线对比检查 ==="
-if [ -n "$req_id" ]; then
-    echo "INFO: REQ-ID=$req_id"
+if [ -n "$project" ]; then
+    echo "INFO: project=$project"
 fi
 
-# 检查 deliverables/{REQ-ID}/docs/spec/ 是否有内容可对比
+# 检查 deliverables/{project}/docs/spec/ 是否有内容可对比
 if [ ! -d "$SPEC_DIR" ] || [ -z "$(ls -A "$SPEC_DIR" 2>/dev/null | grep -v baselines)" ]; then
     echo "INFO: docs/spec/ 为空，无基线可对比（首次归档场景）"
     exit 0

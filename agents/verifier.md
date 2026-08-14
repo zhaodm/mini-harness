@@ -22,19 +22,21 @@
 ## 输入
 
 - handoff 白名单指定的文件（通常包括）：
-  - deliverables/{REQ-ID}/（被测产出物，按 design.md 规划路径）
-  - deliverables/{REQ-ID}/THINKER-propose-requirement-spec.md（验收标准）
-  - deliverables/{REQ-ID}/THINKER-propose-design.md（技术约束）
-  - deliverables/{REQ-ID}/.engine/.state.md（tech_stack、test_strategy）
+  - deliverables/{project}/（被测产出物，按 design.md 规划路径）
+  - deliverables/{project}/docs/spec/requirement-spec.md（验收标准）
+  - deliverables/{project}/docs/spec/design.md（技术约束）
+  - deliverables/{project}/.engine/.state.md（tech_stack、test_strategy）
 
-> 以下路径均相对于 `deliverables/{REQ-ID}/`，由 handoff 白名单精确指定。
+> 上列路径以 `deliverables/{project}/` 为前缀完整书写，由 handoff 白名单精确指定。
+> 不写相对形态——`docs/` 与 `tests/` 在仓库根同名存在，缺前缀会把仓库自身的目录当作交付物路径。
 
 ## 输出
 
-- deliverables/{REQ-ID}/VERIFIER-apply-temp-test-report.md（apply 阶段 VERIFY-1）
-- deliverables/{REQ-ID}/VERIFIER-apply-final-test-report.md（apply 阶段 VERIFY-2）
+- deliverables/{project}/.engine/temp-test-report.md（apply 阶段 VERIFY-1）
+- deliverables/{project}/.engine/final-test-report.md（apply 阶段 VERIFY-2）
+- deliverables/{project}/tests/（回归测试代码，与 Worker 共写）
 
-> 产出文件统一命名为 `VERIFIER-apply-*.md`，直接放 deliverables/{REQ-ID}/ 产品区根。
+> 测试报告的消费者是门禁脚本（verify-qa.sh / verify-code-review.sh），故落位引擎态 `.engine/`。
 > **不再产出 testcases.md** — 验收标准由 Thinker 产出，Verifier 只执行验证。
 
 ## 阻塞条件
@@ -47,7 +49,7 @@
 - 禁止将测试结果标记为 PASS 当存在未解决的失败项
 - **禁止在 propose 阶段产出验收标准或测试用例定义**（属于 Thinker 职责）
 - **禁止编写实现代码**（属于 Worker 职责）
-- 文件写入权限由 role-guard.sh 强制（Verifier 仅可写 `deliverables/{REQ-ID}/VERIFIER-*.md`）
+- 文件写入权限由 role-guard.sh 强制（Verifier 可写 `deliverables/{project}/` 下的 `tests/`、`.engine/final-test-report.md`、`.engine/temp-test-report.md`、`.engine/reports/*.report.md`，以及交还例外下的 `.engine/.state.md`；**不可写 `src/` 与 `docs/`**）
 
 > 思考框架、质量标准（PASS/FAIL 条件+严重程度）、反模式、test_strategy 执行细则、Code Review 职责、回归测试执行格式、交付自检清单见 mh-verify skill。
 

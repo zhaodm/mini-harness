@@ -1,7 +1,7 @@
 # {项目名} — 系统全景
 
 > 自动生成，供 AI 快速定位任务涉及的模块并跳转到域指南。
-> 生成自: {REQ-ID} | 日期: {date} | 技术栈: {tech_stack}
+> 生成自: {project} | 日期: {date} | 技术栈: {tech_stack}
 
 ## 项目定位
 
@@ -25,7 +25,7 @@
 ## 目录结构
 
 ```
-{deliverables/{REQ-ID}/ 带注释的精简 tree，仅关键目录和文件}
+{deliverables/{project}/ 带注释的精简 tree，仅关键目录和文件}
 ```
 
 ## 模块速查表

@@ -6,7 +6,7 @@
 ## 推荐目录结构
 
 ```
-deliverables/{REQ-ID}/
+deliverables/{project}/
 ├── src/
 │   ├── commands/        # 子命令实现（每个命令一个文件）
 │   ├── core/            # 核心业务逻辑（不依赖 CLI 框架）

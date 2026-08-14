@@ -1,6 +1,6 @@
 # .state.md Schema（权威参考）
 
-本文件定义 `deliverables/{REQ-ID}/.engine/.state.md` 的完整字段 schema。
+本文件定义 `deliverables/{project}/.engine/.state.md` 的完整字段 schema。
 所有 Skill 在初始化或更新 .engine/.state.md 时必须以此为准。
 
 ---
@@ -9,7 +9,10 @@
 
 ```yaml
 # === 基础标识 ===
-req_id: REQ{NNN}              # 需求编号，全局唯一递增
+project: {slug}                # 项目标识符，交付目录名同值。字符集 ^[a-z][a-z0-9-]{0,63}$，
+                               # 且不得为保留名（docs/src/tests/deploy/assets/reference/engine）。
+                               # 由 scripts/validate-slug.sh 强制，澄清阶段与用户确认后写入，此后只读。
+                               # 是该交付物在框架内的唯一标识符，不与需求编号并存。
 
 # === 流程状态 ===
 phase: init                    # 当前阶段: init | propose | apply | archive | done
@@ -26,7 +29,7 @@ current_role: THINKER          # 当前执行角色: THINKER | WORKER | VERIFIER
                                # Edit 写本文件一律 exit 2（Edit 只暴露片段，守卫看不到合并
                                # 结果，跨行 old_string 曾可被用于提权）。
                                # 详见 docs/kb/domains/guards.md
-current_handoff: ""            # 当前活跃 handoff 文件名（如 REQ001-REQ2-R1.md）
+current_handoff: ""            # 当前活跃 handoff 文件名（如 web-cli-THINK-DESIGN-R1.md）
 completed_steps: []            # 已完成步骤列表（字符串数组）
 auto_advance: true             # 始终自动推进（/mh-run 唯一入口）
 
@@ -42,7 +45,7 @@ repair_task: ""                # 当前修复的任务标识（如 Task-1）
 repair_history: []             # 修复历史（每轮追加，通过后清空）
 # 格式: [{round: 1, error_type: "test_failure", failed_count: 3, summary: "API返回500", root_cause_hypothesis: "...", action_taken: "..."}]
 repair_snapshots: []           # 修复快照（每轮追加，通过后清空）
-# 格式: [{round: 1, output_hash: "md5", code_report: "WORKER-apply-code-report-r1.md"}]
+# 格式: [{round: 1, output_hash: "md5", code_report: ".engine/code-report-r1.md"}]
 
 # === 任务计时 ===
 task_started_at: ""            # 当前任务开始时间（Orchestrator 派发时写入，完成后清空）
@@ -117,10 +120,11 @@ last_updated: ""               # ISO 8601 UTC 时间戳，每次更新必须同�
 
 ## 全局指针文件
 
-`deliverables/.state.md` 仅包含当前活跃需求的指针（全局指针，不在 .engine/ 下）：
+`deliverables/.state.md` 仅包含当前活跃交付物的指针（全局指针，不在 .engine/ 下）。
+`role-guard.sh` 以它定位活跃交付物（CR-018 R7），语义见 `templates/state-pointer-template.md`：
 
 ```yaml
-req_id: REQ{NNN}
+project: {slug}
 ```
 
 ---

@@ -38,7 +38,7 @@ for command in mh-run mh-ppt mh-dev; do
 done
 
 printf '\n--- 校验脚本 ---\n'
-for script in verify.sh baseline.sh check-harness.sh verify-ppt.sh verify-archive.sh verify-code-review.sh verify-qa.sh role-guard.sh; do
+for script in verify.sh baseline.sh check-harness.sh verify-ppt.sh verify-archive.sh verify-code-review.sh verify-qa.sh role-guard.sh validate-slug.sh; do
   require_exec "scripts/$script"
 done
 
@@ -46,7 +46,7 @@ printf '\n--- 框架目录与模板 ---\n'
 for dir in agents skills scripts templates workflows workflows/lib tests docs docs/designs docs/designs/modules docs/designs/cr-designs docs/requirements docs/retrospectives templates/ppt-templates/layouts templates/examples templates/output-guides tools/mh-dev; do
   [[ -d "$dir" ]] && pass "$dir/" || fail "$dir/ 不存在"
 done
-for file in templates/handoff-template.md templates/logging-standard.md templates/state-template.md templates/output-structure.md templates/ppt-base.css templates/ppt-base.html \
+for file in templates/handoff-template.md templates/logging-standard.md templates/state-template.md templates/state-pointer-template.md templates/output-structure.md templates/ppt-base.css templates/ppt-base.html \
            templates/ppt-light.css templates/ppt-templates/registry.json \
            templates/orchestrator-quality-gate.md templates/needs-spec-template.md templates/design-spec-template.md templates/ppt-slide-spec-template.md templates/ppt-quality-rules.md templates/code-report-template.md templates/test-report-template.md; do
   require_file "$file"

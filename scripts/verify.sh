@@ -1,7 +1,7 @@
 #!/bin/bash
 # verify.sh - 产出物校验脚本
 # 退出码: 0=全部通过, 1=存在失败项
-# 用法: ./scripts/verify.sh [A|B|C|D|E|all] [REQ-ID]
+# 用法: ./scripts/verify.sh [A|B|C|D|E|all] [project]
 
 set -euo pipefail
 
@@ -9,29 +9,29 @@ DELIVERABLES_DIR="deliverables"
 ERRORS=0
 
 check_type="${1:-all}"
-req_id="${2:-}"
+project="${2:-}"
 
-# 自动从 .state.md 读取 REQ-ID
-if [ -z "$req_id" ]; then
-    req_id=$(grep "^req_id:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+# 自动从全局指针读取项目标识符（CR-018: req_id → project）
+if [ -z "$project" ]; then
+    project=$(grep "^project:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 fi
 
-# req_id 解析之后再派生路径：这两行原先位于 req_id 赋值之前，`set -u` 下引用未绑定变量
+# project 解析之后再派生路径：这两行原先位于标识符赋值之前，`set -u` 下引用未绑定变量
 # 使整个脚本在第 9 行即退出（exit 1、无任何输出），所有检查从不执行。
 # CR-017 R4 要求回报门禁不得静默失效，而门禁所在脚本本身跑不起来即最彻底的静默失效，
 # 故一并修正——仅移动位置，两个变量的取值与用法不变。
-SPEC_DIR="deliverables/$req_id/docs/spec"
-OUTPUT_DIR="deliverables/$req_id"
+SPEC_DIR="deliverables/$project/docs/spec"
+OUTPUT_DIR="deliverables/$project"
 
-if [ -z "$req_id" ]; then
-    echo "WARN: 未指定 REQ-ID 且无法从 .state.md 读取，部分检查将跳过"
+if [ -z "$project" ]; then
+    echo "WARN: 未指定项目标识符且无法从 .state.md 读取，部分检查将跳过"
 fi
 
-REQ_DIR="$DELIVERABLES_DIR/$req_id"
+REQ_DIR="$DELIVERABLES_DIR/$project"
 
 # 读取 .engine/.state.md 字段
 get_field() {
-    if [ -n "$req_id" ] && [ -f "$REQ_DIR/.engine/.state.md" ]; then
+    if [ -n "$project" ] && [ -f "$REQ_DIR/.engine/.state.md" ]; then
         grep "^${1}:" "$REQ_DIR/.engine/.state.md" 2>/dev/null | awk '{print $2}' || echo ""
     else
         echo ""
@@ -54,11 +54,11 @@ check_a() {
         echo "PASS: $f"
     fi
 
-    # REQ-ID 级别文件
-    if [ -n "$req_id" ]; then
+    # 交付物级别文件
+    if [ -n "$project" ]; then
         local req_files=(
             "$REQ_DIR/.engine/.state.md"
-            "$REQ_DIR/ORCHESTRATOR-init-proposal.md"
+            "$REQ_DIR/.engine/proposal.md"
         )
         for f in "${req_files[@]}"; do
             if [ ! -f "$f" ]; then
@@ -78,8 +78,8 @@ check_a() {
 check_b() {
     echo "=== B类检查: 阶段产出物完整性 ==="
 
-    if [ -z "$req_id" ]; then
-        echo "SKIP: 无 REQ-ID，无法执行 B 类检查"
+    if [ -z "$project" ]; then
+        echo "SKIP: 无项目标识符，无法执行 B 类检查"
         return
     fi
 
@@ -91,23 +91,24 @@ check_b() {
 
     # propose 阶段产物检查（propose/apply/archive 都需要）
     if [ "$phase" = "propose" ] || [ "$phase" = "apply" ] || [ "$phase" = "archive" ]; then
-        # Thinker design.md（支持单文件或多文件模式）
-        if [ -s "$REQ_DIR/THINKER-propose-design.md" ]; then
-            echo "PASS: $REQ_DIR/THINKER-propose-design.md（单文件模式）"
-        elif [ -s "$REQ_DIR/THINKER-propose-overview.md" ]; then
-            echo "PASS: $REQ_DIR/THINKER-propose-overview.md（多文件模式）"
+        # Thinker design.md（支持单文件或多文件模式；CR-018: 落位 docs/spec/，
+        # 多文件模式入口与下方 done 阶段的 design-overview.md 检查同名同路径）
+        if [ -s "$SPEC_DIR/design.md" ]; then
+            echo "PASS: $SPEC_DIR/design.md（单文件模式）"
+        elif [ -s "$SPEC_DIR/design-overview.md" ]; then
+            echo "PASS: $SPEC_DIR/design-overview.md（多文件模式）"
         else
-            echo "FAIL: $REQ_DIR/ 缺少 THINKER-propose-design.md"
+            echo "FAIL: $SPEC_DIR/ 缺少 design.md"
             ERRORS=$((ERRORS + 1))
         fi
 
         # Thinker requirement-spec.md - skip for manual/none test_strategy
         if [ "$test_strategy" != "manual" ] && [ "$test_strategy" != "none" ]; then
-            if [ ! -s "$REQ_DIR/THINKER-propose-requirement-spec.md" ]; then
-                echo "FAIL: $REQ_DIR/THINKER-propose-requirement-spec.md 缺失或为空"
+            if [ ! -s "$SPEC_DIR/requirement-spec.md" ]; then
+                echo "FAIL: $SPEC_DIR/requirement-spec.md 缺失或为空"
                 ERRORS=$((ERRORS + 1))
             else
-                echo "PASS: $REQ_DIR/THINKER-propose-requirement-spec.md"
+                echo "PASS: $SPEC_DIR/requirement-spec.md"
             fi
         else
             echo "INFO: test_strategy=$test_strategy, testcases.md 非必需"
@@ -164,8 +165,8 @@ check_b() {
 check_c() {
     echo "=== C类检查: 流程一致性 ==="
 
-    if [ -z "$req_id" ]; then
-        echo "SKIP: 无 REQ-ID，无法执行 C 类检查"
+    if [ -z "$project" ]; then
+        echo "SKIP: 无项目标识符，无法执行 C 类检查"
         return
     fi
 
@@ -176,7 +177,7 @@ check_c() {
     fi
 
     # .engine/.state.md 必填字段校验
-    local required_fields="req_id phase current_step current_role last_updated"
+    local required_fields="project phase current_step current_role last_updated"
     for field in $required_fields; do
         if ! grep -q "^${field}:" "$REQ_DIR/.engine/.state.md" 2>/dev/null; then
             echo "FAIL: .engine/.state.md 缺少必填字段: $field"
@@ -275,8 +276,8 @@ check_c() {
 check_d() {
     echo "=== D类检查: 流程健康度 ==="
 
-    if [ -z "$req_id" ]; then
-        echo "SKIP: 无 REQ-ID，无法执行 D 类检查"
+    if [ -z "$project" ]; then
+        echo "SKIP: 无项目标识符，无法执行 D 类检查"
         return
     fi
 
@@ -372,8 +373,8 @@ check_d() {
 check_e() {
     echo "=== E类检查: Handoff 契约一致性 ==="
 
-    if [ -z "$req_id" ]; then
-        echo "SKIP: 无 REQ-ID，无法执行 E 类检查"
+    if [ -z "$project" ]; then
+        echo "SKIP: 无项目标识符，无法执行 E 类检查"
         return
     fi
 
@@ -452,7 +453,7 @@ check_e() {
             [ -f "$handoff" ] || continue
             if echo "$(basename "$handoff")" | grep -q "TEST\|VERIFY"; then
                 # 检查是否在 propose 之后的审计（有 design.md 可参考）
-                if [ -f "$REQ_DIR/THINKER-propose-design.md" ]; then
+                if [ -f "$SPEC_DIR/design.md" ]; then
                     if ! grep -q "design.md" "$handoff" 2>/dev/null; then
                         echo "WARN: $(basename "$handoff") (Verifier) 白名单未包含 design.md"
                         alignment_warns=$((alignment_warns + 1))
@@ -489,7 +490,7 @@ case "$check_type" in
         check_e
         ;;
     *)
-        echo "用法: $0 [A|B|C|D|E|all] [REQ-ID]"
+        echo "用法: $0 [A|B|C|D|E|all] [project]"
         exit 2
         ;;
 esac

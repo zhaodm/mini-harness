@@ -193,9 +193,15 @@ init ──────> propose ──────> apply ──────> a
 
 > 角色切换指令、Handoff 协议、心跳打印、过程日志、断点恢复、异常处理等通用规则见 skills/mh-codeflow/SKILL.md "调度协议"节 + `templates/logging-standard.md`。各阶段执行细节见 skills/*/SKILL.md。
 
-> **完成回报（CR-017）**：回报不写在 handoff 内，落 `deliverables/{REQ-ID}/.engine/reports/{handoff-basename}.report.md`。`handoffs/*.md` 保持 ORCHESTRATOR 独占（任务+白名单+约束），回报路径对 THINKER/WORKER/VERIFIER/ORCHESTRATOR 四者放行。两者分处两套写权，故质量门禁 Step 0 比较的两侧（handoff 白名单 vs 回报 `read_files`）无法被执行角色自洽伪造。该放行条**无内容判据**（内容判据是 CR-016 两个 P0 的共同载体，有意不引入），路径正则 `^…$` 双向锚定且不跨需求；写权由「当前谁持权」约束而非文件名声称的角色。`scripts/verify.sh` 与 `scripts/verify-qa.sh` 从 handoff 路径派生回报路径读取字段，与守卫同源，另新增「handoff 存在但回报缺失」的 WARN。mh-dev 分支仍只校验 `approved_scope`、不校验写入者角色（CR-017 D3 未落地，理由见 `docs/kb/domains/guards.md`）。
+> **完成回报（CR-017）**：回报不写在 handoff 内，落 `deliverables/{project}/.engine/reports/{handoff-basename}.report.md`。`handoffs/*.md` 保持 ORCHESTRATOR 独占（任务+白名单+约束），回报路径对 THINKER/WORKER/VERIFIER/ORCHESTRATOR 四者放行。两者分处两套写权，故质量门禁 Step 0 比较的两侧（handoff 白名单 vs 回报 `read_files`）无法被执行角色自洽伪造。该放行条**无内容判据**（内容判据是 CR-016 两个 P0 的共同载体，有意不引入），路径正则 `^…$` 双向锚定且不跨交付物；写权由「当前谁持权」约束而非文件名声称的角色。`scripts/verify.sh` 与 `scripts/verify-qa.sh` 从 handoff 路径派生回报路径读取字段，与守卫同源，另新增「handoff 存在但回报缺失」的 WARN。mh-dev 分支仍只校验 `approved_scope`、不校验写入者角色（CR-017 D3 未落地，理由见 `docs/kb/domains/guards.md`）。
 >
-> role-guard.sh 覆盖 `Write`/`Edit`/`NotebookEdit`，归一化后按路径归属路由：`deliverables/`（目录前缀语义）归角色白名单，其余归 mh-dev 框架治理，无活跃 mh-dev 授权时框架路径放行。角色白名单：WORKER 可写 `deliverables/{REQ-ID}/` 下除 `.engine/`（大小写不敏感）、其他角色产出（`THINKER-*.md`、`VERIFIER-*.md`、`ORCHESTRATOR-*.md`）、`.archiveignore` 外的所有路径（含 `src/`、`tests/`、`deploy/` 等项目代码路径）；THINKER/WORKER/VERIFIER 另有交还例外，写本需求 `.engine/.state.md` 且该次写入内容的首个 `current_role:` 行值恰为 `ORCHESTRATOR` 时放行（判据与读取端同源，非存在性量词——旧的存在性判定曾导致横向夺权；且只接受 `Write`，`Edit` 因片段判据无法覆盖合并结果而一律拒）——**交还须一次完整写入**（判据取本次写入新内容，拆分成不覆盖该行的 Edit 会被拒），路径正则 `^…$` 双向锚定 `.state.md` 全名（`.state.md.evil`、`.state.mdX`、`.state.md/child.md` 等后缀伪造与嵌套伪造路径均不命中），且不放大到 `handoffs/`、`plan-action.md` 等其他引擎态文件。全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd；`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行，无需列入 `approved_scope`。守卫为自授权机制、`Bash` 通道不受覆盖，定位是防误撞而非安全边界（详见 `docs/kb/domains/guards.md`）。
+> role-guard.sh 覆盖 `Write`/`Edit`/`NotebookEdit`，归一化后按路径归属路由：`deliverables/`（目录前缀语义）归角色白名单，其余归 mh-dev 框架治理，无活跃 mh-dev 授权时框架路径放行。
+>
+> **活跃交付物定位（CR-018 R7）**：以全局指针 `deliverables/.state.md` 的 `project` 字段为准，**不扫描文件系统**。交付目录改用项目标识符命名后多项目并存成为常态，`find … | head -1` 会取到枚举顺序上的任意一个项目，据此判权即失效。五形态：指针文件不存在 / `project` 为空 / 指针指向的交付物或其 state 不存在 / `current_role` 空或畸形 → 放行；`project` 非法 slug → `exit 2`（唯一收紧项，出现即 state 被污染，此时放行等于在污染态下判权）。任一形态下都不遍历 `deliverables/` 寻找替代 state，非指针所指的交付物其 `current_role` 不参与任何判权。标识符字符集由 `scripts/validate-slug.sh` 单一实现强制，生成侧（mh-intake）与消费侧（守卫，插值前自校验，不信任生成侧）各调用一次。
+>
+> **角色白名单（CR-018 R6，肯定式路径归属表）**：THINKER 写 `docs/spec/`、`assets/`、`.archiveignore`、`.engine/verify-strategy.md`；WORKER 写 `src/`、`tests/`、`deploy/`、`assets/`、产品区根文件全名白名单、`.engine/code-report-*.md`、`.engine/quality-gate-report.md`；VERIFIER 写 `tests/`、`.engine/final-test-report.md`、`.engine/temp-test-report.md`；ORCHESTRATOR 写 `.engine/` 的调度态文件、产品区 `docs/`、`tests/regression-suite.md` 与全局指针。**不得以「不含其他角色前缀」作为授权谓词**——产品区去掉角色前缀后，原否定式谓词的排除项全部落空而退化为产品区全通。WORKER 由此不可写 `docs/`（规格文档写权归 THINKER 与 ORCHESTRATOR）；`tests/` 由 WORKER 与 VERIFIER 共写、`assets/` 由 THINKER 与 WORKER 共写，均为显式声明的既有分工。归属表每条均 `^…$` 双向锚定，目录前缀条目形如 `^…/src/.+$`（尾部 `.+` 使目录自身不命中，左锚拒 `x/deliverables/…` 嵌套伪造）。
+>
+> THINKER/WORKER/VERIFIER 另有交还例外，写本交付物 `.engine/.state.md` 且该次写入内容的首个 `current_role:` 行值恰为 `ORCHESTRATOR` 时放行（判据与读取端同源，非存在性量词——旧的存在性判定曾导致横向夺权；且只接受 `Write`，`Edit` 因片段判据无法覆盖合并结果而一律拒）——**交还须一次完整写入**（判据取本次写入新内容，拆分成不覆盖该行的 Edit 会被拒），路径正则 `^…$` 双向锚定 `.state.md` 全名（`.state.md.evil`、`.state.mdX`、`.state.md/child.md` 等后缀伪造与嵌套伪造路径均不命中），且不放大到 `handoffs/`、`plan-action.md` 等其他引擎态文件。全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd；`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行，无需列入 `approved_scope`。守卫为自授权机制、`Bash` 通道不受覆盖，定位是防误撞而非安全边界（详见 `docs/kb/domains/guards.md`）。
 
 ---
 
@@ -230,7 +236,7 @@ init ──────> propose ──────> apply ──────> a
 | workflows/lib/decide-repair.js | mh-apply-repair 收敛追踪 | 发散/抖动/停滞/耗尽检测 → retry/escalate |
 | workflows/lib/detect-archive-mode.js | mh-archive 模式检测 | 首次/变更归档 + baseline 版本管理 |
 | workflows/lib/recommend-type-mode.js | mh-clarify Step 3-4 | tech_stack → test_strategy 推荐 + deriveReviewScope(track) |
-| workflows/lib/archive-merge.js | mh-archive merge 策略 | REQ-ID 标签定位 + 追加/替换/废弃 |
+| workflows/lib/archive-merge.js | mh-archive merge 策略 | PROJECT 标签定位 + 追加/替换/废弃 |
 | workflows/lib/auto-advance.js | mh-run/mh-ppt 状态机 | phase/step → advance/pause/end |
 
 > Skills 文件是 Agent 的唯一执行依据。本文档仅作为人类阅读的流程参考。

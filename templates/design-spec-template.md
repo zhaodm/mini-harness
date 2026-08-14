@@ -36,7 +36,7 @@
 
 ### Task 产出路径
 
-| Task ID | 产出文件路径（相对 deliverables/{REQ-ID}/） | 验证方式 |
+| Task ID | 产出文件路径（相对 deliverables/{project}/） | 验证方式 |
 |---------|------------------------------------------|---------|
 | Task-1 | src/api.ts | {验证方式} |
 | Task-2 | tests/api.test.ts | {验证方式} |
@@ -46,7 +46,7 @@
 | output_type | 目录差异 |
 |-------------|---------|
 | code | src/ + tests/ + docs/ + deploy/（按需） |
-| ppt | HTML+CSS 直接放产品区根（无 src/），wireframes 放 THINKER-propose-wireframes/ |
+| ppt | HTML+CSS 直接放产品区根（无 src/），wireframes 放 assets/wireframes/ |
 | documentation | 无 src/，主产出在 docs/ |
 | infrastructure | 主产出在 deploy/，src/ 可选 |
 

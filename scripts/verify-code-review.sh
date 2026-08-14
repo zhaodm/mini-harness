@@ -1,7 +1,7 @@
 #!/bin/bash
 # verify-code-review.sh — Code Review 报告格式硬校验
 # 退出码: 0=通过, 1=失败
-# 用法: ./scripts/verify-code-review.sh [REQ-ID]
+# 用法: ./scripts/verify-code-review.sh [project]
 #
 # 检查项:
 # CR-1: 报告包含 "## Code Review" 章节
@@ -15,17 +15,17 @@ set -euo pipefail
 DELIVERABLES_DIR="deliverables"
 ERRORS=0
 
-req_id="${1:-}"
-if [ -z "$req_id" ]; then
-    req_id=$(grep "^req_id:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
+project="${1:-}"
+if [ -z "$project" ]; then
+    project=$(grep "^project:" "$DELIVERABLES_DIR/.state.md" 2>/dev/null | awk '{print $2}' || echo "")
 fi
 
-if [ -z "$req_id" ]; then
-    echo "WARN: 无 REQ-ID，跳过"
+if [ -z "$project" ]; then
+    echo "WARN: 无项目标识符，跳过"
     exit 0
 fi
 
-REQ_DIR="$DELIVERABLES_DIR/$req_id"
+REQ_DIR="$DELIVERABLES_DIR/$project"
 
 if [ ! -f "$REQ_DIR/.engine/.state.md" ]; then
     echo "WARN: $REQ_DIR/.engine/.state.md 不存在，跳过"
@@ -40,11 +40,11 @@ if [[ "$track" == "ppt" ]]; then
     exit 0
 fi
 
-echo "=== Code Review 报告校验: $req_id ==="
+echo "=== Code Review 报告校验: $project ==="
 
 # 查找 Verifier 报告
 REPORT=""
-for r in "$REQ_DIR"/VERIFIER-apply-final-test-report.md "$REQ_DIR"/VERIFIER-apply-temp-test-report.md; do
+for r in "$REQ_DIR"/.engine/final-test-report.md "$REQ_DIR"/.engine/temp-test-report.md; do
     [ -f "$r" ] && REPORT="$r" && break
 done
 

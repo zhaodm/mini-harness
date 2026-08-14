@@ -1,7 +1,7 @@
 #!/bin/bash
 # verify-ppt.sh - PPT 产出物校验脚本（静态层 bash + 渲染层 Node/Playwright）
 # 退出码: 0=全部通过, 1=存在失败项, 2=用法错误, 3=渲染测量环境不可用
-# 用法: ./scripts/verify-ppt.sh [A|B|C|D|all] [REQ-ID]
+# 用法: ./scripts/verify-ppt.sh [A|B|C|D|all] [project]
 #       ./scripts/verify-ppt.sh export <html> <out.pdf>
 #
 # 检查分层：
@@ -87,19 +87,19 @@ MJS
     exit $?
 fi
 
-req_id="${2:-}"
+project="${2:-}"
 
-if [ -z "$req_id" ]; then
+if [ -z "$project" ]; then
     if [ -f "$DELIVERABLES_DIR/.state.md" ]; then
-        req_id=$(grep "^req_id:" "$DELIVERABLES_DIR/.state.md" | awk '{print $2}' || echo "")
+        project=$(grep "^project:" "$DELIVERABLES_DIR/.state.md" | awk '{print $2}' || echo "")
     fi
 fi
 
-if [ -z "$req_id" ]; then
-    echo "WARN: 未指定 REQ-ID 且无法从 .state.md 读取"
+if [ -z "$project" ]; then
+    echo "WARN: 未指定项目标识符且无法从 .state.md 读取"
 fi
 
-REQ_DIR="$DELIVERABLES_DIR/$req_id"
+REQ_DIR="$DELIVERABLES_DIR/$project"
 
 fail() { echo "FAIL: $1"; ERRORS=$((ERRORS + 1)); }
 warn() { echo "WARN: $1"; WARNINGS=$((WARNINGS + 1)); }
@@ -128,7 +128,7 @@ require_ok() {
 # 读取密度档：读不到时默认低密度（speaker，更严格档），不默认宽松档
 read_density() {
     local d=""
-    if [ -n "$req_id" ] && [ -f "$REQ_DIR/.engine/.state.md" ]; then
+    if [ -n "$project" ] && [ -f "$REQ_DIR/.engine/.state.md" ]; then
         d=$(grep "^ppt_density:" "$REQ_DIR/.engine/.state.md" | awk '{print $2}' | tr -d '"' || echo "")
     fi
     case "$d" in
@@ -139,7 +139,7 @@ read_density() {
 
 read_design_mode() {
     local m=""
-    if [ -n "$req_id" ] && [ -f "$REQ_DIR/.engine/.state.md" ]; then
+    if [ -n "$project" ] && [ -f "$REQ_DIR/.engine/.state.md" ]; then
         m=$(grep "^ppt_design_mode:" "$REQ_DIR/.engine/.state.md" | awk '{print $2}' | tr -d '"' || echo "")
     fi
     case "$m" in
@@ -355,14 +355,14 @@ design_system_in_effect() {
 
 # 解析待检目标：优先产品区根 HTML（最终产出），其次 wireframes，最后 templates
 resolve_target_dir() {
-    if [ -n "$req_id" ] && [ -d "$REQ_DIR" ]; then
+    if [ -n "$project" ] && [ -d "$REQ_DIR" ]; then
         if [ "$(find "$REQ_DIR" -maxdepth 1 -name "*.html" | wc -l | tr -d ' ')" -gt 0 ]; then
             echo "$REQ_DIR"; return
         fi
     fi
-    if [ -n "$req_id" ] && [ -d "$REQ_DIR/THINKER-propose-wireframes" ]; then
-        if [ "$(find "$REQ_DIR/THINKER-propose-wireframes" -maxdepth 1 -name "*.html" | wc -l | tr -d ' ')" -gt 0 ]; then
-            echo "$REQ_DIR/THINKER-propose-wireframes"; return
+    if [ -n "$project" ] && [ -d "$REQ_DIR/assets/wireframes" ]; then
+        if [ "$(find "$REQ_DIR/assets/wireframes" -maxdepth 1 -name "*.html" | wc -l | tr -d ' ')" -gt 0 ]; then
+            echo "$REQ_DIR/assets/wireframes"; return
         fi
     fi
     echo "$TEMPLATES_DIR/ppt-templates/layouts"
@@ -372,26 +372,26 @@ resolve_target_dir() {
 check_a() {
     echo "=== A类检查: PPT 文件存在性 ==="
 
-    if [ -z "$req_id" ]; then
-        echo "SKIP: 无 REQ-ID"
+    if [ -z "$project" ]; then
+        echo "SKIP: 无项目标识符"
         return
     fi
 
-    if [ ! -s "$REQ_DIR/THINKER-propose-slide-spec.md" ]; then
-        fail "$REQ_DIR/THINKER-propose-slide-spec.md 缺失或为空"
+    if [ ! -s "$REQ_DIR/docs/spec/slide-spec.md" ]; then
+        fail "$REQ_DIR/docs/spec/slide-spec.md 缺失或为空"
     else
-        echo "PASS: $REQ_DIR/THINKER-propose-slide-spec.md"
+        echo "PASS: $REQ_DIR/docs/spec/slide-spec.md"
     fi
 
-    if [ ! -d "$REQ_DIR/THINKER-propose-wireframes" ]; then
-        fail "$REQ_DIR/THINKER-propose-wireframes/ 目录不存在"
+    if [ ! -d "$REQ_DIR/assets/wireframes" ]; then
+        fail "$REQ_DIR/assets/wireframes/ 目录不存在"
     else
         local wf_count
-        wf_count=$(find "$REQ_DIR/THINKER-propose-wireframes" -maxdepth 1 -name "*.html" | wc -l | tr -d ' ')
+        wf_count=$(find "$REQ_DIR/assets/wireframes" -maxdepth 1 -name "*.html" | wc -l | tr -d ' ')
         if [ "$wf_count" -eq 0 ]; then
-            fail "$REQ_DIR/THINKER-propose-wireframes/ 无 HTML 文件"
+            fail "$REQ_DIR/assets/wireframes/ 无 HTML 文件"
         else
-            echo "PASS: $REQ_DIR/THINKER-propose-wireframes/ ($wf_count 个文件)"
+            echo "PASS: $REQ_DIR/assets/wireframes/ ($wf_count 个文件)"
         fi
     fi
 
@@ -590,7 +590,7 @@ check_c() {
     echo "--- CSS 字号底线 ---"
     local css_files css_floor css_small css_scan_ok
     css_files=$(find "$TEMPLATES_DIR" -maxdepth 1 -name "ppt-*.css" | sort)
-    if [ -n "$req_id" ] && [ -d "$REQ_DIR" ]; then
+    if [ -n "$project" ] && [ -d "$REQ_DIR" ]; then
         local req_css
         req_css=$(find "$REQ_DIR" -maxdepth 1 -name "*.css" | sort)
         [ -n "$req_css" ] && css_files=$(printf '%s\n%s' "$css_files" "$req_css")
@@ -616,8 +616,8 @@ check_c() {
         done <<< "$css_files"
     fi
 
-    if [ -z "$req_id" ]; then
-        echo "SKIP: 无 REQ-ID —— 跳过产出内容检查"
+    if [ -z "$project" ]; then
+        echo "SKIP: 无项目标识符 —— 跳过产出内容检查"
         return
     fi
 
@@ -652,9 +652,9 @@ check_c() {
     #   AC-02: -maxdepth 1 排除 wireframe 子目录与归档副本
     #   AC-03: grep -c 无匹配时已自行输出 0 并返回 1，用 || true 而非 || echo "0"
     #          （后者产出 "0\n0"，令整数比较报语法错误后被吞没）
-    if [ -f "$REQ_DIR/THINKER-propose-slide-spec.md" ]; then
+    if [ -f "$REQ_DIR/docs/spec/slide-spec.md" ]; then
         local spec_pages html_pages slide_sections
-        spec_pages=$(grep -c "^## Slide" "$REQ_DIR/THINKER-propose-slide-spec.md" || true)
+        spec_pages=$(grep -c "^## Slide" "$REQ_DIR/docs/spec/slide-spec.md" || true)
         spec_pages=${spec_pages:-0}
 
         # 单文件形态下"实际页数"= 文件内 .slide 容器数；多文件形态下 = HTML 文件数
@@ -947,7 +947,7 @@ case "$check_type" in
         check_d
         ;;
     *)
-        echo "用法: $0 [A|B|C|D|all] [REQ-ID]"
+        echo "用法: $0 [A|B|C|D|all] [project]"
         echo "      $0 export <html> <out.pdf>"
         exit 2
         ;;

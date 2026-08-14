@@ -2,7 +2,7 @@
  * regression-suite.js — 回归套件管理引擎（纯函数）
  *
  * 解析 testcases.md、追加到回归套件、去重、重建索引。
- * 复用 archive-merge.js 的 REQ-ID 标签模式。
+ * 复用 archive-merge.js 的 PROJECT 标签模式。
  *
  * @module workflows/lib/regression-suite
  */
@@ -13,7 +13,7 @@ import { archiveMerge } from './archive-merge.js';
  * @typedef {Object} TestCase
  * @property {string} id - TC-{N}
  * @property {string} title - 用例标题
- * @property {string} sourceReq - 来源 REQ-ID
+ * @property {string} sourceReq - 来源项目标识符
  * @property {string} requirement - 关联需求 FR-{N}
  * @property {string} type - E2E | Unit | Integration | Smoke | Manual
  * @property {string} priority - Critical | Major | Minor
@@ -27,10 +27,10 @@ import { archiveMerge } from './archive-merge.js';
  * 从 testcases.md 内容中解析出结构化用例列表
  *
  * @param {string} content - testcases.md 文件内容
- * @param {string} sourceReqId - 来源 REQ-ID
+ * @param {string} sourceProject - 来源项目标识符
  * @returns {TestCase[]}
  */
-export function parseTestcases(content, sourceReqId) {
+export function parseTestcases(content, sourceProject) {
   const testcases = [];
   // 按 ## TC-{N} 或 ### TC-{N} 分割
   const sections = content.split(/^#{2,3}\s+TC-/m).slice(1);
@@ -43,7 +43,7 @@ export function parseTestcases(content, sourceReqId) {
     const tc = {
       id: `TC-${headerMatch[1]}`,
       title: headerMatch[2].trim(),
-      sourceReq: sourceReqId,
+      sourceReq: sourceProject,
       requirement: extractField(section, '关联需求'),
       type: extractField(section, '类型'),
       priority: extractField(section, '优先级'),
@@ -59,14 +59,14 @@ export function parseTestcases(content, sourceReqId) {
 
 /**
  * 将新用例追加到回归套件
- * 复用 archive-merge.js 的 append/replace 策略（REQ-ID 标签定位）
+ * 复用 archive-merge.js 的 append/replace 策略（PROJECT 标签定位）
  *
  * @param {string} existingSuiteContent - 现有回归套件内容（空字符串表示首次创建）
  * @param {TestCase[]} newCases - 新用例列表
- * @param {string} reqId - 当前 REQ-ID
+ * @param {string} project - 当前项目标识符
  * @returns {{ content: string, stats: { added: number, updated: number, total: number } }}
  */
-export function aggregateToSuite(existingSuiteContent, newCases, reqId) {
+export function aggregateToSuite(existingSuiteContent, newCases, project) {
   if (newCases.length === 0) {
     return {
       content: existingSuiteContent,
@@ -83,14 +83,14 @@ export function aggregateToSuite(existingSuiteContent, newCases, reqId) {
   }
 
   // 渲染新用例为 Markdown
-  const newSection = renderCasesSection(newCases, reqId);
+  const newSection = renderCasesSection(newCases, project);
 
-  // 使用 archive-merge: replace（已有 REQ 标签段）或 append（新 REQ）
-  const hasExistingSection = existingSuiteContent.includes(`<!-- REQ-${reqId} START -->`);
+  // 使用 archive-merge: replace（已有 PROJECT 标签段）或 append（新项目）
+  const hasExistingSection = existingSuiteContent.includes(`<!-- PROJECT-${project} START -->`);
   const mergeResult = archiveMerge({
     existingContent: existingSuiteContent,
     newContent: newSection,
-    reqId: reqId,
+    project: project,
     mergeType: hasExistingSection ? 'replace' : 'append'
   });
 
@@ -144,9 +144,9 @@ export function getSuiteStats(suiteContent) {
   const critical = (suiteContent.match(/优先级:\s*Critical/gi) || []).length;
   const major = (suiteContent.match(/优先级:\s*Major/gi) || []).length;
   const minor = (suiteContent.match(/优先级:\s*Minor/gi) || []).length;
-  const reqs = (suiteContent.match(/<!-- REQ-\w+ START -->/g) || []).length;
+  const projects = (suiteContent.match(/<!-- PROJECT-[a-z0-9-]+ START -->/g) || []).length;
 
-  return { total: tcHeaders.length, critical, major, minor, reqCount: reqs };
+  return { total: tcHeaders.length, critical, major, minor, reqCount: projects };
 }
 
 // ─── 内部辅助函数 ───
@@ -201,8 +201,8 @@ function countCases(content) {
 /**
  * 渲染用例列表为 Markdown 章节
  */
-function renderCasesSection(cases, reqId) {
-  let md = `## ${reqId} 用例\n\n`;
+function renderCasesSection(cases, project) {
+  let md = `## ${project} 用例\n\n`;
   for (const tc of cases) {
     md += `### ${tc.id}: ${tc.title}\n`;
     md += `- 来源: ${tc.sourceReq}\n`;

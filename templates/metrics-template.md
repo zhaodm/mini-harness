@@ -1,6 +1,6 @@
-# {REQ-ID} 执行指标
+# {project} 执行指标
 
-> Orchestrator 在流程结束时（archive 阶段）自动生成本文件，存放于 deliverables/{REQ-ID}/docs/metrics.md
+> Orchestrator 在流程结束时（archive 阶段）自动生成本文件，存放于 deliverables/{project}/docs/metrics.md
 
 - 总耗时: {从 INIT-1 到 SR4-DONE 的时间}
 - 执行模式: {fast/standard/full}

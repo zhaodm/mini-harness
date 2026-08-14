@@ -4,7 +4,7 @@
 
 ## Step 0: 白名单校验（所有角色通用）
 
-核对来源是落盘的回报文件 `deliverables/{REQ-ID}/.engine/reports/{handoff-basename}.report.md`（由角色自己写入，可 diff、可留痕），不依赖 SubAgent 返回值。
+核对来源是落盘的回报文件 `deliverables/{project}/.engine/reports/{handoff-basename}.report.md`（由角色自己写入，可 diff、可留痕），不依赖 SubAgent 返回值。
 
 - [ ] 回报文件存在（缺失 → 任务视为未完成，驳回或按兜底代填处置）
 - [ ] 对比回报文件中 `read_files` 与 handoff 文件中的白名单
@@ -25,19 +25,19 @@
 - [ ] 每个 Task 有明确的验证方式
 - [ ] Task 数量与需求复杂度匹配
 - [ ] structure_skeleton 已定义时，产出的文件/章节结构须符合预定义
-- [ ] test_strategy 为 e2e/integration 时，verify-strategy.md 存在且格式合规
+- [ ] test_strategy 为 e2e/integration 时，`deliverables/{project}/.engine/verify-strategy.md` 存在且格式合规
 
 ## Thinker visual 产出验收
 
-- [ ] slide-spec.md 中每页有布局说明
+- [ ] `deliverables/{project}/docs/spec/slide-spec.md` 中每页有布局说明
 - [ ] wireframe 文件数量与 spec 描述一致
 - [ ] 无空白占位页
 
 ## Worker 产出验收
 
-- [ ] WORKER-apply-code-report 中 dev-test = PASS
-- [ ] WORKER-apply-code-report 中 post-verify = PASS
-- [ ] deliverables/{REQ-ID}/ 中文件数量与 Task 描述匹配
+- [ ] `deliverables/{project}/.engine/code-report-t{N}.md` 中 dev-test = PASS
+- [ ] `deliverables/{project}/.engine/code-report-t{N}.md` 中 post-verify = PASS
+- [ ] deliverables/{project}/ 中文件数量与 Task 描述匹配
 - [ ] 无 TODO/FIXME/placeholder 拋留在交付代码中
 
 ## Verifier 产出验收

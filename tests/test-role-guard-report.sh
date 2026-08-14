@@ -29,6 +29,9 @@ trap 'rm -rf "$SB"' EXIT
 
 mkdir -p "$SB/scripts" "$SB/deliverables" "$MH_DEV_RUNTIME"
 cp "$REPO/scripts/role-guard.sh" "$SB/scripts/role-guard.sh"
+# CR-018 D1.3：守卫消费侧独立校验 project，调用同目录 validate-slug.sh。
+# 沙箱只拷守卫会使该调用失败被判为校验不通过而 exit 2，放行类断言全部假失败。
+cp "$REPO/scripts/validate-slug.sh" "$SB/scripts/validate-slug.sh"
 git -C "$REPO" show "${BASELINE_REF}:scripts/role-guard.sh" > "$SB/scripts/role-guard.baseline.sh" 2>/dev/null
 
 GUARD="$SB/scripts/role-guard.sh"
@@ -47,11 +50,19 @@ bad() { echo -e "  ${RED}FAIL${NC}: $1"; FAIL=$((FAIL + 1)); }
 # --- 夹具 ---
 
 seed_state() {
-  local role=$1 req=${2:-TEST001} phase=${3:-propose}
+  local role=$1 req=${2:-test-proj} phase=${3:-propose}
   rm -rf "$SB/deliverables"
   mkdir -p "$SB/deliverables/$req/.engine/handoffs" "$SB/deliverables/$req/.engine/reports"
+  # CR-018 D3.4：守卫以全局指针定位活跃交付物，夹具须同时写指针。
+  # 同时保留 req_id: —— 本套件大量断言以基线守卫（cad7136）作对照组，
+  # 而基线用 `find|head -1` + `req_id:` 定位。只写 project: 会让基线 REQ_ID 解析为空
+  # 而无条件 exit 0，所有基线对照退化为「基线放行」，AX-13 的缺陷归因随之失效
+  # （表现为「预期新增放行 0 条」与一批 want_base=2 的假失败）。
+  # 双字段使两版本定位到同一交付物，差异才收敛到判据本身。
+  printf 'project: %s\n' "$req" > "$SB/deliverables/.state.md"
   cat > "$SB/deliverables/$req/.engine/.state.md" << EOF
 req_id: ${req}
+project: ${req}
 phase: ${phase}
 current_step: THINK-DESIGN
 current_role: ${role}
@@ -61,9 +72,10 @@ EOF
 }
 
 raw_state() {
-  local body=$1 req=${2:-TEST001}
+  local body=$1 req=${2:-test-proj}
   rm -rf "$SB/deliverables"
   mkdir -p "$SB/deliverables/$req/.engine/handoffs"
+  printf 'project: %s\n' "$req" > "$SB/deliverables/.state.md"
   printf '%s' "$body" > "$SB/deliverables/$req/.engine/.state.md"
 }
 
@@ -146,7 +158,7 @@ else
   bad "前置: 无法取得 ${BASELINE_REF} 的 role-guard.sh，AX-13 基线对比无法执行"
 fi
 
-RPT="deliverables/TEST001/.engine/reports"
+RPT="deliverables/test-proj/.engine/reports"
 
 # ============================================================
 # AC-01: 三角色各自写本轮回报文件均 exit 0（逐一断言，不抽样）
@@ -155,7 +167,7 @@ echo ""
 echo "--- AC-01: THINKER / WORKER / VERIFIER 各自可写完成回报 ---"
 # 回报文件名由 handoff basename 派生，故用各棒真实命名形态而非通用名，
 # 确认放行不依赖文件名里的角色 token（该性质由 AX-04 正面断言）。
-declare -a HANDOFF_BASENAMES=("TEST001-THINK-NEEDS-R1" "TEST001-THINK-DESIGN-R1" "TEST001-DEV1-T1-R1" "TEST001-TEST-AUDIT-R1")
+declare -a HANDOFF_BASENAMES=("test-proj-THINK-NEEDS-R1" "test-proj-THINK-DESIGN-R1" "test-proj-DEV1-T1-R1" "test-proj-TEST-AUDIT-R1")
 for role in THINKER WORKER VERIFIER; do
   seed_state "$role"
   for hb in "${HANDOFF_BASENAMES[@]}"; do
@@ -166,17 +178,17 @@ done
 
 # 五字段完整回报内容（templates/handoff-examples.md 的书写形态）须同样放行——
 # 放行不因内容形态而变，这也是 AX-06 的正面基础。
-REPORT_BODY=$'status: done\noutput_files: ["deliverables/TEST001/THINKER-propose-design.md"]\nread_files: ["deliverables/TEST001/ORCHESTRATOR-init-proposal.md"]\nsummary: "架构设计完成"\nissues: "N/A"\n'
+REPORT_BODY=$'status: done\noutput_files: ["deliverables/test-proj/docs/spec/design.md"]\nread_files: ["deliverables/test-proj/.engine/proposal.md"]\nsummary: "架构设计完成"\nissues: "N/A"\n'
 for role in THINKER WORKER VERIFIER; do
   seed_state "$role"
   expect_report 0 "AC-01: ${role} 写五字段完整回报内容 → 放行" \
-    "$RPT/TEST001-THINK-DESIGN-R1.report.md" "$REPORT_BODY"
+    "$RPT/test-proj-THINK-DESIGN-R1.report.md" "$REPORT_BODY"
 done
 
 # 并行多角色形态（current_role: A,B）下回报仍可写：check_permission 逐角色试的语义不因新条改变
 for role in "THINKER,VERIFIER" "WORKER,VERIFIER"; do
   seed_state "$role"
-  expect_report 0 "AC-01: 并行持权 ${role} 写回报 → 放行" "$RPT/TEST001-DEV1-T1-R1.report.md"
+  expect_report 0 "AC-01: 并行持权 ${role} 写回报 → 放行" "$RPT/test-proj-DEV1-T1-R1.report.md"
 done
 
 # 基线对照：同一路径在基线守卫上一律 exit 2（回报条是本 CR 新增），
@@ -184,7 +196,7 @@ done
 for role in THINKER WORKER VERIFIER; do
   seed_state "$role"
   expect_vs_base 0 2 "AC-01: ${role} 回报放行在基线上不成立（当前 0 / 基线 2，断言有鉴别力）" \
-    Write file_path "$RPT/TEST001-THINK-DESIGN-R1.report.md" content "x"
+    Write file_path "$RPT/test-proj-THINK-DESIGN-R1.report.md" content "x"
 done
 
 # ============================================================
@@ -198,9 +210,9 @@ for hb in "${HANDOFF_BASENAMES[@]}"; do
     "$RPT/${hb}.report.md"
 done
 expect_report 0 "AC-02: ORCHESTRATOR 写五字段完整回报内容 → 放行" \
-  "$RPT/TEST001-DEV1-T1-R2.report.md" "$REPORT_BODY"
+  "$RPT/test-proj-DEV1-T1-R2.report.md" "$REPORT_BODY"
 expect_vs_base 0 2 "AC-02: ORCHESTRATOR 回报放行在基线上不成立（本 CR 新增）" \
-  Write file_path "$RPT/TEST001-DEV1-T1-R2.report.md" content "x"
+  Write file_path "$RPT/test-proj-DEV1-T1-R2.report.md" content "x"
 
 # ============================================================
 # AC-03: 回报与 handoff 写权分离（比较两侧落在两套写权）
@@ -215,7 +227,7 @@ for role in THINKER WORKER VERIFIER; do
     TOTAL=$((TOTAL + 1))
     hook "$GUARD" Write file_path "$RPT/${hb}.report.md" content "x" >/dev/null 2>&1
     r_code=$?
-    hook "$GUARD" Write file_path "deliverables/TEST001/.engine/handoffs/${hb}.md" content "x" >/dev/null 2>&1
+    hook "$GUARD" Write file_path "deliverables/test-proj/.engine/handoffs/${hb}.md" content "x" >/dev/null 2>&1
     h_code=$?
     if [ "$r_code" = "0" ] && [ "$h_code" = "2" ]; then
       ok "AC-03: ${role} 持权 ${hb}：回报 exit=0 / handoff exit=2（写权分离）"
@@ -228,7 +240,7 @@ done
 # 断言它以钉住现状：若将来守卫收紧，此条会失败并迫使重新决策。
 seed_state "ORCHESTRATOR"
 expect 0 "AC-03: ORCHESTRATOR 两侧皆可写 handoff（守卫层面不分离，代笔限制由协议承担）" \
-  Write file_path "deliverables/TEST001/.engine/handoffs/TEST001-THINK-DESIGN-R1.md" content "x"
+  Write file_path "deliverables/test-proj/.engine/handoffs/test-proj-THINK-DESIGN-R1.md" content "x"
 
 # ============================================================
 # AX-01: 回报写权不得放大为 .engine/ 直通（逐个断言，不抽样）
@@ -242,9 +254,9 @@ for role in THINKER WORKER VERIFIER; do
   seed_state "$role"
   for f in handoffs/x.md plan-action.md SR1-record.md SR3-record.md lessons.md process.log archive-manifest.md; do
     expect_report 2 "AX-01: ${role} 持权写 .engine/${f}（回报内容）→ 拒绝" \
-      "deliverables/TEST001/.engine/${f}" "$REPORT_BODY"
+      "deliverables/test-proj/.engine/${f}" "$REPORT_BODY"
     expect_report 2 "AX-01: ${role} 持权写 .engine/${f}（交还首行内容）→ 拒绝" \
-      "deliverables/TEST001/.engine/${f}" "$HB_CONTENT"
+      "deliverables/test-proj/.engine/${f}" "$HB_CONTENT"
   done
   expect_report 2 "AX-01: ${role} 持权写全局 deliverables/.state.md → 拒绝" \
     "deliverables/.state.md" "$REPORT_BODY"
@@ -255,24 +267,27 @@ for role in THINKER WORKER VERIFIER; do
   seed_state "$role"
   for f in handoffs/x.report.md plan-action.report.md SR1-record.report.md lessons.report.md archive-manifest.report.md; do
     expect_report 2 "AX-01: ${role} 持权写 .engine/${f}（后缀伪装成回报）→ 拒绝" \
-      "deliverables/TEST001/.engine/${f}"
+      "deliverables/test-proj/.engine/${f}"
   done
   expect_report 2 "AX-01: ${role} 持权写 .engine/.state.md.report.md → 拒绝" \
-    "deliverables/TEST001/.engine/.state.md.report.md"
+    "deliverables/test-proj/.engine/.state.md.report.md"
 done
 # reports/ 目录本身不得成为 .engine/ 的兄弟直通：回报条的路径分量是三段
 # （deliverables/<req>/.engine/reports/），少任一段都不命中。
 # 只覆盖仍落在 deliverables/ 归属内的形态；仓库根下的 reports/x.report.md 路由到
 # 框架分支（由 mh-dev 治理，见 AX-10），不由本条判定。
 seed_state "THINKER"
-for p in "deliverables/TEST001/reports/x.report.md" "deliverables/TEST001/.engine/x.report.md" "deliverables/TEST001/.engine/reports.report.md"; do
+for p in "deliverables/test-proj/reports/x.report.md" "deliverables/test-proj/.engine/x.report.md" "deliverables/test-proj/.engine/reports.report.md"; do
   expect_report 2 "AX-01: 路径分量缺失形态 ${p} → 拒绝" "$p"
 done
-# WORKER 分支的同形态：deliverables/TEST001/reports/ 不在 .engine/ 内，
-# 故由项目代码放行块命中（产品区目录）。这是 baseline 既有口径，非本 CR 新开。
+# WORKER 分支的同形态：CR-018 D3.1 删除了「产品区下不含其他角色前缀者皆可写」
+# 这条否定式谓词（去前缀后它退化为产品区全通）。新表下 WORKER 的产品区写权是
+# 枚举的目录前缀（src/ tests/ deploy/ assets/）加根文件全名白名单，
+# deliverables/${req}/reports/ 不在其中 → 拒绝。
+# 基线因项目代码放行块而放行，故此处是本 CR 的**收紧**（基线 0 / 当前 2）。
 seed_state "WORKER"
-expect_vs_base 0 0 "AX-01: WORKER 写 deliverables/TEST001/reports/x.report.md → 放行来自项目代码块（基线同，非本 CR 引入）" \
-  Write file_path "deliverables/TEST001/reports/x.report.md" content "x"
+expect_vs_base 2 0 "AX-01: WORKER 写 deliverables/test-proj/reports/x.report.md → 拒绝（D3.1 删除产品区全通，基线放行）" \
+  Write file_path "deliverables/test-proj/reports/x.report.md" content "x"
 
 # ============================================================
 # AX-02: 回报路径正则双向锚定（后缀伪造 + 嵌套伪造）
@@ -290,7 +305,7 @@ done
 seed_state "THINKER"
 for d in "reportsX" "reports2" "xreports" ".engine2/reports" ".enginex/reports"; do
   expect_report 2 "AX-02: 目录名伪造 .engine/${d}/x.report.md → 拒绝" \
-    "deliverables/TEST001/.engine/${d}/x.report.md"
+    "deliverables/test-proj/.engine/${d}/x.report.md"
 done
 # 双段后缀须完整：单段 .md 与错位后缀均不命中
 for f in "x.md" "x.report" "x.reportmd" "x.md.report" "report.md" "x.rreport.md"; do
@@ -307,27 +322,38 @@ echo "--- AX-02: 嵌套伪造须拒（左锚 ^） ---"
 # 前缀落在仓库根（x/deliverables/…、src/deliverables/…）时路径归属路由到框架分支，
 # 由 mh-dev 治理判定，不进 check_permission——那类形态在无活跃 mh-dev 授权时按
 # 「默认会话透明」放行（AX-10 要求的性质），不是回报条的口子，故不在此断言。
+# 嵌套段的中间目录须取「该角色归属表内没有的前缀」，否则命中的是那条目录前缀条目
+# 而非回报条，断言就测不到左锚：ORCHESTRATOR 拥有整个 docs/（D3.1，ARC-5~8 归档），
+# 故 docs/x/… 对它是**合法的 docs/ 内写入**，不能作为其嵌套伪造样本。
+# 各角色的越权前缀分别选取。
 for role in THINKER VERIFIER ORCHESTRATOR; do
   seed_state "$role"
-  for mid in "x" "src" "docs/x" "sub/deep"; do
-    expect_report 2 "AX-02: ${role} 写嵌套伪造 deliverables/TEST001/${mid}/deliverables/TEST001/.engine/reports/y.report.md → 拒绝" \
-      "deliverables/TEST001/${mid}/deliverables/TEST001/.engine/reports/y.report.md"
+  case "$role" in
+    ORCHESTRATOR) mids="x src sub/deep" ;;   # docs/ 归 ORCHESTRATOR，不可作样本
+    *)            mids="x src docs/x sub/deep" ;;
+  esac
+  for mid in $mids; do
+    expect_report 2 "AX-02: ${role} 写嵌套伪造 deliverables/test-proj/${mid}/deliverables/test-proj/.engine/reports/y.report.md → 拒绝" \
+      "deliverables/test-proj/${mid}/deliverables/test-proj/.engine/reports/y.report.md"
   done
 done
-# WORKER 分支单独覆盖：它有项目代码放行块，会命中 deliverables/${req}/ 下的路径，
-# 故须确认嵌套伪造不会由那条兜住。实测拒绝——项目代码块的 .engine/ 排除正则
-# （grep -qiE "deliverables/${req}/\.?engine/"）本身缺左锚，反而把嵌套第二段的
-# .engine/ 也算作排除项，两个缺左锚的正则在此形态上互相抵消为正确结论。
-# 结论正确但成因是巧合，基线对照记录之（基线同为拒绝，非本 CR 引入）。
+# WORKER 分支单独覆盖：基线的项目代码放行块靠一串缺左锚的排除正则界定边界，
+# 结论对错取决于两个缺陷是否恰好抵消。CR-018 D3.1 用枚举的目录前缀条目取代它后，
+# 结论由**归属表本身**决定，成因不再是巧合：
+#   前缀不在表内（x/…）        → 拒绝，因为没有任何条目以 deliverables/${req}/x/ 开头
+#   前缀在表内（src/…）        → 放行，且这是设计意图：WORKER 对 src/ 下任意深度有写权，
+#                                嵌套段里出现 .engine/ 字样不改变它仍在 src/ 之下的事实。
+#                                「src/ 内部的目录取名 deliverables/…/.engine/」不是提权——
+#                                该路径下的文件不被任何门禁当作引擎态读取。
 seed_state "WORKER"
-for mid in "x" "src"; do
-  expect_vs_base 2 2 "AX-02: WORKER 写 deliverables/TEST001/${mid}/deliverables/TEST001/.engine/reports/y.report.md → 拒绝" \
-    Write file_path "deliverables/TEST001/${mid}/deliverables/TEST001/.engine/reports/y.report.md" content "x"
-done
-# 对照：同嵌套位置换成非 .engine/ 的目录名，WORKER 由项目代码块放行。
-# 这证明上两条的拒绝来自 .engine/ 排除而非回报条的左锚，把成因钉死。
-expect_vs_base 0 0 "AX-02: WORKER 写 deliverables/TEST001/x/deliverables/TEST001/rpt/y.report.md → 放行（证明上条拒绝来自 .engine/ 排除）" \
-  Write file_path "deliverables/TEST001/x/deliverables/TEST001/rpt/y.report.md" content "x"
+expect_vs_base 2 2 "AX-02: WORKER 写 deliverables/test-proj/x/deliverables/test-proj/.engine/reports/y.report.md → 拒绝（x/ 不在归属表内）" \
+  Write file_path "deliverables/test-proj/x/deliverables/test-proj/.engine/reports/y.report.md" content "x"
+expect_vs_base 0 2 "AX-02: WORKER 写 deliverables/test-proj/src/deliverables/…/.engine/reports/y.report.md → 放行（src/ 目录前缀条命中，任意深度）" \
+  Write file_path "deliverables/test-proj/src/deliverables/test-proj/.engine/reports/y.report.md" content "x"
+# 对照：非 .engine/ 的嵌套目录名，前缀仍不在归属表内 → 同样拒绝。
+# 这证明上面第一条的拒绝来自「前缀不在表内」，而非「路径里含 .engine/」。
+expect_vs_base 2 0 "AX-02: WORKER 写 deliverables/test-proj/x/deliverables/test-proj/rpt/y.report.md → 拒绝（成因是前缀不在表内，与 .engine/ 无关）" \
+  Write file_path "deliverables/test-proj/x/deliverables/test-proj/rpt/y.report.md" content "x"
 
 # ============================================================
 # AX-03: 回报写权不跨需求（${req} 取自当前 state 的 req_id）
@@ -335,26 +361,54 @@ expect_vs_base 0 0 "AX-02: WORKER 写 deliverables/TEST001/x/deliverables/TEST00
 echo ""
 echo "--- AX-03: 回报写权不跨需求 ---"
 for role in THINKER WORKER VERIFIER ORCHESTRATOR; do
-  seed_state "$role" REQ001
-  expect_report 2 "AX-03: REQ001 持权(${role}) 写 deliverables/REQ002/.engine/reports/x.report.md → 拒绝" \
-    "deliverables/REQ002/.engine/reports/x.report.md"
-  expect_report 0 "AX-03: REQ001 持权(${role}) 写本需求回报 → 放行（对照）" \
-    "deliverables/REQ001/.engine/reports/x.report.md"
+  seed_state "$role" proj-one
+  expect_report 2 "AX-03: proj-one 持权(${role}) 写 deliverables/proj-two/.engine/reports/x.report.md → 拒绝" \
+    "deliverables/proj-two/.engine/reports/x.report.md"
+  expect_report 0 "AX-03: proj-one 持权(${role}) 写本需求回报 → 放行（对照）" \
+    "deliverables/proj-one/.engine/reports/x.report.md"
 done
-# 相邻需求 ID（前缀/后缀关系）：REQ001 持权不得写 REQ0011 / REQ00 的回报。
-# 若 ${req} 未被路径分隔符 / 夹住，前缀关系的需求 ID 会互相命中。
-seed_state "THINKER" REQ001
-for other in REQ0011 REQ001X REQ00 REQ; do
-  expect_report 2 "AX-03: REQ001 持权写 deliverables/${other}/.engine/reports/x.report.md → 拒绝（需求 ID 非前缀关系）" \
+# 相邻标识符（前缀/后缀关系）：proj-one 持权不得写 proj-one1 / proj-on 的回报。
+# 若 ${req} 未被路径分隔符 / 夹住，前缀关系的标识符会互相命中。
+# 样本全部取合法 slug，使被测性质收敛到「路径锚定」而非「slug 校验」——
+# 非法 slug 会在校验点就被拒，那样断言通过的原因就不是锚定了。
+seed_state "THINKER" proj-one
+for other in proj-one1 proj-onex proj-on proj proj-one-x; do
+  expect_report 2 "AX-03: proj-one 持权写 deliverables/${other}/.engine/reports/x.report.md → 拒绝（标识符非前缀关系）" \
     "deliverables/${other}/.engine/reports/x.report.md"
 done
-# req_id 正则元字符注入：state 的 req_id 被直接插进 bash 正则，`.*` 会放行任意需求。
-# 这是 baseline 既有的类（交还例外与全部白名单条目同样内插 ${req}），基线对照钉住归因。
-raw_state "$(printf 'req_id: .*\nphase: propose\ncurrent_step: X\ncurrent_role: THINKER\n')"
-expect_vs_base 0 2 "AX-03: req_id 注入 '.*' 时跨需求回报被放行（当前 0 / 基线 2 —— 基线拒绝仅因回报条不存在，注入类缺陷本身基线亦有，见同组下一条）" \
-  Write file_path "deliverables/OTHERREQ/.engine/reports/x.report.md" content "x"
-expect_vs_base 0 0 "AX-03: req_id 注入 '.*' 时跨需求角色产出亦被放行（基线同为 0，证明注入类属既有缺陷而非本 CR 新开）" \
-  Write file_path "deliverables/OTHERREQ/THINKER-x.md" content "x"
+
+# ---------------------------------------------------------------------------
+# 正则元字符注入：CR-018 D1.3 关闭的既有缺陷
+# ---------------------------------------------------------------------------
+# 基线形态：state 的 req_id 被直接插进 bash `[[ =~ ]]` 正则，`req_id: .*` 使
+# 交还例外与**全部**白名单条目的 ${req} 变成通配，跨需求写入整体放行。
+# CR-018 的消费侧校验（守卫读出 project 后调 validate-slug.sh，插值前拦截）关闭该类：
+# 字符集 ^[a-z][a-z0-9-]{0,63}$ 下标识符是正则字面量安全的，无元字符可注入。
+# 基线对照证明这是本 CR 的**收紧**（基线放行 / 当前拦截），与上方 fail-open 类断言相反。
+for inj in '.*' '.+' 'a|b' '[a-z]*' 'a.c'; do
+  raw_state "$(printf 'project: %s\nphase: propose\ncurrent_step: X\ncurrent_role: THINKER\n' "$inj")"
+  # 指针也须带注入值：守卫从指针读 project，校验在此发生
+  printf 'project: %s\n' "$inj" > "$SB/deliverables/.state.md"
+  TOTAL=$((TOTAL + 1))
+  out=$(hook "$GUARD" Write file_path "deliverables/other-proj/.engine/reports/x.report.md" content "x"); code=$?
+  if [ "$code" = "2" ] && printf '%s' "$out" | grep -q '污染'; then
+    ok "AX-03: 注入 project='${inj}' → exit 2 且提示 state 被污染（CR-018 关闭既有注入面）"
+  else
+    bad "AX-03: 注入 project='${inj}' 未被拦截（exit=$code, output=${out}）"
+  fi
+done
+# 同一注入载荷在基线上放行 —— 钉住「本 CR 收紧」而非「一直如此」
+if [ -s "$BASE_GUARD" ]; then
+  raw_state "$(printf 'req_id: .*\nproject: .*\nphase: propose\ncurrent_role: THINKER\n')"
+  printf 'project: .*\n' > "$SB/deliverables/.state.md"
+  TOTAL=$((TOTAL + 1))
+  b_out=$(hook "$BASE_GUARD" Write file_path "deliverables/other-proj/THINKER-x.md" content "x"); b_code=$?
+  if [ "$b_code" = "0" ]; then
+    ok "AX-03: 注入载荷在基线放行(exit=0) —— 证明拦截是本 CR 新增而非既有"
+  else
+    bad "AX-03: 基线对照无鉴别力（基线 exit=$b_code，须 0）"
+  fi
+fi
 
 # ============================================================
 # AX-04: 写权由「当前谁持权」约束，而非文件名声称的角色（设计 D1 收窄）
@@ -363,7 +417,7 @@ expect_vs_base 0 0 "AX-03: req_id 注入 '.*' 时跨需求角色产出亦被放�
 # 棒次的回报路径**须 exit 0**。按「角色前缀隔离」断言是错的口径（设计已收窄）。
 echo ""
 echo "--- AX-04: 回报写权按持权者口径（非文件名声称的角色） ---"
-declare -a CROSS_BATON=("TEST001-DEV1-T1-R1" "TEST001-DEV2-T2-R1" "TEST001-TEST-AUDIT-R1" "TEST001-THINK-NEEDS-R1")
+declare -a CROSS_BATON=("test-proj-DEV1-T1-R1" "test-proj-DEV2-T2-R1" "test-proj-TEST-AUDIT-R1" "test-proj-THINK-NEEDS-R1")
 for role in THINKER WORKER VERIFIER; do
   seed_state "$role"
   for hb in "${CROSS_BATON[@]}"; do
@@ -384,7 +438,7 @@ done
 clear_req
 expect_vs_base 0 0 "AX-04: 无 REQ state 时写回报路径 → exit 0（deliverables 分支既有 fail-open 语义，基线同；非本 CR 引入）" \
   Write file_path "$RPT/x.report.md" content "x"
-raw_state "$(printf 'req_id: TEST001\nphase: propose\n')"
+raw_state "$(printf 'project: test-proj\nphase: propose\n')"
 expect_vs_base 0 0 "AX-04: state 缺 current_role 时写回报路径 → exit 0（既有 fail-open，基线同）" \
   Write file_path "$RPT/x.report.md" content "x"
 raw_state "$(printf 'phase: propose\ncurrent_role: THINKER\n')"
@@ -395,7 +449,7 @@ expect_vs_base 0 0 "AX-04: 空 state 时写回报路径 → exit 0（既有 fail
   Write file_path "$RPT/x.report.md" content "x"
 # 未知角色时 fail-closed：回报路径不得成为未知角色的旁路
 for r in ATTACKER PM planner; do
-  raw_state "$(printf 'req_id: TEST001\nphase: propose\ncurrent_role: %s\n' "$r")"
+  raw_state "$(printf 'project: test-proj\nphase: propose\ncurrent_role: %s\n' "$r")"
   expect_report 2 "AX-04: 未知角色 ${r} 持权写回报路径 → 拒绝（fail-closed）" "$RPT/x.report.md"
 done
 
@@ -413,7 +467,7 @@ for role in THINKER WORKER VERIFIER; do
   # 同一持权状态下，其他引擎态路径仍拒（写权未被拓宽）
   for f in handoffs/y.md plan-action.md lessons.md process.log; do
     expect_report 2 "AX-05: ${role} 写完回报后写 .engine/${f}（交还内容）→ 仍拒绝" \
-      "deliverables/TEST001/.engine/${f}" "$HB_CONTENT"
+      "deliverables/test-proj/.engine/${f}" "$HB_CONTENT"
   done
 done
 
@@ -431,17 +485,17 @@ fi
 # 行为层面复核：首行语义两种排列 + 工具判据
 seed_state "THINKER"
 expect 0 "AX-05: Write 首行 ORCHESTRATOR → 放行（交还口径未变）" \
-  Write file_path "deliverables/TEST001/.engine/.state.md" content "$(printf 'req_id: TEST001\ncurrent_role: ORCHESTRATOR\n')"
+  Write file_path "deliverables/test-proj/.engine/.state.md" content "$(printf 'project: test-proj\ncurrent_role: ORCHESTRATOR\n')"
 expect 2 "AX-05: Write 排列[真值在后] 首 WORKER + 末 ORCHESTRATOR → 拒绝（首行语义未退化为存在性量词）" \
-  Write file_path "deliverables/TEST001/.engine/.state.md" content "$(printf 'current_role: WORKER\ncurrent_role: ORCHESTRATOR\n')"
+  Write file_path "deliverables/test-proj/.engine/.state.md" content "$(printf 'current_role: WORKER\ncurrent_role: ORCHESTRATOR\n')"
 expect 0 "AX-05: Write 排列[真值在前] 首 ORCHESTRATOR + 末 WORKER → 放行" \
-  Write file_path "deliverables/TEST001/.engine/.state.md" content "$(printf 'current_role: ORCHESTRATOR\ncurrent_role: WORKER\n')"
+  Write file_path "deliverables/test-proj/.engine/.state.md" content "$(printf 'current_role: ORCHESTRATOR\ncurrent_role: WORKER\n')"
 expect 2 "AX-05: Edit 整行交还写 .state.md → 拒绝（交还例外只接受 Write）" \
-  Edit file_path "deliverables/TEST001/.engine/.state.md" new_string "current_role: ORCHESTRATOR"
+  Edit file_path "deliverables/test-proj/.engine/.state.md" new_string "current_role: ORCHESTRATOR"
 expect 2 "AX-05: NotebookEdit 指向 .state.md → 拒绝" \
-  NotebookEdit notebook_path "deliverables/TEST001/.engine/.state.md"
+  NotebookEdit notebook_path "deliverables/test-proj/.engine/.state.md"
 expect 2 "AX-05: .state.md.evil 后缀伪造（交还内容）→ 拒绝（右锚未退化）" \
-  Write file_path "deliverables/TEST001/.engine/.state.md.evil" content "$HB_CONTENT"
+  Write file_path "deliverables/test-proj/.engine/.state.md.evil" content "$HB_CONTENT"
 
 # ============================================================
 # AX-06: 排列次序对抗 —— 实测确认回报条确实不读内容
@@ -471,7 +525,7 @@ for role in THINKER WORKER VERIFIER ORCHESTRATOR; do
   seed_state "$role"
   codes=""
   for pl in "${PAYLOADS[@]}"; do
-    hook "$GUARD" Write file_path "$RPT/TEST001-THINK-DESIGN-R1.report.md" content "$pl" >/dev/null 2>&1
+    hook "$GUARD" Write file_path "$RPT/test-proj-THINK-DESIGN-R1.report.md" content "$pl" >/dev/null 2>&1
     codes="${codes}$?"
   done
   TOTAL=$((TOTAL + 1))
@@ -487,7 +541,7 @@ for role in THINKER WORKER VERIFIER; do
   seed_state "$role"
   codes=""
   for pl in "${PAYLOADS[@]}"; do
-    hook "$GUARD" Write file_path "deliverables/TEST001/.engine/handoffs/x.md" content "$pl" >/dev/null 2>&1
+    hook "$GUARD" Write file_path "deliverables/test-proj/.engine/handoffs/x.md" content "$pl" >/dev/null 2>&1
     codes="${codes}$?"
   done
   TOTAL=$((TOTAL + 1))
@@ -522,12 +576,12 @@ for role in THINKER WORKER VERIFIER ORCHESTRATOR; do
   # .engine/ 段大小写变体：回报条正则大小写敏感，变体不得命中
   for eng in ".ENGINE" ".Engine" ".eNgInE"; do
     expect_report 2 "AX-07: ${role} 写 ${eng}/reports/x.report.md → 拒绝" \
-      "deliverables/TEST001/${eng}/reports/x.report.md"
+      "deliverables/test-proj/${eng}/reports/x.report.md"
   done
   # reports 段大小写变体
   for d in "REPORTS" "Reports" "rePorts"; do
     expect_report 2 "AX-07: ${role} 写 .engine/${d}/x.report.md → 拒绝" \
-      "deliverables/TEST001/.engine/${d}/x.report.md"
+      "deliverables/test-proj/.engine/${d}/x.report.md"
   done
   # 后缀大小写变体
   for suf in ".REPORT.MD" ".Report.md" ".report.MD" ".rePort.md"; do
@@ -539,7 +593,7 @@ for role in ORCHESTRATOR THINKER WORKER VERIFIER; do
   seed_state "$role"
   for d in "Handoffs" "HANDOFFS" "hAndOffs"; do
     expect_report 2 "AX-07: ${role} 写 .engine/${d}/x.md → 拒绝" \
-      "deliverables/TEST001/.engine/${d}/x.md"
+      "deliverables/test-proj/.engine/${d}/x.md"
   done
 done
 # deliverables 段大小写变体：归属路由用 case 精确匹配，变体落框架分支。
@@ -547,14 +601,14 @@ done
 clear_mhdev
 seed_state "THINKER"
 for d in "Deliverables" "DELIVERABLES"; do
-  expect_vs_base 0 0 "AX-07: ${d}/TEST001/.engine/reports/x.report.md 落框架分支 → 无 mh-dev 授权时放行（既有透明性，基线同）" \
-    Write file_path "${d}/TEST001/.engine/reports/x.report.md" content "x"
+  expect_vs_base 0 0 "AX-07: ${d}/test-proj/.engine/reports/x.report.md 落框架分支 → 无 mh-dev 授权时放行（既有透明性，基线同）" \
+    Write file_path "${d}/test-proj/.engine/reports/x.report.md" content "x"
 done
 # 有活跃 mh-dev 授权时同样路径须被 scope 拦下（证明变体没进 /mh-run 分支且未被漏放）
 set_mhdev develop '["scripts/role-guard.sh"]' formal
 for d in "Deliverables" "DELIVERABLES"; do
-  expect_vs_base 2 2 "AX-07: ${d}/TEST001/.engine/reports/x.report.md 在活跃 mh-dev 授权下 → 被 approved_scope 拦下（基线同）" \
-    Write file_path "${d}/TEST001/.engine/reports/x.report.md" content "x"
+  expect_vs_base 2 2 "AX-07: ${d}/test-proj/.engine/reports/x.report.md 在活跃 mh-dev 授权下 → 被 approved_scope 拦下（基线同）" \
+    Write file_path "${d}/test-proj/.engine/reports/x.report.md" content "x"
 done
 clear_mhdev
 
@@ -566,31 +620,31 @@ echo "--- AX-08: .. 穿越与仓库外绝对路径 ---"
 for role in THINKER WORKER VERIFIER ORCHESTRATOR; do
   seed_state "$role"
   for p in \
-    "deliverables/TEST001/.engine/reports/../handoffs/x.report.md" \
-    "deliverables/TEST001/.engine/reports/../../.state.md" \
-    "deliverables/TEST001/.engine/../../../etc/x.report.md" \
-    "deliverables/../deliverables/TEST001/.engine/reports/x.report.md" \
-    "../deliverables/TEST001/.engine/reports/x.report.md"; do
+    "deliverables/test-proj/.engine/reports/../handoffs/x.report.md" \
+    "deliverables/test-proj/.engine/reports/../../.state.md" \
+    "deliverables/test-proj/.engine/../../../etc/x.report.md" \
+    "deliverables/../deliverables/test-proj/.engine/reports/x.report.md" \
+    "../deliverables/test-proj/.engine/reports/x.report.md"; do
     expect_report 2 "AX-08: ${role} 写含 .. 的回报路径 ${p} → 拒绝" "$p"
   done
   # 三种工具都须走同一条穿越检测
   expect 2 "AX-08: ${role} Edit 含 .. 的回报路径 → 拒绝" \
-    Edit file_path "deliverables/TEST001/.engine/reports/../handoffs/x.report.md" new_string "x"
+    Edit file_path "deliverables/test-proj/.engine/reports/../handoffs/x.report.md" new_string "x"
   expect 2 "AX-08: ${role} NotebookEdit 含 .. 的回报路径 → 拒绝" \
-    NotebookEdit notebook_path "deliverables/TEST001/.engine/reports/../handoffs/x.report.md"
+    NotebookEdit notebook_path "deliverables/test-proj/.engine/reports/../handoffs/x.report.md"
   # 仓库外绝对路径
-  for p in "/tmp/deliverables/TEST001/.engine/reports/x.report.md" "/deliverables/TEST001/.engine/reports/x.report.md" "/etc/x.report.md"; do
+  for p in "/tmp/deliverables/test-proj/.engine/reports/x.report.md" "/deliverables/test-proj/.engine/reports/x.report.md" "/etc/x.report.md"; do
     expect_report 2 "AX-08: ${role} 写仓库外绝对路径 ${p} → 拒绝" "$p"
   done
 done
 # 沙箱内绝对路径须与相对写法结论一致（归一化上移到路由之前的性质）
 seed_state "THINKER"
 expect_report 0 "AX-08: 沙箱内绝对回报路径 → 放行（与相对写法结论一致）" \
-  "$SB/deliverables/TEST001/.engine/reports/x.report.md"
+  "$SB/deliverables/test-proj/.engine/reports/x.report.md"
 expect_report 2 "AX-08: 沙箱内绝对路径 + 后缀伪造 → 拒绝（归一化后仍受右锚约束）" \
-  "$SB/deliverables/TEST001/.engine/reports/x.report.md.evil"
+  "$SB/deliverables/test-proj/.engine/reports/x.report.md.evil"
 expect_report 2 "AX-08: 沙箱内绝对 handoffs 路径 → 拒绝" \
-  "$SB/deliverables/TEST001/.engine/handoffs/x.md"
+  "$SB/deliverables/test-proj/.engine/handoffs/x.md"
 
 # ============================================================
 # AC-06 / AX-09: D3 撤回 —— mh-dev 分支须与基线逐字/逐行为一致
@@ -733,24 +787,24 @@ clear_mhdev
 for role in THINKER WORKER VERIFIER ORCHESTRATOR; do
   seed_state "$role"
   expect 0 "AX-11: ${role} NotebookEdit 写回报路径 → 放行" \
-    NotebookEdit notebook_path "$RPT/TEST001-THINK-DESIGN-R1.report.md"
+    NotebookEdit notebook_path "$RPT/test-proj-THINK-DESIGN-R1.report.md"
   expect 2 "AX-11: ${role} NotebookEdit 写后缀伪造 .report.md.evil → 拒绝（未静默绕过右锚）" \
     NotebookEdit notebook_path "$RPT/x.report.md.evil"
   # plan-action.md 是 ORCHESTRATOR 的既有白名单项，故只对三个被派发角色断言拒绝。
   if [ "$role" != "ORCHESTRATOR" ]; then
     expect 2 "AX-11: ${role} NotebookEdit 写 .engine/plan-action.md → 拒绝（回报权未放大）" \
-      NotebookEdit notebook_path "deliverables/TEST001/.engine/plan-action.md"
+      NotebookEdit notebook_path "deliverables/test-proj/.engine/plan-action.md"
   fi
-  expect 2 "AX-11: ${role} NotebookEdit 跨需求写 REQ002 回报 → 拒绝" \
-    NotebookEdit notebook_path "deliverables/REQ002/.engine/reports/x.report.md"
+  expect 2 "AX-11: ${role} NotebookEdit 跨需求写 proj-two 回报 → 拒绝" \
+    NotebookEdit notebook_path "deliverables/proj-two/.engine/reports/x.report.md"
   expect 2 "AX-11: ${role} NotebookEdit 大小写变体 .ENGINE/reports/ → 拒绝" \
-    NotebookEdit notebook_path "deliverables/TEST001/.ENGINE/reports/x.report.md"
+    NotebookEdit notebook_path "deliverables/test-proj/.ENGINE/reports/x.report.md"
 done
 # 取错键的静默绕过检测：载荷只带 file_path（不带 notebook_path）时守卫须打 WARN 放行，
 # 而带 notebook_path 时须按该路径判定。两者成对断言才能区分「取对了键」与「都放行」。
 seed_state "THINKER"
 TOTAL=$((TOTAL + 1))
-out=$(jq -nc '{tool_name:"NotebookEdit",tool_input:{file_path:"deliverables/TEST001/.engine/handoffs/x.md"}}' | bash "$GUARD" 2>&1)
+out=$(jq -nc '{tool_name:"NotebookEdit",tool_input:{file_path:"deliverables/test-proj/.engine/handoffs/x.md"}}' | bash "$GUARD" 2>&1)
 code=$?
 if [ "$code" = "0" ] && printf '%s' "$out" | grep -q "WARN"; then
   ok "AX-11: NotebookEdit 只带 file_path → exit 0 且 WARN（不静默；确认守卫读的是 notebook_path）"
@@ -758,7 +812,7 @@ else
   bad "AX-11: NotebookEdit 只带 file_path 处置异常 (exit=${code}, output=${out})"
 fi
 TOTAL=$((TOTAL + 1))
-out=$(jq -nc '{tool_name:"NotebookEdit",tool_input:{file_path:"deliverables/TEST001/.engine/reports/ok.report.md",notebook_path:"deliverables/TEST001/.engine/handoffs/x.md"}}' | bash "$GUARD" 2>&1)
+out=$(jq -nc '{tool_name:"NotebookEdit",tool_input:{file_path:"deliverables/test-proj/.engine/reports/ok.report.md",notebook_path:"deliverables/test-proj/.engine/handoffs/x.md"}}' | bash "$GUARD" 2>&1)
 code=$?
 if [ "$code" = "2" ] && printf '%s' "$out" | grep -q "handoffs/x.md"; then
   ok "AX-11: NotebookEdit 双参数 → 以 notebook_path 判定（回报路径在 file_path 上不生效）"
@@ -861,7 +915,7 @@ for role in THINKER WORKER VERIFIER ORCHESTRATOR; do
 done
 for role in THINKER VERIFIER ORCHESTRATOR; do
   mutant_probe "$M2" "左锚形态 嵌套伪造" "$role" \
-    "deliverables/TEST001/x/deliverables/TEST001/.engine/reports/y.report.md"
+    "deliverables/test-proj/x/deliverables/test-proj/.engine/reports/y.report.md"
 done
 for role in THINKER WORKER VERIFIER ORCHESTRATOR; do
   for f in "x.md" "x.txt" "x.report" "handoff.md"; do
@@ -873,7 +927,7 @@ done
 for m in "$M1:右锚" "$M2:左锚" "$M3:后缀判据"; do
   mf="${m%%:*}"; label="${m##*:}"
   seed_state "THINKER"
-  for target in "deliverables/TEST001/.engine/handoffs/x.md" "deliverables/TEST001/.engine/plan-action.md" "deliverables/REQ002/.engine/reports/x.report.md"; do
+  for target in "deliverables/test-proj/.engine/handoffs/x.md" "deliverables/test-proj/.engine/plan-action.md" "deliverables/proj-two/.engine/reports/x.report.md"; do
     TOTAL=$((TOTAL + 1))
     hook "$GUARD" Write file_path "$target" content "x" >/dev/null 2>&1; c=$?
     hook "$mf" Write file_path "$target" content "x" >/dev/null 2>&1; m2=$?
@@ -970,12 +1024,12 @@ TOTAL=$((TOTAL + 1))
 cross_ok=true
 for role in THINKER WORKER VERIFIER ORCHESTRATOR; do
   seed_state "$role"
-  hook "$GUARD" Write file_path "$RPT/TEST001-THINK-DESIGN-R1.report.md" content "$REPORT_BODY" >/dev/null 2>&1
+  hook "$GUARD" Write file_path "$RPT/test-proj-THINK-DESIGN-R1.report.md" content "$REPORT_BODY" >/dev/null 2>&1
   [ "$?" = "0" ] || cross_ok=false
 done
 for role in THINKER WORKER VERIFIER; do
   seed_state "$role"
-  hook "$GUARD" Write file_path "deliverables/TEST001/.engine/handoffs/TEST001-THINK-DESIGN-R1.md" content "$REPORT_BODY" >/dev/null 2>&1
+  hook "$GUARD" Write file_path "deliverables/test-proj/.engine/handoffs/test-proj-THINK-DESIGN-R1.md" content "$REPORT_BODY" >/dev/null 2>&1
   [ "$?" = "2" ] || cross_ok=false
 done
 if [ "$cross_ok" = true ]; then
@@ -1045,40 +1099,40 @@ git -C "$REPO" show "${BASELINE_REF}:scripts/verify-qa.sh" > "$GATE_SB/verify-qa
 gate_fixture() {
   local phase=$1
   rm -rf "$GATE_SB/deliverables"
-  mkdir -p "$GATE_SB/deliverables/REQ001/.engine/handoffs" "$GATE_SB/deliverables/REQ001/.engine/reports"
-  printf 'req_id: REQ001\n' > "$GATE_SB/deliverables/.state.md"
-  cat > "$GATE_SB/deliverables/REQ001/.engine/.state.md" << EOF
-req_id: REQ001
+  mkdir -p "$GATE_SB/deliverables/proj-one/.engine/handoffs" "$GATE_SB/deliverables/proj-one/.engine/reports"
+  printf 'project: proj-one\n' > "$GATE_SB/deliverables/.state.md"
+  cat > "$GATE_SB/deliverables/proj-one/.engine/.state.md" << EOF
+project: proj-one
 phase: ${phase}
 current_step: ARC
 current_role: ORCHESTRATOR
 repair_round: 0
 last_updated: "2026-08-13T10:00:00Z"
 EOF
-  printf 'x\n' > "$GATE_SB/deliverables/REQ001/ORCHESTRATOR-init-proposal.md"
-  printf 'x\n' > "$GATE_SB/deliverables/REQ001/.engine/plan-action.md"
-  printf 'x\n' > "$GATE_SB/deliverables/REQ001/prod.txt"
-  printf 'l1\nl2\nl3\nl4\nl5\nl6\nl7\n' > "$GATE_SB/deliverables/REQ001/.engine/process.log"
-  for hb in REQ001-THINK-DESIGN-R1 REQ001-DEV1-T1-R1; do
-    printf 'to: X\nstatus: pending\ncompleted_at: ""\n' > "$GATE_SB/deliverables/REQ001/.engine/handoffs/${hb}.md"
+  printf 'x\n' > "$GATE_SB/deliverables/proj-one/.engine/proposal.md"
+  printf 'x\n' > "$GATE_SB/deliverables/proj-one/.engine/plan-action.md"
+  printf 'x\n' > "$GATE_SB/deliverables/proj-one/prod.txt"
+  printf 'l1\nl2\nl3\nl4\nl5\nl6\nl7\n' > "$GATE_SB/deliverables/proj-one/.engine/process.log"
+  for hb in proj-one-THINK-DESIGN-R1 proj-one-DEV1-T1-R1; do
+    printf 'to: X\nstatus: pending\ncompleted_at: ""\n' > "$GATE_SB/deliverables/proj-one/.engine/handoffs/${hb}.md"
   done
 }
 write_report() {
   local hb=$1 body=$2
-  printf '%s' "$body" > "$GATE_SB/deliverables/REQ001/.engine/reports/${hb}.report.md"
+  printf '%s' "$body" > "$GATE_SB/deliverables/proj-one/.engine/reports/${hb}.report.md"
 }
-rm_reports() { rm -f "$GATE_SB"/deliverables/REQ001/.engine/reports/*.report.md; }
+rm_reports() { rm -f "$GATE_SB"/deliverables/proj-one/.engine/reports/*.report.md; }
 
 # 门禁执行：LC_ALL=C 规避 bash 3.2 在多字节 locale 下的既有崩溃（下方单独断言该缺陷），
 # 否则回报检查根本走不到，AC-05 会因错误原因失败。
 run_gate() { ( cd "$GATE_SB" && LC_ALL=C bash "$1" "${@:2}" 2>&1 ); }
 
-RPT_FULL=$'status: done\noutput_files: ["deliverables/REQ001/THINKER-propose-design.md"]\nread_files: ["deliverables/REQ001/ORCHESTRATOR-init-proposal.md"]\nsummary: "设计完成"\nissues: "N/A"\n'
+RPT_FULL=$'status: done\noutput_files: ["deliverables/proj-one/docs/spec/design.md"]\nread_files: ["deliverables/proj-one/.engine/proposal.md"]\nsummary: "设计完成"\nissues: "N/A"\n'
 RPT_PENDING=$'status: pending\noutput_files: []\nsummary: ""\nread_files: []\n'
 
 # --- verify.sh C 类：回报缺失 ---
 gate_fixture done
-out=$(run_gate verify.sh C REQ001)
+out=$(run_gate verify.sh C proj-one)
 TOTAL=$((TOTAL + 1))
 if printf '%s\n' "$out" | grep -q "无对应完成回报文件"; then
   ok "AC-05: verify.sh 回报文件缺失 → 产出 WARN（新结构下「未填」的表现形态）"
@@ -1086,8 +1140,8 @@ else
   bad "AC-05: verify.sh 回报缺失未产出 WARN（门禁静默失效）"
 fi
 # --- verify.sh C 类：回报存在但字段 pending/为空 ---
-for hb in REQ001-THINK-DESIGN-R1 REQ001-DEV1-T1-R1; do write_report "$hb" "$RPT_PENDING"; done
-out=$(run_gate verify.sh C REQ001)
+for hb in proj-one-THINK-DESIGN-R1 proj-one-DEV1-T1-R1; do write_report "$hb" "$RPT_PENDING"; done
+out=$(run_gate verify.sh C proj-one)
 for kw in "仍为 pending" "summary 为空" "output_files 为空"; do
   TOTAL=$((TOTAL + 1))
   if printf '%s\n' "$out" | grep -q "$kw"; then
@@ -1103,8 +1157,8 @@ else
   bad "AC-05: verify.sh 的 WARN 未指名 .report.md，读取位置可疑"
 fi
 # --- verify.sh C 类：字段齐备 → 不产出 ---
-for hb in REQ001-THINK-DESIGN-R1 REQ001-DEV1-T1-R1; do write_report "$hb" "$RPT_FULL"; done
-out=$(run_gate verify.sh C REQ001)
+for hb in proj-one-THINK-DESIGN-R1 proj-one-DEV1-T1-R1; do write_report "$hb" "$RPT_FULL"; done
+out=$(run_gate verify.sh C proj-one)
 TOTAL=$((TOTAL + 1))
 if printf '%s\n' "$out" | grep -q "所有完成回报已填写" && \
    ! printf '%s\n' "$out" | grep -qE "仍为 pending|summary 为空|output_files 为空|无对应完成回报文件"; then
@@ -1115,11 +1169,11 @@ fi
 # --- 静默失效检测：字段写在 handoff 内、回报文件不存在 ---
 # 这是 R4 要防的形态：位置变了而门禁没变会「永久静默通过」。
 rm_reports
-for hb in REQ001-THINK-DESIGN-R1 REQ001-DEV1-T1-R1; do
+for hb in proj-one-THINK-DESIGN-R1 proj-one-DEV1-T1-R1; do
   printf 'to: X\nstatus: done\nsummary: "ok"\noutput_files: ["a.md"]\nread_files: ["b.md"]\n' \
-    > "$GATE_SB/deliverables/REQ001/.engine/handoffs/${hb}.md"
+    > "$GATE_SB/deliverables/proj-one/.engine/handoffs/${hb}.md"
 done
-out=$(run_gate verify.sh C REQ001)
+out=$(run_gate verify.sh C proj-one)
 TOTAL=$((TOTAL + 1))
 if printf '%s\n' "$out" | grep -q "无对应完成回报文件"; then
   ok "AC-05: verify.sh 旧结构（字段在 handoff 内）→ 仍产出 WARN（未被旧位置的齐备字段静默满足）"
@@ -1128,7 +1182,7 @@ else
 fi
 # --- 基线对照：同夹具下基线 verify.sh 因 set -u 崩溃，A~E 从未执行 ---
 TOTAL=$((TOTAL + 1))
-b_out=$( ( cd "$GATE_SB" && LC_ALL=C bash verify.baseline.sh C REQ001 2>&1 ); )
+b_out=$( ( cd "$GATE_SB" && LC_ALL=C bash verify.baseline.sh C proj-one 2>&1 ); )
 b_code=$?
 if [ "$b_code" != "0" ] && printf '%s\n' "$b_out" | grep -q "unbound variable"; then
   ok "AC-05: 基线 verify.sh 在同夹具上因 set -u 崩溃（exit=${b_code}，A~E 从未执行；本 CR 顺带修复）"
@@ -1136,7 +1190,7 @@ else
   bad "AC-05: 基线 verify.sh 未如预期崩溃（exit=${b_code}），须复核 set -u 缺陷的描述"
 fi
 TOTAL=$((TOTAL + 1))
-c_out=$( ( cd "$GATE_SB" && LC_ALL=C bash verify.sh C REQ001 >/dev/null 2>&1 ); echo $? )
+c_out=$( ( cd "$GATE_SB" && LC_ALL=C bash verify.sh C proj-one >/dev/null 2>&1 ); echo $? )
 if [ "$c_out" = "0" ]; then
   ok "AC-05: 当前 verify.sh C 类可执行完毕（exit=0，set -u 崩溃已修）"
 else
@@ -1146,15 +1200,15 @@ fi
 # --- verify-qa.sh QA-4 ---
 gate_fixture apply
 rm_reports
-out=$(run_gate verify-qa.sh REQ001)
+out=$(run_gate verify-qa.sh proj-one)
 TOTAL=$((TOTAL + 1))
 if printf '%s\n' "$out" | grep -q "无已完成的回报，跳过"; then
   ok "AC-05: verify-qa.sh 无回报文件 → INFO 跳过（不虚报 PASS）"
 else
   bad "AC-05: verify-qa.sh 无回报时处置异常"
 fi
-write_report REQ001-THINK-DESIGN-R1 $'status: done\n'
-out=$(run_gate verify-qa.sh REQ001)
+write_report proj-one-THINK-DESIGN-R1 $'status: done\n'
+out=$(run_gate verify-qa.sh proj-one)
 TOTAL=$((TOTAL + 1))
 if printf '%s\n' "$out" | grep -q "缺少字段" && printf '%s\n' "$out" | grep -q "output_files" && printf '%s\n' "$out" | grep -q "summary"; then
   ok "AC-05: verify-qa.sh 回报缺 output_files/summary → 产出 WARN"
@@ -1167,8 +1221,8 @@ if printf '%s\n' "$out" | grep -q "\.report\.md 缺少字段"; then
 else
   bad "AC-05: verify-qa.sh 的 WARN 未指名 .report.md"
 fi
-write_report REQ001-THINK-DESIGN-R1 "$RPT_FULL"
-out=$(run_gate verify-qa.sh REQ001)
+write_report proj-one-THINK-DESIGN-R1 "$RPT_FULL"
+out=$(run_gate verify-qa.sh proj-one)
 TOTAL=$((TOTAL + 1))
 if printf '%s\n' "$out" | grep -q "检查了 1 个完成报告" && ! printf '%s\n' "$out" | grep -q "缺少字段"; then
   ok "AC-05: verify-qa.sh 字段齐备 → 不产出 WARN（非恒 WARN）"
@@ -1178,8 +1232,8 @@ fi
 # QA-4 静默失效检测：字段在 handoff 内、无回报文件
 rm_reports
 printf 'to: X\nstatus: done\nsummary: "ok"\noutput_files: ["a"]\n' \
-  > "$GATE_SB/deliverables/REQ001/.engine/handoffs/REQ001-THINK-DESIGN-R1.md"
-out=$(run_gate verify-qa.sh REQ001)
+  > "$GATE_SB/deliverables/proj-one/.engine/handoffs/proj-one-THINK-DESIGN-R1.md"
+out=$(run_gate verify-qa.sh proj-one)
 TOTAL=$((TOTAL + 1))
 if ! printf '%s\n' "$out" | grep -q "检查了 [1-9] 个完成报告"; then
   ok "AC-05: verify-qa.sh 不再从 handoff 读取字段（旧结构下不虚报「检查了 N 个」）"
@@ -1188,7 +1242,7 @@ else
 fi
 # 基线 QA-4 在同夹具上从 handoff 读取并报「检查了 1 个」——对照证明迁移确实发生
 TOTAL=$((TOTAL + 1))
-b_out=$(run_gate verify-qa.baseline.sh REQ001)
+b_out=$(run_gate verify-qa.baseline.sh proj-one)
 if printf '%s\n' "$b_out" | grep -q "检查了 1 个完成报告"; then
   ok "AC-05: 基线 verify-qa.sh 在同夹具上从 handoff 读取（检查了 1 个），证明读取位置确已迁移"
 else
@@ -1211,14 +1265,14 @@ crash_probe() {
   # repair_round / handoff 数按需调整以走到目标语句
   if [ "$rr" != "0" ]; then
     awk -v r="$rr" '/^repair_round:/{print "repair_round: " r; next}{print}' \
-      "$GATE_SB/deliverables/REQ001/.engine/.state.md" > "$GATE_SB/st.tmp" && \
-      mv "$GATE_SB/st.tmp" "$GATE_SB/deliverables/REQ001/.engine/.state.md"
+      "$GATE_SB/deliverables/proj-one/.engine/.state.md" > "$GATE_SB/st.tmp" && \
+      mv "$GATE_SB/st.tmp" "$GATE_SB/deliverables/proj-one/.engine/.state.md"
   fi
-  if [ "$nhandoff" = "1" ]; then rm -f "$GATE_SB/deliverables/REQ001/.engine/handoffs/REQ001-DEV1-T1-R1.md"; fi
+  if [ "$nhandoff" = "1" ]; then rm -f "$GATE_SB/deliverables/proj-one/.engine/handoffs/proj-one-DEV1-T1-R1.md"; fi
   TOTAL=$((TOTAL + 1))
   local c_out c_code b_out b_code
-  c_out=$( ( cd "$GATE_SB" && bash verify.sh $argv REQ001 2>&1 ); ); c_code=$?
-  b_out=$( ( cd "$GATE_SB" && bash verify.baseline.sh $argv REQ001 2>&1 ); ); b_code=$?
+  c_out=$( ( cd "$GATE_SB" && bash verify.sh $argv proj-one 2>&1 ); ); c_code=$?
+  b_out=$( ( cd "$GATE_SB" && bash verify.baseline.sh $argv proj-one 2>&1 ); ); b_code=$?
   # 崩溃信息里的变量名含半个多字节字符（`handoff_count\xe4`），该行不是合法 UTF-8，
   # grep 在任何 locale 下都判为二进制而不匹配。故用 bash 内建通配匹配，不用 grep。
   local c_crash=false b_crash=false
@@ -1239,9 +1293,9 @@ crash_probe "D 类 repair_round=5（第 292 行 \$repair_round）" "D" apply 5 2
 crash_probe "B 类 phase 非 propose/apply/archive/done（第 159 行 \$phase）" "B" verify 0 2
 # LC_ALL=C 下同夹具不崩溃 —— 证明成因是 locale 下的变量名解析而非夹具本身
 gate_fixture done
-rm -f "$GATE_SB/deliverables/REQ001/.engine/handoffs/REQ001-DEV1-T1-R1.md"
+rm -f "$GATE_SB/deliverables/proj-one/.engine/handoffs/proj-one-DEV1-T1-R1.md"
 TOTAL=$((TOTAL + 1))
-lc_out=$( ( cd "$GATE_SB" && LC_ALL=C bash verify.sh C REQ001 2>&1 ); ); lc_code=$?
+lc_out=$( ( cd "$GATE_SB" && LC_ALL=C bash verify.sh C proj-one 2>&1 ); ); lc_code=$?
 if [ "$lc_code" = "0" ] && [[ "$lc_out" != *"unbound variable"* ]]; then
   ok "AC-05/F-1: 同夹具 LC_ALL=C 下不崩溃（成因是多字节 locale 下 \$var 紧邻全角字符的变量名解析）"
 else
@@ -1277,21 +1331,29 @@ fi
 echo ""
 echo "--- AC-05 附带: D 类 handoff 超时判据（既有缺陷，与基线一致性） ---"
 TOTAL=$((TOTAL + 1))
-d_cur=$(awk '/^check_d\(\) \{$/{f=1} f{print} f&&/^\}$/{exit}' "$GATE_SB/verify.sh")
-d_base=$(awk '/^check_d\(\) \{$/{f=1} f{print} f&&/^\}$/{exit}' "$GATE_SB/verify.baseline.sh")
+# 比较前对齐 CR-018 的字段改名（req_id → project）与其 SKIP 文案：
+# 本条要守的是「**超时判据**未被触碰」，而改名属 D4.1 声明的机械迁移。
+# 不归一化会让改名本身触发告警，把一条语义断言退化为对 diff 的字面比对。
+norm_d() {
+  awk '/^check_d\(\) \{$/{f=1} f{print} f&&/^\}$/{exit}' "$1" \
+    | sed -e 's/\$req_id/$project/g' -e 's/"\$project"/"$project"/g' \
+          -e 's/无 REQ-ID，无法执行/无项目标识符，无法执行/'
+}
+d_cur=$(norm_d "$GATE_SB/verify.sh")
+d_base=$(norm_d "$GATE_SB/verify.baseline.sh")
 if [ -n "$d_cur" ] && [ "$d_cur" = "$d_base" ]; then
-  ok "AC-05/F-2: verify.sh check_d 与基线 ${BASELINE_REF} 逐字一致（超时判据未被本 CR 触碰）"
+  ok "AC-05/F-2: verify.sh check_d 归一化改名后与基线 ${BASELINE_REF} 一致（超时判据未被本 CR 触碰）"
 else
   bad "AC-05/F-2: check_d 与基线不一致，须复核本 CR 是否改动了超时判据"
 fi
 gate_fixture apply
-write_report REQ001-THINK-DESIGN-R1 "$RPT_FULL"
-write_report REQ001-DEV1-T1-R1 "$RPT_FULL"
+write_report proj-one-THINK-DESIGN-R1 "$RPT_FULL"
+write_report proj-one-DEV1-T1-R1 "$RPT_FULL"
 # 两个 handoff 保持创建时的 status: pending（协议规则 1：创建后不可修改），mtime 推到 30 分钟前
-for hb in REQ001-THINK-DESIGN-R1 REQ001-DEV1-T1-R1; do
-  touch -t 202001010000 "$GATE_SB/deliverables/REQ001/.engine/handoffs/${hb}.md"
+for hb in proj-one-THINK-DESIGN-R1 proj-one-DEV1-T1-R1; do
+  touch -t 202001010000 "$GATE_SB/deliverables/proj-one/.engine/handoffs/${hb}.md"
 done
-out=$(run_gate verify.sh D REQ001)
+out=$(run_gate verify.sh D proj-one)
 TOTAL=$((TOTAL + 1))
 if printf '%s\n' "$out" | grep -q "处于 pending 状态超过 30 分钟"; then
   ok "AC-05/F-2: 记录既有缺陷 —— 回报完整时 D 类仍报 handoff 超时（WARN 级、不阻断；判据读 handoff frontmatter，修正顺延独立 CR）"
@@ -1309,7 +1371,7 @@ else
 fi
 # 对照：无回报文件时报超时是正确行为（确认该检查本身在工作，问题在判据对象）
 rm_reports
-out=$(run_gate verify.sh D REQ001)
+out=$(run_gate verify.sh D proj-one)
 TOTAL=$((TOTAL + 1))
 if printf '%s\n' "$out" | grep -q "处于 pending 状态超过 30 分钟"; then
   ok "AC-05/F-2: 无回报文件时 D 类报 handoff 超时（对照：检查本身在工作）"
@@ -1354,7 +1416,7 @@ classify() {
 }
 for role in THINKER WORKER VERIFIER ORCHESTRATOR; do
   # 设计声明的放行集：本需求 reports/*.report.md
-  classify "$role" "$RPT/TEST001-THINK-DESIGN-R1.report.md" yes
+  classify "$role" "$RPT/test-proj-THINK-DESIGN-R1.report.md" yes
   classify "$role" "$RPT/a.b.c.report.md" yes
   # 应拒绝集：后缀伪造
   for suf in ".report.md.evil" ".report.md.sh" ".report.mdX" ".report.md/child.md" ".report.md~"; do
@@ -1362,25 +1424,25 @@ for role in THINKER WORKER VERIFIER ORCHESTRATOR; do
   done
   # 应拒绝集：目录名伪造与大小写变体
   for d in "reportsX" "reports2" "REPORTS" "Reports"; do
-    classify "$role" "deliverables/TEST001/.engine/${d}/x.report.md" no
+    classify "$role" "deliverables/test-proj/.engine/${d}/x.report.md" no
   done
-  classify "$role" "deliverables/TEST001/.ENGINE/reports/x.report.md" no
+  classify "$role" "deliverables/test-proj/.ENGINE/reports/x.report.md" no
   # 应拒绝集：跨需求
-  classify "$role" "deliverables/REQ002/.engine/reports/x.report.md" no
+  classify "$role" "deliverables/proj-two/.engine/reports/x.report.md" no
   # 应拒绝集：嵌套伪造
-  classify "$role" "deliverables/TEST001/x/deliverables/TEST001/.engine/reports/y.report.md" no
+  classify "$role" "deliverables/test-proj/x/deliverables/test-proj/.engine/reports/y.report.md" no
   # 应拒绝集：穿越与仓库外绝对路径
-  classify "$role" "deliverables/TEST001/.engine/reports/../handoffs/x.report.md" no
-  classify "$role" "/tmp/deliverables/TEST001/.engine/reports/x.report.md" no
+  classify "$role" "deliverables/test-proj/.engine/reports/../handoffs/x.report.md" no
+  classify "$role" "/tmp/deliverables/test-proj/.engine/reports/x.report.md" no
 done
 # 引擎态放大形态：仅对三个被派发角色（ORCHESTRATOR 本就拥有这些路径）
 for role in THINKER WORKER VERIFIER; do
   for f in handoffs/x.md plan-action.md SR1-record.md lessons.md process.log archive-manifest.md; do
-    classify "$role" "deliverables/TEST001/.engine/${f}" no
+    classify "$role" "deliverables/test-proj/.engine/${f}" no
   done
   classify "$role" "deliverables/.state.md" no
   for f in handoffs/x.report.md plan-action.report.md lessons.report.md; do
-    classify "$role" "deliverables/TEST001/.engine/${f}" no
+    classify "$role" "deliverables/test-proj/.engine/${f}" no
   done
 done
 TOTAL=$((TOTAL + 1))
@@ -1419,10 +1481,13 @@ else
 fi
 TOTAL=$((TOTAL + 1))
 rg_out=$(bash "$REPO/tests/test-role-guard.sh" 2>&1); rg_code=$?
-if [ "$rg_code" = "0" ] && printf '%s\n' "$rg_out" | grep -q '总计: 100 '; then
-  ok "AC-08: tests/test-role-guard.sh exit 0 且原有 100 项断言全绿"
+rg_total=$(printf '%s\n' "$rg_out" | grep -o '总计: [0-9]*' | tail -1 | grep -o '[0-9]*')
+# 断言下界而非等值：断言数随后续轮次只增不减，锁死具体值会使每次加用例都要改这里，
+# 而本条要守的性质是「既有覆盖未被删减」。
+if [ "$rg_code" = "0" ] && [ "${rg_total:-0}" -ge 100 ]; then
+  ok "AC-08: tests/test-role-guard.sh exit 0 且覆盖未减（总计 ${rg_total} ≥ 100）"
 else
-  bad "AC-08: test-role-guard.sh 退化（exit=${rg_code}）"
+  bad "AC-08: test-role-guard.sh 退化（exit=${rg_code}, 总计=${rg_total:-?}）"
 fi
 TOTAL=$((TOTAL + 1))
 ra_out=$(bash "$REPO/tests/test-role-guard-authority.sh" 2>&1); ra_code=$?

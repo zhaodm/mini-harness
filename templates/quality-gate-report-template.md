@@ -1,6 +1,6 @@
 <!-- 质量门禁失败报告模板
   使用场景: Orchestrator 执行 test_strategy 门禁命令后发现错误，需归因并派发修复
-  使用方式: 复制到 deliverables/{REQ-ID}/WORKER-apply-quality-gate-report-b{N}.md 并填写
+  使用方式: 复制到 deliverables/{project}/.engine/quality-gate-report.md 并填写
 -->
 ---
 report_id: "QG-B{N}-001"

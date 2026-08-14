@@ -25,7 +25,7 @@ console.log('--- 1. 首次归档 ---');
 const first1 = detectArchiveMode({
   outputSpecFiles: [],
   baselineFiles: [],
-  reqId: 'REQ001'
+  project: 'web-cli'
 });
 assert('空 docs/spec → first', first1.archiveMode === 'first');
 assert('existingFiles 为空', first1.existingFiles.length === 0);
@@ -37,7 +37,7 @@ console.log('\n--- 2. 变更归档 ---');
 const change1 = detectArchiveMode({
   outputSpecFiles: ['design.md', 'requirement-spec.md'],
   baselineFiles: [],
-  reqId: 'REQ002'
+  project: 'order-api'
 });
 assert('有文件 → change', change1.archiveMode === 'change');
 assert('existingFiles 含 2 个文件', change1.existingFiles.length === 2);
@@ -49,7 +49,7 @@ console.log('\n--- 3. Baseline 版本递增 ---');
 const change2 = detectArchiveMode({
   outputSpecFiles: ['design.md'],
   baselineFiles: ['design.v1.md', 'design.v2.md', 'requirement-spec.v1.md'],
-  reqId: 'REQ003'
+  project: 'auth-svc'
 });
 assert('archiveMode=change', change2.archiveMode === 'change');
 assert('最大版本 v2 → nextBaselineVersion=3', change2.nextBaselineVersion === 3);
@@ -60,7 +60,7 @@ console.log('\n--- 4. Baseline 版本无序解析 ---');
 const change3 = detectArchiveMode({
   outputSpecFiles: ['design.md'],
   baselineFiles: ['design.v5.md', 'design.v2.md', 'design.v10.md'],
-  reqId: 'REQ004'
+  project: 'data-etl'
 });
 assert('最大版本 v10 → nextBaselineVersion=11', change3.nextBaselineVersion === 11);
 
@@ -70,7 +70,7 @@ console.log('\n--- 5. 无版本号的 baseline 文件 ---');
 const nover = detectArchiveMode({
   outputSpecFiles: ['design.md'],
   baselineFiles: ['readme.md', 'notes.txt'],
-  reqId: 'REQ007'
+  project: 'log-agg'
 });
 assert('无 .vN. 格式 → nextBaselineVersion=1', nover.nextBaselineVersion === 1);
 
@@ -80,7 +80,7 @@ console.log('\n--- 6. extraArchive 规则 ---');
 const ppt = detectArchiveMode({
   outputSpecFiles: [],
   baselineFiles: [],
-  reqId: 'REQ008',
+  project: 'pay-gw',
   hasPptWireframes: true
 });
 assert('有 wireframes → extraArchive 规则', ppt.extraArchive.length === 1);
@@ -89,7 +89,7 @@ assert('extra 含 wireframes', ppt.extraArchive[0].source.includes('wireframes')
 const noPpt = detectArchiveMode({
   outputSpecFiles: [],
   baselineFiles: [],
-  reqId: 'REQ009',
+  project: 'mail-svc',
   hasPptWireframes: false
 });
 assert('无 wireframes → extraArchive 为空', noPpt.extraArchive.length === 0);

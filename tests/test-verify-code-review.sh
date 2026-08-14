@@ -29,12 +29,12 @@ assert() {
 
 # 搭建临时 deliverables 结构
 setup_env() {
-  local req_id="$1" track="$2" report_content="$3"
+  local project="$1" track="$2" report_content="$3"
   rm -rf "$TMPDIR/deliverables"
-  mkdir -p "$TMPDIR/deliverables/$req_id/.engine"
-  echo "req_id: $req_id" > "$TMPDIR/deliverables/.state.md"
-  cat > "$TMPDIR/deliverables/$req_id/.engine/.state.md" <<EOF
-req_id: $req_id
+  mkdir -p "$TMPDIR/deliverables/$project/.engine"
+  echo "project: $project" > "$TMPDIR/deliverables/.state.md"
+  cat > "$TMPDIR/deliverables/$project/.engine/.state.md" <<EOF
+project: $project
 phase: apply
 current_step: VERIFY-2
 current_role: VERIFIER
@@ -42,15 +42,15 @@ track: $track
 last_updated: "2026-08-10T10:00:00Z"
 EOF
   if [ -n "$report_content" ]; then
-    echo "$report_content" > "$TMPDIR/deliverables/$req_id/VERIFIER-apply-final-test-report.md"
+    echo "$report_content" > "$TMPDIR/deliverables/$project/.engine/final-test-report.md"
   fi
 }
 
 # 在 tmpdir 中运行脚本
 run_verify() {
-  local req_id="$1"
+  local project="$1"
   cd "$TMPDIR"
-  bash "$OLDPWD/$SCRIPT" "$req_id" >/dev/null 2>&1
+  bash "$OLDPWD/$SCRIPT" "$project" >/dev/null 2>&1
   echo $?
 }
 
@@ -61,15 +61,15 @@ echo ""
 
 # --- 1. ppt track 跳过 ---
 echo "--- 1. ppt track 自动跳过 ---"
-setup_env "REQ001" "ppt" ""
-result=$(run_verify "REQ001")
+setup_env "web-cli" "ppt" ""
+result=$(run_verify "web-cli")
 assert "ppt track → exit 0" "0" "$result"
 
 # --- 2. 无 Verifier 报告 → 跳过 ---
 echo "--- 2. 无报告文件 → exit 0 ---"
-setup_env "REQ003" "code" ""
-rm -f "$TMPDIR/deliverables/REQ003/VERIFIER-apply-final-test-report.md"
-result=$(run_verify "REQ003")
+setup_env "auth-svc" "code" ""
+rm -f "$TMPDIR/deliverables/auth-svc/.engine/final-test-report.md"
+result=$(run_verify "auth-svc")
 assert "无报告 → exit 0" "0" "$result"
 
 # --- 3. 合规 PASS 报告 ---
@@ -87,8 +87,8 @@ VALID_PASS='## Code Review
 - Major: 0 项
 - Minor: 0 项
 - Code Review 判定: PASS'
-setup_env "REQ004" "code" "$VALID_PASS"
-result=$(run_verify "REQ004")
+setup_env "data-etl" "code" "$VALID_PASS"
+result=$(run_verify "data-etl")
 assert "合规 PASS → exit 0" "0" "$result"
 
 # --- 4. 合规 FAIL 报告 ---
@@ -104,8 +104,8 @@ VALID_FAIL='## Code Review
 ### 结论
 - Critical: 1 项
 - Code Review 判定: FAIL'
-setup_env "REQ005" "code" "$VALID_FAIL"
-result=$(run_verify "REQ005")
+setup_env "sync-job" "code" "$VALID_FAIL"
+result=$(run_verify "sync-job")
 assert "合规 FAIL → exit 0" "0" "$result"
 
 # --- 5. 合规 SKIPPED 报告 ---
@@ -113,8 +113,8 @@ echo "--- 5. 合规 SKIPPED 报告 → exit 0 ---"
 VALID_SKIPPED='## Code Review
 
 Code Review 判定: SKIPPED — 非代码产出'
-setup_env "REQ006" "code" "$VALID_SKIPPED"
-result=$(run_verify "REQ006")
+setup_env "chat-ui" "code" "$VALID_SKIPPED"
+result=$(run_verify "chat-ui")
 assert "合规 SKIPPED → exit 0" "0" "$result"
 
 # --- 6. 缺少 Code Review 章节 → FAIL ---
@@ -123,8 +123,8 @@ NO_CHAPTER='## 测试报告
 
 结论: PASS
 所有测试通过'
-setup_env "REQ007" "code" "$NO_CHAPTER"
-result=$(run_verify "REQ007")
+setup_env "log-agg" "code" "$NO_CHAPTER"
+result=$(run_verify "log-agg")
 assert "缺章节 → exit 1" "1" "$result"
 
 # --- 7. 缺少结论行 → FAIL ---
@@ -136,8 +136,8 @@ NO_VERDICT='## Code Review
 
 ### 发现
 无发现'
-setup_env "REQ008" "code" "$NO_VERDICT"
-result=$(run_verify "REQ008")
+setup_env "pay-gw" "code" "$NO_VERDICT"
+result=$(run_verify "pay-gw")
 assert "缺结论 → exit 1" "1" "$result"
 
 # --- 8. FAIL 但无 Critical → FAIL ---
@@ -147,8 +147,8 @@ FAIL_NO_CRITICAL='## Code Review
 ### 结论
 - Major: 2 项
 - Code Review 判定: FAIL'
-setup_env "REQ009" "code" "$FAIL_NO_CRITICAL"
-result=$(run_verify "REQ009")
+setup_env "mail-svc" "code" "$FAIL_NO_CRITICAL"
+result=$(run_verify "mail-svc")
 assert "FAIL无Critical → exit 1" "1" "$result"
 
 # --- 9. SKIPPED 无理由 → FAIL ---
@@ -156,8 +156,8 @@ echo "--- 9. SKIPPED 无理由 → exit 1 ---"
 SKIPPED_NO_REASON='## Code Review
 
 Code Review 判定: SKIPPED'
-setup_env "REQ010" "code" "$SKIPPED_NO_REASON"
-result=$(run_verify "REQ010")
+setup_env "push-svc" "code" "$SKIPPED_NO_REASON"
+result=$(run_verify "push-svc")
 assert "SKIPPED无理由 → exit 1" "1" "$result"
 
 # --- 汇总 ---
