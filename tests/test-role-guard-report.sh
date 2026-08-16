@@ -673,14 +673,60 @@ if ! printf '%s\n' "$fb_cur" | grep -q 'current_role'; then
 else
   bad "AC-06: framework 分支出现 current_role 判据（D3 已撤回，实现了会使 Developer 全程锁死）"
 fi
-# 反证 D3 若实现的后果：state.json 的 current_role 恒为 planner，
-# 而当前 Tester 正以 tester 身份写 tests/。断言该字段值确认撤回理由成立。
+# 反证 D3 若实现的后果：mh-dev 的 current_role 恒为 planner，该字段无区分力。
+# CR-019 R1：取证对象是**受版本控制的两处来源实现**，不是 .gitignore 排除的运行态
+# state.json。挂在派生物上会让结论强度取决于「本机跑过 /mh-dev 没有」这一与不变量
+# 无关的环境条件——纯净克隆下 current_role='' 必然假失败，而不变量本身并未被违反。
+# R3：两个来源逐一取证，任一偏离即失败；任一来源的赋值消失（提取为空）同样失败，
+# 否则删掉硬写反而使断言恒真。
+MHDEV_TRANSITION="$REPO/tools/mh-dev/scripts/transition-state.sh"
+MHDEV_TEMPLATE="$REPO/tools/mh-dev/templates/state.json.template"
+
+# 来源一：transition-state.sh 每次相位转移对 current_role 的硬写。
+# 收集**全部**赋值而非首个：新增一处偏离值的赋值也须判失败。
+# 两种赋值形态都要覆盖——dict 字面量 `'current_role':'planner'` 与下标赋值
+# `s['current_role']='developer'`。只认前者时，后者形态可在不触发本断言的情况下
+# 把该字段改成别的值（实测：仅匹配 `:` 时新增一处下标赋值仍全绿）。
 TOTAL=$((TOTAL + 1))
-real_role=$(jq -r '.current_role // empty' "$REPO/tools/mh-dev/.mh-dev/state.json" 2>/dev/null)
-if [ "$real_role" = "planner" ]; then
-  ok "AC-06: 真实 state.json 的 current_role=planner（证实 D3 判据字段恒为单值，撤回理由成立）"
+tr_roles=()
+while IFS= read -r _line; do
+  [ -n "$_line" ] && tr_roles+=("$_line")
+done < <(grep -oE "['\"]current_role['\"][[:space:]]*\]?[[:space:]]*[:=][[:space:]]*['\"][^'\"]*['\"]" "$MHDEV_TRANSITION" 2>/dev/null \
+         | sed -E "s/.*[:=][[:space:]]*['\"]([^'\"]*)['\"]\$/\1/")
+tr_n=${#tr_roles[@]}
+tr_bad=0
+if [ "$tr_n" -gt 0 ]; then
+  for _r in "${tr_roles[@]}"; do [ "$_r" = "planner" ] || tr_bad=$((tr_bad + 1)); done
+fi
+if [ "$tr_n" -gt 0 ] && [ "$tr_bad" -eq 0 ]; then
+  ok "AC-06: transition-state.sh 的 current_role 硬写恒为 planner（受版本控制来源一，${tr_n} 处赋值全为该值）"
 else
-  bad "AC-06: state.json current_role='${real_role}'（与 D3 撤回理由「恒为 planner」不符，须复核）"
+  bad "AC-06: transition-state.sh 的 current_role 硬写失效（提取到 ${tr_n} 处、其中 ${tr_bad} 处非 planner；D3 撤回理由「恒为 planner」的来源之一不成立）"
+fi
+
+# 来源二：state.json.template 的初始值（reset-session/首次 intake 由此落盘）
+TOTAL=$((TOTAL + 1))
+tpl_role=$(jq -r '.current_role // empty' "$MHDEV_TEMPLATE" 2>/dev/null)
+if [ "$tpl_role" = "planner" ]; then
+  ok "AC-06: state.json.template 的 current_role 初始值为 planner（受版本控制来源二）"
+else
+  bad "AC-06: state.json.template 的 current_role='${tpl_role}'（须为 planner；D3 撤回理由的来源之二不成立）"
+fi
+
+# R2：运行态存在时附加校验「实现与产物一致」。缺失不判失败（其缺失不违反不变量），
+# 也不削弱上面两条——上两条在任何环境下都已无条件执行完毕。不引入跳过计数：
+# 本条不存在时 TOTAL 不自增，TOTAL == PASS + FAIL 的恒等关系不变。
+MHDEV_RUNTIME_STATE="$REPO/tools/mh-dev/.mh-dev/state.json"
+if [ -f "$MHDEV_RUNTIME_STATE" ]; then
+  TOTAL=$((TOTAL + 1))
+  real_role=$(jq -r '.current_role // empty' "$MHDEV_RUNTIME_STATE" 2>/dev/null)
+  if [ "$real_role" = "planner" ]; then
+    ok "AC-06: 运行态 state.json 的 current_role=planner（与上两处受版本控制来源一致）"
+  else
+    bad "AC-06: 运行态 state.json current_role='${real_role}' 与受版本控制来源（planner）不一致，须复核"
+  fi
+else
+  echo "  ----: 运行态 state.json 不存在，实现-产物一致性附加校验不适用（不变量已由上两条来源取证）"
 fi
 
 echo ""
