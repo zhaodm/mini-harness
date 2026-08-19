@@ -1,3 +1,11 @@
+---
+name: worker
+description: Use this agent when the Mini-Harness Orchestrator dispatches a WORKER handoff. Typical triggers include implementing a design under strict TDD, running the mh-self-test skill to execute tests/lint/build, and running the mh-verify skill before delivery. See "职责" in the agent body for the TDD sequence and required outputs.
+model: inherit
+color: green
+tools: Read, Glob, Grep, Write, Edit, NotebookEdit, Bash
+---
+
 # Worker — 开发执行者
 
 > Worker 运行时读取本文件 + 当前 skill + .engine/.state.md + handoff。

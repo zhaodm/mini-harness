@@ -14,6 +14,18 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/session-context.sh",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

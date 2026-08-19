@@ -1102,13 +1102,52 @@ else
   bad "AC-08: is_handback 缺工具判据，与文档口径不一致"
 fi
 
-# guards.md 须明示自授权性质与 Bash 通道不受覆盖（AC-08 点名要求）
+# ------------------------------------------------------------------
+# CR-020 AX-05：能力边界的判据对象从「文档提到 Bash」归位到「角色实际工具声明」
+#
+# 原断言是 `grep -q 'Bash' guards.md`（连同 `grep -q '自授权'）。它验证的是
+# **缺口被写进文档**，而非**缺口被关闭**：CR-020 后 guards.md 里 Bash 出现更多次，
+# 故无论 Thinker 是否真的失去 Bash，该断言都通过——空转，无鉴别力。
+#
+# 归位后的判据对象是 agents/thinker.md frontmatter 的 tools: 声明，即宿主
+# 强制点消费的那一份真实输入（已实测：以 --agent thinker 启动的会话确实无 Bash 工具，
+# 其工具集与本行声明逐字一致）。断言「Thinker 的 tools 不含 Bash」——缺口在
+# Thinker 一侧被关闭的可观测形态。文档同步性检查保留在下一条，但**不再充当
+# 「缺口已关闭」的证据**。
+#
+# 解析口径：只取 frontmatter（首个 `---` 到次个 `---` 之间）的 tools: 行，
+# 不扫全文——正文提到 Bash 属正常叙述，用全文 grep 会让本条重新退化为文档检查。
+frontmatter_tools() {
+  awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f&&/^tools:[[:space:]]*/{sub(/^tools:[[:space:]]*/,"");print;exit}' "$1"
+}
+
+TOTAL=$((TOTAL + 1))
+TH_TOOLS=$(frontmatter_tools "$REPO/agents/thinker.md")
+if [ -n "$TH_TOOLS" ] && ! printf '%s' "$TH_TOOLS" | grep -qw 'Bash'; then
+  ok "AX-05: Thinker 的 tools 声明不含 Bash（缺口在宿主侧关闭，tools=${TH_TOOLS}）"
+else
+  bad "AX-05: Thinker 的 tools 含 Bash 或声明缺失（tools=${TH_TOOLS:-<空>}）"
+fi
+
+# 同一判据对象上取反向样本：Worker 须持有 Bash（协议要求它跑 mh-self-test）。
+# 没有这条，把三个角色的 tools 一律清空也能让上一条通过——正向断言需要反向锚点。
+TOTAL=$((TOTAL + 1))
+WK_TOOLS=$(frontmatter_tools "$REPO/agents/worker.md")
+if printf '%s' "$WK_TOOLS" | grep -qw 'Bash'; then
+  ok "AX-05: Worker 的 tools 含 Bash（协议要求的动作未被声明反锁）"
+else
+  bad "AX-05: Worker 缺 Bash，无法执行 mh-self-test（tools=${WK_TOOLS:-<空>}）"
+fi
+
+# 文档同步性：guards.md 须明示自授权性质，且**不得声称 Bash 缺口已关闭**。
+# 后半句是本条的实质——Worker/Verifier 的命令形态确实仍无强制点，
+# 文档若写成「已关闭」即为不实登记，须判 FAIL。
 TOTAL=$((TOTAL + 1))
 if grep -q '自授权' "$REPO/docs/kb/domains/guards.md" && \
-   grep -q 'Bash' "$REPO/docs/kb/domains/guards.md"; then
-  ok "AC-08: guards.md 明示自授权性质与 Bash 通道不受覆盖"
+   grep -q '不得声称此缺口已关闭' "$REPO/docs/kb/domains/guards.md"; then
+  ok "AC-08: guards.md 明示自授权性质，且残留缺口未被登记为已关闭"
 else
-  bad "AC-08: guards.md 未明示自授权/Bash 能力边界"
+  bad "AC-08: guards.md 未明示自授权性质，或未如实登记 Bash 残留缺口"
 fi
 
 # 实现侧不得残留存在性量词谓词（注释中的历史说明除外）

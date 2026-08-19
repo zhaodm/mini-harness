@@ -19,6 +19,7 @@ export const meta = {
 };
 
 const result = await agent(`[VERIFIER] 最终审计 ${args.reqId}`, {
+  agentType: "verifier",
   prompt: args.prompt,
   model: "sonnet"
 });

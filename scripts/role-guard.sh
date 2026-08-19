@@ -15,6 +15,21 @@
 # 能力边界（CR-016 R6）：判据来自被治理方自己可写的状态文件，故本守卫是自授权机制；
 # Bash 工具不在 hook matcher 内，重定向写入不受覆盖。定位是防误撞，不是安全边界。
 # 详见 docs/kb/domains/guards.md「授权模型与能力边界」。
+#
+# 与宿主工具白名单的分工（CR-020 R2，单一权威记录在 docs/kb/domains/guards.md）：
+# 二者粒度不同、串联而非并联，同一约束只在一侧声明，本脚本不重复判定工具粒度。
+#   - 「工具能否被使用」→ 宿主 agents/*.md 的 tools: 裁决（未声明即不可用）。
+#   - 「写入落到哪个路径」→ 本脚本裁决（宿主的 tools: 不表达路径概念）。
+#   - Bash 命令形态 → 两侧均不裁决。agents/*.md 的 tools: 只做工具名匹配，
+#     参数模式（如 Bash(git *)）在 agent 定义处不生效（实测，见 guards.md 残留缺口登记）；
+#     settings.json 的 permissions 与 hook matcher 两条宿主路线确实消费该参数模式，
+#     但已评估未采用（判据对象是字面命令串、看不见脚本内部；不误伤与有效性不可兼得；
+#     粒度为会话全局而非按角色）——理由与实测证据见 guards.md；
+#     本脚本亦不新增命令串解析（CR-020 R4 明确禁止，解析任意 shell 不可靠）。
+# 宿主 tools: 的强制力需三段链路齐备：声明（agents/*.md frontmatter）+ 发现面
+# （.claude/agents/ symlink 同源）+ 派发链（workflows/*.js 传 agentType）。缺任一条
+# 宿主套用内置 workflow-subagent（tools 全集），上述「未声明即不可用」不成立。
+# 本 CR 未改动下方任何判定逻辑：CR-012/016/017/018 的路径语义不变量全部保留。
 
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')

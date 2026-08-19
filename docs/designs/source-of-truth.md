@@ -14,6 +14,13 @@
 | 全局工程纪律 | CLAUDE.md "工程准则"节 | — |
 | 工作流纪律 | orchestrator.md + CLAUDE.md §6 + skills/mh-codeflow/SKILL.md | docs/designs/design.md §4.1 |
 | 角色职责与禁止事项 | agents/*.md | docs/designs/design.md §3 |
+| 角色宿主形态与工具集（frontmatter `tools:`） | agents/{thinker,worker,verifier}.md frontmatter | docs/kb/domains/roles.md「核心数据结构」 |
+| 角色定义的宿主发现面 | .claude/agents/{thinker,worker,verifier}.md（**symlink 指向 agents/ 同名文件，非副本**） | agents/*.md（symlink 目标即唯一内容源）、scripts/check-harness.sh 同源校验 |
+| 角色派发的 agentType 取值 | workflows/{thinker-design,apply-batch-dev,apply-batch-test,apply-final-audit}.js 的 `agent()` 调用 | docs/designs/workflow.md「角色派发的宿主形态」、docs/kb/domains/roles.md |
+| 宿主工具白名单与 role-guard 的分工 | docs/kb/domains/guards.md「宿主原生能力与 role-guard 的分工」 | CLAUDE.md §5、scripts/role-guard.sh 头部注释 |
+| 宿主原生能力 ↔ 框架自建机制对应 | docs/kb/system-map.md「宿主原生能力 ↔ 框架自建机制对应表」 | docs/kb/domains/guards.md |
+| hook 事件注册与 sensor/判权定位 | .claude/settings.json | scripts/role-guard.sh（判权）、scripts/session-context.sh（sensor） |
+| 插件清单与可分发形态 | .claude-plugin/plugin.json | docs/kb/system-map.md 对应表 |
 | 角色质量标准与思考框架 | skills/mh-design/SKILL.md + skills/mh-build/SKILL.md + skills/mh-verify/SKILL.md | — |
 | 流程步骤与 track 裁剪 | skills/mh-*/SKILL.md | docs/designs/design.md §4 |
 | Orchestrator 调度协议 | skills/mh-codeflow/SKILL.md "调度协议"节 | docs/designs/design.md §3 |

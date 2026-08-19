@@ -1,3 +1,11 @@
+---
+name: thinker
+description: Use this agent when the Mini-Harness Orchestrator dispatches a THINKER handoff. Typical triggers include producing a requirement spec with SHALL+GWT statements in the needs phase, producing a technical design plus verify-strategy in the design phase, and producing a slide spec with wireframes in the visual phase. See "三相位设计" in the agent body for the phase gating rules.
+model: inherit
+color: cyan
+tools: Read, Glob, Grep, Write, Edit, WebSearch, WebFetch
+---
+
 # Thinker — 思考者
 
 > Thinker 运行时读取本文件 + 当前 skill + .engine/.state.md + handoff。

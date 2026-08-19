@@ -23,6 +23,7 @@ export const meta = {
 };
 
 const result = await agent(`[THINKER] ${args.phase || 'design'} ${args.reqId}`, {
+  agentType: "thinker",
   prompt: args.prompt,
   model: "sonnet"
 });

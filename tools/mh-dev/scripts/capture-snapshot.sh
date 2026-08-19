@@ -23,7 +23,11 @@ if role!='legacy':
  if int(round_)!=state_round: raise SystemExit(f'BLOCKED: --round {round_} != state.json repair.round {state_round}')
 def run(*args): return subprocess.check_output(args).decode()
 head=run('git','rev-parse','HEAD').strip()
-raw=subprocess.check_output(['git','status','--porcelain=v1','-z'])
+# -uall 必需：git 默认把「整个新目录都未跟踪」折叠成单条目录项（如 `?? .claude/agents/`），
+# 而 approved_scope 授权的是文件路径，validate-changes.sh 的 allowed_dev() 只在 scope 条目
+# 自身以 / 结尾时才做目录前缀匹配，故目录项一律判越权（CR-020 repair 1 的假阳性）。
+# 逐文件枚举同时使 sha256 与 tracked 字段对新增文件有意义——目录项算不出 sha256。
+raw=subprocess.check_output(['git','status','--porcelain=v1','-uall','-z'])
 parts=raw.split(b'\0'); entries=[]; i=0
 while i < len(parts)-1:
  s=parts[i].decode('utf-8','surrogateescape'); i+=1

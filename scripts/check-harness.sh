@@ -16,13 +16,41 @@ require_exec() {
 
 printf '%s\n' "=== Mini-Harness 框架自检 ==="
 printf '\n--- 核心配置 ---\n'
-for file in CLAUDE.md .clinerules .mcp.json README.md CHANGELOG.md package.json; do
+for file in CLAUDE.md .clinerules .mcp.json README.md CHANGELOG.md package.json .claude-plugin/plugin.json; do
   require_file "$file"
 done
 
 printf '\n--- Agent 定义 ---\n'
 for role in thinker worker verifier orchestrator; do
   require_file "agents/$role.md"
+done
+
+# 被派发的三角色须同时进入宿主项目级发现路径 .claude/agents/。
+# 该目录与 agents/ 必须同源（symlink），否则两份定义会各自漂移，
+# 而 tools: 的实际强制点取 .claude/agents/ 那一份，文档却按 agents/ 描述。
+# 判据是 symlink 且解析后落在 agents/<role>.md——不接受手工复制的普通文件。
+for role in thinker worker verifier; do
+  link=".claude/agents/$role.md"
+  if [[ ! -L "$link" ]]; then
+    fail "$link 不是 symlink（须与 agents/$role.md 同源，禁止手工副本）"
+  elif [[ "$(cd "$(dirname "$link")" && python3 -c 'import os,sys;print(os.path.realpath(sys.argv[1]))' "$(basename "$link")")" \
+        != "$(python3 -c 'import os,sys;print(os.path.realpath(sys.argv[1]))' "agents/$role.md")" ]]; then
+    fail "$link 指向的不是 agents/$role.md（同源关系被破坏）"
+  else
+    pass "$link → agents/$role.md 同源"
+  fi
+done
+
+# 派发侧：四个 workflow 的 agent() 调用须传 agentType，否则宿主套用内置
+# workflow-subagent（tools 全集），frontmatter 的 tools: 成为无人读取的死声明。
+for wf in workflows/thinker-design.js workflows/apply-batch-dev.js workflows/apply-batch-test.js workflows/apply-final-audit.js; do
+  calls=$(grep -c 'agent(`' "$wf" || true)
+  types=$(grep -c 'agentType:' "$wf" || true)
+  if [[ "$calls" -gt 0 && "$calls" -eq "$types" ]]; then
+    pass "$wf 的 $calls 处 agent() 均传 agentType"
+  else
+    fail "$wf 有 $calls 处 agent() 但只有 $types 处 agentType（未按角色名派发则 tools 不生效）"
+  fi
 done
 
 printf '\n--- Skill 与命令面 ---\n'
@@ -38,7 +66,7 @@ for command in mh-run mh-ppt mh-dev; do
 done
 
 printf '\n--- 校验脚本 ---\n'
-for script in verify.sh baseline.sh check-harness.sh verify-ppt.sh verify-archive.sh verify-code-review.sh verify-qa.sh role-guard.sh validate-slug.sh; do
+for script in verify.sh baseline.sh check-harness.sh verify-ppt.sh verify-archive.sh verify-code-review.sh verify-qa.sh role-guard.sh validate-slug.sh session-context.sh; do
   require_exec "scripts/$script"
 done
 

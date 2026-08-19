@@ -66,6 +66,7 @@ scripts/
 | `scripts/verify-code-review.sh` | Code Review 格式与维度校验（CR-1~5） | `skills/mh-verify/SKILL.md` |
 | `scripts/role-guard.sh` | 角色文件写入权限拦截（PreToolUse Hook） | `CLAUDE.md` §5、`docs/designs/source-of-truth.md`、`docs/kb/domains/guards.md` |
 | `scripts/validate-slug.sh` | 项目标识符字符集校验（生成侧 mh-intake + 消费侧 role-guard 共用） | `skills/mh-intake/SKILL.md`、`scripts/role-guard.sh`、`templates/state-template.md` |
+| `scripts/session-context.sh` | SessionStart sensor：打印活跃流程状态（只读、只打印、恒 `exit 0`，不判权） | `.claude/settings.json`、`docs/kb/domains/guards.md`（分工节） |
 | `scripts/baseline.sh` | 基线对比 | `docs/designs/design.md` §7.4 |
 | `scripts/check-harness.sh` | 框架自检 | `docs/designs/design.md`、`.claude/commands/` |
 
@@ -78,10 +79,103 @@ scripts/
 三条边界须一并记住：
 
 - **自授权。** `current_role` 表达的是「派发意图」而非「执行者身份」。守卫按意图放行，不校验身份。
-- **Bash 通道不受覆盖。** hook matcher 只含 `Write|Edit|NotebookEdit`。`Bash` 工具的重定向、`sed -i`、`tee` 一概绕过守卫。把 Bash 纳入 matcher 需要解析任意 shell 命令的写入目标，不可靠，故不做。
+- **Bash 通道不受本守卫覆盖。** hook matcher 只含 `Write|Edit|NotebookEdit`。`Bash` 工具的重定向、`sed -i`、`tee` 一概绕过守卫。把 Bash 纳入 matcher 需要解析任意 shell 命令的写入目标，不可靠，故不做。CR-020 后**部分**改善：Thinker 在宿主侧未被授予 `Bash`（工具不存在，最彻底的关闭）；但 Worker/Verifier 持有裸 `Bash`，其命令形态目前不受任何强制点约束——宿主的 `permissions` 与 hook matcher 两条路线**已评估、未采用**，详见下方「宿主原生能力与 role-guard 的分工」的残留缺口登记。
 - **定位是防误撞，不是防攻击。** 守卫要挡的是「Orchestrator 手滑替 Worker 写了代码」「SubAgent 越界改了别人的产出」这类协议内失误。对抗刻意绕过不在设计目标内，别把它当访问控制来依赖。
 
 因此：守卫失效属于流程纪律问题，不属于安全事件；但守卫**空转**（判据恒真、通道漏覆盖）比没有守卫更危险，因为它提供虚假保障——`NotebookEdit` 曾长期不在 matcher 内，即一条完全静默的漏覆盖通道。
+
+### 宿主原生能力与 role-guard 的分工（CR-020 R2，单一权威记录）
+
+**本节是该分工的唯一权威定义处。** `CLAUDE.md` §5 与 `scripts/role-guard.sh` 头部注释均指向此处，
+不各自独立定义——同一约束在两处独立声明必然漂移（CR-015 的教训）。
+
+二者**粒度不同，不可互相替代，且是串联而非并联**：宿主先筛工具，通过后 role-guard 再筛路径。
+
+| 强制点 | 粒度 | 能表达 | 不能表达 |
+|--------|------|--------|---------|
+| 宿主 `agents/*.md` 的 `tools:` | **工具名** | 「Thinker 不能用 Bash」「Verifier 不能用 Edit」 | 「Worker 只能写 `src/`」——工具白名单无路径概念 |
+| `scripts/role-guard.sh` | **路径** | 肯定式路径归属表、交还例外、全局指针五形态 | 工具粒度（不重复判定）；Bash 命令形态 |
+
+三条裁决归属：
+
+1. **工具能否被使用** → 宿主 `tools:` 裁决，未声明即不可用。role-guard 不重复判定。
+2. **写入落到哪个路径** → role-guard 裁决。宿主不表达路径。
+3. **Bash 命令形态** → **两侧都不裁决**。宿主另提供 `permissions` 与 hook matcher 两条路线，
+   **已评估、未采用**（理由见下方残留缺口登记）。
+
+因为两者判的**不是同一个命题**，「宿主允许而守卫拒绝」不构成矛盾：那是工具可用、
+但该路径不属当前角色，两条结论各自成立且叠加生效（拒绝）。反向组合（守卫允许而宿主拒绝）
+同理——工具不可用时调用根本不会到达 PreToolUse。故不存在需要裁决的冲突。
+
+#### ⛔ 残留缺口：Worker/Verifier 的 Bash 命令形态无任何宿主侧约束
+
+**不得声称此缺口已关闭。** 已关闭的只有 Thinker 一侧（未授予 `Bash`，最彻底的形态）。
+
+设计曾拟用 `Bash(git *)` 一类参数模式约束 Worker/Verifier 的命令形态。**实测结论：
+`agents/*.md` 的 `tools:` 不支持以参数模式约束 Bash。** 一手证据（Claude Code 2.1.233 二进制）：
+
+- 解析侧**确实**是参数感知的：`tools:` 与 skill 的 `allowed-tools:` 共用同一个括号感知分词器
+  （逗号/空格在括号内不切分），故 `Bash(git *)` 能被解析成 `{toolName: "Bash", ruleContent: "git *"}`。
+- 但**消费侧丢弃 `ruleContent`**：agent 工具解析函数按 `toolName` 在可用工具表里查名字
+  （`y.get(toolName)`），命中即把**整个工具对象**放进 `resolvedTools`。`ruleContent` 除
+  `Agent(...)`/`Workflow(...)` 的 agentType 分流外不参与任何过滤，**不会**转成 permission rule。
+- 因此 `tools: Bash(git *)` 的实际效果等于 `tools: Bash`——授予完整 Bash。**比裸写更危险**：
+  它读起来像一道约束，实际是空转，正是本域反复强调的「虚假保障比没有保障更糟」。
+- 官方 34 个 agent 定义中 `Bash(` 出现 **0 次**；参数模式仅出现在 command/skill 的
+  `allowed-tools:`（那条路径才会转成 permission rule）。`disallowedTools` 同样只按工具名建集合。
+
+故本 CR 采用退路：**Thinker 不授予 Bash；Worker/Verifier 授予裸 `Bash`**。
+
+##### 已评估但未采用：`.claude/settings.json` 的 `permissions` 路线
+
+⚠️ 早先此处写作「宿主侧无法约束 Bash 命令形态」，**该归因不准确**（CR-020 repair 1 修正）。
+宿主确实提供了一条消费 Bash `ruleContent` 的原生路线——与 agent `tools:` 不同，`permissions`
+的 deny 规则**会**按参数模式匹配。官方用法见 `claude-code-setup` 插件
+`skills/claude-automation-recommender/SKILL.md:285-287`。实测（2.1.233）确认其确实生效：
+
+| 探测 | 结果 |
+|------|------|
+| `deny: ["Bash(echo *)"]` + `echo HELLO_WORLD` | 拒绝：`Permission to use Bash with command echo HELLO_WORLD has been denied.` |
+| `deny: ["Bash(*MARKER*)"]` + `echo pre_MARKER_post` | 拒绝（中缀通配符生效） |
+| `allow: ["Bash(bash ./run.sh)"]` + `deny: ["Bash(*MARKER*)"]`，脚本内含 MARKER | **放行且执行**，脚本内的 MARKER 未被看见 |
+| `deny: ["Bash(*>*)"]` + `bash tests/run.sh 2>&1 \| tail -5` | 拒绝（`2>&1` 命中 `>`，属误伤） |
+
+**评估结论：不采用。** 三条理由，前两条各自独立即足以否决：
+
+1. **判据对象是命令字符串，不是行为。** deny 只看工具调用里那一行字面命令；一旦命令是
+   `bash ./run.sh` 或 `npm test`，脚本内部的重定向、`sed -i`、`tee` 完全不在视野内（上表第 3 行
+   实测）。而 Worker 的正常动作恰恰以 `mh-self-test` 一类脚本调用为主——**要防的写入形态
+   几乎必然发生在 deny 看不见的层级。**
+2. **不误伤与有效性在此不可兼得。** Worker/Verifier 须跑任意项目的测试/lint/build，命令形态
+   不可穷举；要拦住 `>` 就会连 `2>&1`、`>/dev/null` 一起拦（上表第 4 行实测），而这些是跑
+   测试与 `verify*.sh` 的常规写法。写一份「不误伤的 deny 清单」等于写一份不拦任何真实
+   逃逸路径的清单——那正是本域反复禁止的空转保障。
+3. **粒度不匹配。** `permissions` 是**会话全局**，不按角色分层；它无法表达「只约束 Worker」。
+   本框架的缺口是角色相关的（Thinker 侧已由未授予 `Bash` 彻底关闭），全局规则会同时落到
+   Orchestrator 主会话上。
+
+故残留缺口保留，但归因更正为：**宿主提供了 `permissions` 路线，本框架评估后未采用，理由
+是判据对象为命令字符串（看不见脚本内部）、不误伤与有效性不可兼得、且粒度为会话全局而
+非按角色。** 即：
+
+> **Worker/Verifier 可通过 Bash 重定向、`sed -i`、`tee` 写任意路径，两道强制点都拦不住。**
+> 这与本域开头「防误撞而非安全边界」的定位一致，但必须显式登记，不得被
+> 「已归位到宿主原生形态」的说法遮蔽。
+
+另有一条同样消费 permission rule 语法的路线：`PreToolUse` 的 hook matcher 支持
+`Bash(pattern)` 形态以收窄触发条件。它只改变 hook **何时被调用**，判定仍落回脚本，
+故同样受理由 1 制约（matcher 匹配的也是命令字符串）。若将来要做，须另开 CR，且只做保守的
+危险形态识别，代价是误报与命令解析的固有不可靠性。
+
+#### `verify*.sh` 为何不上 hook 事件（CR-020 R4 的判断记录）
+
+需求要求「可由宿主事件驱动的门禁改由事件触发」。`verify*.sh` **不属于**该集合，故不上事件：
+它们是**阶段性**门禁，需要 `.state.md` 的 phase 与交付物齐备才有意义。绑 `PostToolUse`
+会在每次工具调用后触发，在交付物尚未齐备时大量误报，并显著拖慢每次写入。
+
+本 CR 新增的唯一事件是 `SessionStart` → `scripts/session-context.sh`，形态为 **sensor**：
+只读状态、只打印、恒 `exit 0`，不返回权限决策，故不可能阻断默认会话。
+非法 slug 在该脚本中只提示不 `exit 2`——判权是 role-guard 的职责，sensor 不判权。
 
 ### 交还谓词的接受集必须等于读取端（双向，不是单向）
 

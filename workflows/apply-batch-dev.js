@@ -36,6 +36,7 @@ if (args.tasks && args.tasks.length > 0) {
     agentCalls.push({
       taskIds: [task.taskId],
       call: agent(`[WORKER] Task-${task.taskId} (${args.reqId} Batch-${args.batchId})`, {
+        agentType: "worker",
         prompt: task.prompt,
         model: "sonnet"
       })
@@ -50,6 +51,7 @@ if (args.merged && args.merged.length > 0) {
     agentCalls.push({
       taskIds: group.taskIds,
       call: agent(`[WORKER] Task-${label} (${args.reqId} Batch-${args.batchId})`, {
+        agentType: "worker",
         prompt: group.prompt,
         model: "sonnet"
       })

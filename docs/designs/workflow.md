@@ -189,6 +189,53 @@ init ──────> propose ──────> apply ──────> a
 
 ---
 
+## 角色派发的宿主形态（CR-020）
+
+Orchestrator 派发的三个角色是**宿主原生 subagent**：`agents/{thinker,worker,verifier}.md` 各含 YAML frontmatter（`name`/`description`/`model: inherit`/`color`/`tools`），宿主据此识别并派发，工具集由宿主强制而非靠 prompt 文本让角色自觉不用。
+
+**该强制点由三段链路共同构成，缺一即失效**（CR-020 repair 1 的教训——round 0 只写了第一段就在文档里记为已归位）：
+
+| 环节 | 落地 | 缺失后果 |
+|------|------|---------|
+| 声明 | `agents/{thinker,worker,verifier}.md` 的 `tools:` | 无边界可言 |
+| 发现面 | `.claude/agents/{thinker,worker,verifier}.md` symlink 指向 `agents/` 同名文件（宿主项目级发现路径；两个扫描实现都跟随 symlink） | 定义不进入宿主视野，`agentType` 报 not found |
+| 派发链 | 四个 `workflows/*.js` 的 `agent()` 传 `agentType: "thinker"\|"worker"\|"verifier"` | 宿主套用内置 `workflow-subagent`（`tools: ["*"]`），声明成死声明 |
+
+⛔ **`.claude/agents/` 不得改成手工副本。** 两份同名定义会各自漂移，而实际强制点取 `.claude/agents/` 那一份、文档却按 `agents/` 描述。`scripts/check-harness.sh` 机械校验 symlink 同源与四个 workflow 的 `agentType` 齐备；`tests/test-session-context.sh` 断言「文档声称 ↔ 派发链实况」一致。对外分发形态走插件根 `agents/`，此时 `agentType` 取命名空间形式 `mini-harness:thinker`。
+
+| 角色 | `tools:` | 与协议动作的对应 |
+|------|----------|----------------|
+| Thinker | Read, Glob, Grep, Write, Edit, WebSearch, WebFetch | 读 handoff 白名单、写规格/设计、查 `reference/`；**无 Bash**——思考者不执行 |
+| Worker | Read, Glob, Grep, Write, Edit, NotebookEdit, Bash | 写代码、跑 `mh-self-test`（测试/lint/build）、写完成回报 |
+| Verifier | Read, Glob, Grep, Bash, Write | 跑 `verify*.sh` 与全量回归、写缺陷报告与 `tests/`；**无 Edit**——不就地改 Worker 产物 |
+
+**`agents/orchestrator.md` 无 frontmatter，且不得补加**：它是主会话行为契约，不经 Agent tool 派发，加了会使它出现在派发候选里。
+
+收窄 `tools:` 前须对照该角色在 skills 中被要求执行的动作——删掉一个协议仍要求的工具，角色会在运行期硬卡住，且失败形态是「SubAgent 声称做了但没有工具」，比启动失败更难诊断。理由与核对纪律见 `docs/kb/domains/roles.md`。
+
+### hook 事件与两道强制点
+
+`.claude/settings.json` 注册两个事件，定位截然不同：
+
+| 事件 | matcher | 绑定 | 定位 |
+|------|---------|------|------|
+| `PreToolUse` | `Write\|Edit\|NotebookEdit` | `scripts/role-guard.sh` | **判权**，可 `exit 2` 拒绝写入 |
+| `SessionStart` | — | `scripts/session-context.sh` | **sensor**：只读状态、只打印、恒 `exit 0`，不判权不阻断 |
+
+`SessionStart` sensor 打印两条流水线的活跃状态（`/mh-run` 的全局指针 + `project`/phase/step/role，与 mh-dev 的 phase/role/track/repair.round），使断点恢复不依赖对话历史——呼应 mh-codeflow 的断点恢复纪律。它读状态的口径与 role-guard 同源（同一 `grep '^key:' | head -1 | awk` 解析、同一 `validate-slug.sh` 校验），但**非法 slug 在 sensor 中只提示不 `exit 2`**：判权是 role-guard 的职责，sensor 不判权，此处收紧只会把污染态变成会话级硬阻断。
+
+宿主 `tools:` 与 role-guard **串联**：宿主先筛工具（工具粒度，未声明即不可用），通过后 role-guard 再筛路径（路径粒度，宿主不表达路径）。二者判的不是同一命题，故「宿主允许而守卫拒绝」不构成矛盾，同一约束只在一侧声明。
+
+⛔ **残留缺口：Worker/Verifier 的 Bash 命令形态无任何宿主侧约束。** 实测 `agents/*.md` 的 `tools:` 只按工具名匹配，`Bash(git *)` 一类参数模式在 agent 定义处不生效（写了等于授予完整 Bash，且读起来像约束，比裸写更危险）。已关闭的只有 Thinker 一侧（未授予该工具）。分工与缺口的单一权威记录在 `docs/kb/domains/guards.md`。
+
+`verify*.sh` 有意**不**上 hook 事件：它们是阶段性门禁，需要 `.state.md` 的 phase 与交付物齐备才有意义，绑 `PostToolUse` 会在交付物未齐备时大量误报并拖慢每次写入。
+
+### 插件形态
+
+`.claude-plugin/plugin.json` 使仓库根即插件根。已在根的 `agents/`、`skills/`、`.claude/commands/` 就是标准插件组件布局，**未迁移任何目录**，`skills/mh-*` 的既有路径引用一律不变。`tools/mh-dev/` 不属插件组件目录，故 `/mh-dev` 自开发流程不进入分发面，两形态共存。
+
+---
+
 ## 通用规则
 
 > 角色切换指令、Handoff 协议、心跳打印、过程日志、断点恢复、异常处理等通用规则见 skills/mh-codeflow/SKILL.md "调度协议"节 + `templates/logging-standard.md`。各阶段执行细节见 skills/*/SKILL.md。
@@ -201,7 +248,7 @@ init ──────> propose ──────> apply ──────> a
 >
 > **角色白名单（CR-018 R6，肯定式路径归属表）**：THINKER 写 `docs/spec/`、`assets/`、`.archiveignore`、`.engine/verify-strategy.md`；WORKER 写 `src/`、`tests/`、`deploy/`、`assets/`、产品区根文件全名白名单、`.engine/code-report-*.md`、`.engine/quality-gate-report.md`；VERIFIER 写 `tests/`、`.engine/final-test-report.md`、`.engine/temp-test-report.md`；ORCHESTRATOR 写 `.engine/` 的调度态文件、产品区 `docs/`、`tests/regression-suite.md` 与全局指针。**不得以「不含其他角色前缀」作为授权谓词**——产品区去掉角色前缀后，原否定式谓词的排除项全部落空而退化为产品区全通。WORKER 由此不可写 `docs/`（规格文档写权归 THINKER 与 ORCHESTRATOR）；`tests/` 由 WORKER 与 VERIFIER 共写、`assets/` 由 THINKER 与 WORKER 共写，均为显式声明的既有分工。归属表每条均 `^…$` 双向锚定，目录前缀条目形如 `^…/src/.+$`（尾部 `.+` 使目录自身不命中，左锚拒 `x/deliverables/…` 嵌套伪造）。
 >
-> THINKER/WORKER/VERIFIER 另有交还例外，写本交付物 `.engine/.state.md` 且该次写入内容的首个 `current_role:` 行值恰为 `ORCHESTRATOR` 时放行（判据与读取端同源，非存在性量词——旧的存在性判定曾导致横向夺权；且只接受 `Write`，`Edit` 因片段判据无法覆盖合并结果而一律拒）——**交还须一次完整写入**（判据取本次写入新内容，拆分成不覆盖该行的 Edit 会被拒），路径正则 `^…$` 双向锚定 `.state.md` 全名（`.state.md.evil`、`.state.mdX`、`.state.md/child.md` 等后缀伪造与嵌套伪造路径均不命中），且不放大到 `handoffs/`、`plan-action.md` 等其他引擎态文件。全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd；`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行，无需列入 `approved_scope`。守卫为自授权机制、`Bash` 通道不受覆盖，定位是防误撞而非安全边界（详见 `docs/kb/domains/guards.md`）。
+> THINKER/WORKER/VERIFIER 另有交还例外，写本交付物 `.engine/.state.md` 且该次写入内容的首个 `current_role:` 行值恰为 `ORCHESTRATOR` 时放行（判据与读取端同源，非存在性量词——旧的存在性判定曾导致横向夺权；且只接受 `Write`，`Edit` 因片段判据无法覆盖合并结果而一律拒）——**交还须一次完整写入**（判据取本次写入新内容，拆分成不覆盖该行的 Edit 会被拒），路径正则 `^…$` 双向锚定 `.state.md` 全名（`.state.md.evil`、`.state.mdX`、`.state.md/child.md` 等后缀伪造与嵌套伪造路径均不命中），且不放大到 `handoffs/`、`plan-action.md` 等其他引擎态文件。全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd；`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行，无需列入 `approved_scope`。守卫为自授权机制、`Bash` 通道不受本守卫覆盖，定位是防误撞而非安全边界（详见 `docs/kb/domains/guards.md`）。CR-020 后守卫的判定逻辑**一行未改**：它裁决的是路径粒度，与宿主 `tools:` 的工具粒度正交、串联生效（见上方「角色派发的宿主形态」）。
 
 ---
 

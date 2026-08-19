@@ -1,0 +1,15 @@
+{
+  "name": "mini-harness",
+  "version": "0.8.0",
+  "description": "AI Agent 驱动的研发流程框架：三角色 + 编排器，四层递进防线",
+  "author": {
+    "name": "devin"
+  },
+  "keywords": [
+    "workflow",
+    "orchestration",
+    "tdd",
+    "code-review",
+    "presentation"
+  ]
+}

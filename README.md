@@ -19,12 +19,16 @@
 
 ## 三角色 + 编排器
 
-| 角色 | 职责 |
-|------|------|
-| Orchestrator | 流程调度 + 质量门禁 + 人机交互 + 经验采集（主会话，不计被派发角色） |
-| Thinker | 需求规格 → 技术设计/视觉设计（track 激活相位） |
-| Worker | TDD 编码 + 精装交付 |
-| Verifier | 独立验证 + 缺陷报告（不产验收标准） |
+| 角色 | 职责 | 宿主工具集（`agents/*.md` frontmatter `tools:`） |
+|------|------|------|
+| Orchestrator | 流程调度 + 质量门禁 + 人机交互 + 经验采集（主会话，不计被派发角色） | 无 frontmatter——主会话行为契约，不经派发 |
+| Thinker | 需求规格 → 技术设计/视觉设计（track 激活相位） | Read, Glob, Grep, Write, Edit, WebSearch, WebFetch（**无 Bash**——思考者不执行） |
+| Worker | TDD 编码 + 精装交付 | Read, Glob, Grep, Write, Edit, NotebookEdit, Bash |
+| Verifier | 独立验证 + 缺陷报告（不产验收标准） | Read, Glob, Grep, Bash, Write（**无 Edit**——不就地改 Worker 产物） |
+
+三个被派发角色是宿主原生 subagent：工具集由 frontmatter 声明，未列出的工具宿主直接不提供，不再靠 prompt 文本让角色自觉不用。三份清单互不相同即角色隔离在宿主侧的体现。理由与收窄前的核对纪律见 `docs/kb/domains/roles.md`。
+
+该强制力需三段链路齐备：**声明**（`agents/*.md` frontmatter）+ **发现面**（`.claude/agents/` 以 symlink 指向 `agents/` 同名文件，宿主项目级发现路径）+ **派发链**（四个 `workflows/*.js` 的 `agent()` 传 `agentType`）。缺任一条宿主即套用内置 `workflow-subagent`（工具全集），声明退化为死声明。`scripts/check-harness.sh` 机械校验同源与齐备性。
 
 ---
 
@@ -60,6 +64,15 @@ mh-dev 使用 fast/light/formal 轨道、开发者变更快照、机械预检、
 - Claude Code CLI（终端）
 - VSCode Cline 插件
 - VSCode Claude Code 插件
+
+### 两种形态
+
+`.claude-plugin/plugin.json` 使仓库根即插件根：已在根的 `agents/`、`skills/`、`.claude/commands/` 是标准插件组件布局，**未迁移任何目录**，`skills/mh-*` 的既有路径引用一律不变。
+
+- **自开发形态** — clone 本仓，用 `/mh-dev` 直接改框架自身。运行态在 `tools/mh-dev/`，不属插件组件目录，故不进入分发面。
+- **分发形态** — 别的仓库安装本插件后即可用 `/mh-run`、`/mh-ppt` 与九个 `mh-*` skill，无需 clone 整仓。
+
+两形态共存，插件清单不影响自开发流程。
 
 ### 前置准备
 
@@ -121,6 +134,28 @@ THINKER/WORKER/VERIFIER 另有交还例外，写本交付物 `.engine/.state.md`
 
 全局路径穿越检测拒绝包含 `..` 组件的写入路径；mh-dev 分支采用双向归一化匹配 `approved_scope`（两侧统一转绝对形态后比较，兼容 scope 的相对/绝对两种存储形态），以 `/` 结尾的 scope 条目按目录前缀放行，仓库外绝对路径直接拦截，仓库根由脚本自身位置推导而非 cwd；`tests/` 与 `tools/mh-dev/tests/` 作为 Tester 专属路径按目录前缀放行，无需列入 `approved_scope`。守卫判据存放在被治理方可写的文件中（自授权），`Bash` 通道不受覆盖，定位是防误撞而非安全边界。
 
+### 两道强制点的分工
+
+宿主工具白名单与 role-guard **串联**：宿主先筛工具，通过后 role-guard 再筛路径。二者粒度不同，同一约束只在一侧声明。
+
+| 强制点 | 粒度 | 载体 |
+|--------|------|------|
+| 宿主 `tools:` | 工具名（未声明即不可用） | `agents/{thinker,worker,verifier}.md` frontmatter |
+| `role-guard.sh` | 路径归属 | `.claude/settings.json` 的 `PreToolUse` hook |
+
+⛔ **残留缺口：Worker/Verifier 的 Bash 命令形态不受任何强制点约束。** 实测 `agents/*.md` 的 `tools:` 只按工具名匹配，`Bash(git *)` 一类参数模式在此处不生效（写了等于授予完整 Bash，比裸写更危险因为读起来像约束）。故只有 Thinker 一侧关闭（未授予该工具）；Worker/Verifier 可经 Bash 重定向绕过两道强制点。
+
+宿主另有 `.claude/settings.json` 的 `permissions` 与 `PreToolUse` 的 hook matcher 两条消费 Bash 参数模式的原生路线，**已评估、未采用**：deny 规则的判据对象是工具调用里那行字面命令，看不见 `bash ./run.sh` 一类脚本内部的写入（实测确认），而 Worker 的正常动作恰以脚本调用为主；且要拦 `>` 就会连 `2>&1` 一起拦（实测误伤），不误伤与有效性不可兼得；`permissions` 还是会话全局、无法只约束 Worker。分工、实测证据与缺口的单一权威记录见 `docs/kb/domains/guards.md`。
+
+### hook 事件
+
+| 事件 | 绑定 | 定位 |
+|------|------|------|
+| `PreToolUse`（`Write\|Edit\|NotebookEdit`） | `scripts/role-guard.sh` | 判权，可 `exit 2` 拒绝写入 |
+| `SessionStart` | `scripts/session-context.sh` | **sensor**：只读状态、只打印活跃流程、恒 `exit 0`，不判权不阻断 |
+
+`SessionStart` sensor 使断点恢复不依赖对话历史：新会话开场即可见有无活跃流程、走到哪一步、谁持权。`verify*.sh` 有意不上 hook 事件——它们是阶段性门禁，逐次工具调用后触发会在交付物未齐备时大量误报。
+
 ---
 
 ## 经验记忆
@@ -144,8 +179,11 @@ THINKER/WORKER/VERIFIER 另有交还例外，写本交付物 `.engine/.state.md`
 | docs/designs/source-of-truth.md | 权威源映射 |
 | docs/retrospectives/ | 复盘报告（执行数据 + 问题分析） |
 | docs/requirements/ | 变更请求（框架改进方案） |
-| agents/*.md | 角色契约定义（thinker/worker/verifier/orchestrator） |
+| docs/kb/system-map.md | 领域索引 + 宿主原生能力 ↔ 框架自建机制对应表 |
+| docs/kb/domains/guards.md | 守卫域：授权模型、能力边界、两道强制点的分工与残留缺口 |
+| agents/*.md | 角色契约定义（thinker/worker/verifier 含宿主 frontmatter；orchestrator 无） |
 | skills/*.md | 执行规程 |
+| .claude-plugin/plugin.json | 插件清单（可分发形态） |
 
 ---
 

@@ -24,6 +24,7 @@ export const meta = {
 const results = await parallel(
   args.tasks.map(task =>
     agent(`[VERIFIER] 审计 Task-${task.taskId} (${args.reqId} Batch-${args.batchId})`, {
+      agentType: "verifier",
       prompt: task.prompt,
       model: "sonnet"
     })

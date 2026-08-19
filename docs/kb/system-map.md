@@ -69,6 +69,27 @@ intake → propose → develop → verify → done
 | Templates | handoff/state/ppt/examples/output-guides/kb 模板 | `templates/**` | → [domains/templates.md](domains/templates.md) |
 | mh-dev | 框架自开发工具，轨道 + 状态机 + 快照 + 验证 | `tools/mh-dev/**` | → [domains/mh-dev.md](domains/mh-dev.md) |
 
+## 宿主原生能力 ↔ 框架自建机制对应表（CR-020 R7）
+
+本表用于复查「某机制是否已被原生化」。**框架早期自建的一些机制，宿主后来提供了原生强制点；
+继续用软性替代承载即是自愿放弃强制力。** 新增机制前先查本表：宿主是否已有原生形态。
+
+| 宿主原生能力 | 框架曾用的替代 | 现状 |
+|-------------|--------------|------|
+| subagent `tools:` frontmatter（工具粒度强制） | prompt 文本注入角色契约，靠角色自觉 | **已归位**（CR-020 R1，repair 1 补齐接入）：`agents/{thinker,worker,verifier}.md` 声明最小工具集，`.claude/agents/` 以 symlink 同源进入宿主项目级发现路径，四个 workflow 的 `agent()` 传 `agentType` 按角色名派发。**声明 + 发现面 + 派发链三者齐备才生效**——缺任一条宿主即套用内置 `workflow-subagent`（`tools: ["*"]`），声明退化为死声明 |
+| 插件 `agents/` + `skills/` 仓库根布局 | command 正文的文本加载指令 | **布局合规，触发语义未生效**（CR-020 R3/R6）：本仓布局本已合规，加清单即插件根，**未迁移任何目录**。但 skill 的 `description` 触发语义须本仓**作为插件被安装**（或位于 `.claude/skills/`）才进入宿主发现面；当前九个 `mh-*` skill 仍由 command 正文的文本加载指令显式引用——该路径在仓库内解析、可正常工作，故不同于 `tools:` 那种「声明存在却无人读取」的形态 |
+| 9 个 hook 事件 | 仅 `PreToolUse` + 角色自觉调用 `verify*.sh` | **部分归位**（CR-020 R4）：新增 `SessionStart` sensor；`verify*.sh` 因阶段性约束有意不上事件；**Bash 命令形态仍无强制点**——宿主提供 `permissions` 与 hook matcher 两条路线，本 CR 评估后未采用，理由见 [guards.md](domains/guards.md) 残留缺口登记 |
+| `.claude-plugin/plugin.json` 可分发形态 | clone 整仓 | **已归位**（CR-020 R6）：两形态共存，`tools/mh-dev/` 不进入插件组件面，自开发流程不受影响 |
+
+**已归位不等于全覆盖。** 工具白名单只表达工具粒度，路径粒度仍由 `role-guard.sh` 承担；
+二者串联而非并联，分工的单一权威记录在 [guards.md](domains/guards.md)。
+
+**「布局合规」不等于「机制生效」。** CR-020 round 0 曾把 `agents/` 已在仓库根这一布局事实
+当成 `tools:` 已生效，实际上派发侧未传 `agentType`、发现侧不在 `.claude/agents/`，声明无任何
+机制读取——与本表要消除的「软性替代冒充强制点」同形态。**判据取可观测行为**（如实测
+Thinker 侧 Bash 不可用），不取声明是否写下；机械守护见 `scripts/check-harness.sh` 的同源与
+派发链检查、`tests/test-session-context.sh` 的声称↔机制一致性断言。
+
 ## 跨域约束铁律
 
 - **脚本硬约束优先于自然语言软约束** — 以脚本退出码为准，Agent 自述不作为通过依据
